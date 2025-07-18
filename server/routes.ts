@@ -640,6 +640,573 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============== EXTENDED TEST API ENDPOINTS ==============
+  // Tüm API tanımlarını test endpoint'leri olarak ekleyelim
+  
+  // Araç Yönetimi API'leri
+  app.get("/api/test/arac-listesi", authenticateApiKey, async (req, res) => {
+    try {
+      const aracListesi = await db.select().from(araclar);
+      res.json({
+        success: true,
+        data: aracListesi,
+        message: "Araç listesi API test endpoint'i",
+        api_info: {
+          name: "Araç Listesi API",
+          description: "Tüm araçları listeler",
+          version: "1.0",
+          endpoint: "/api/test/arac-listesi"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  app.post("/api/test/arac-ekle", authenticateApiKey, async (req, res) => {
+    try {
+      const { plaka, marka, model, tur } = req.body;
+      res.json({
+        success: true,
+        data: {
+          message: "Araç ekleme simülasyonu başarılı",
+          test_data: { plaka, marka, model, tur, id: "test-" + Date.now() }
+        },
+        api_info: {
+          name: "Araç Ekleme API",
+          description: "Yeni araç ekler",
+          version: "1.0",
+          endpoint: "/api/test/arac-ekle"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  app.put("/api/test/arac-guncelle/:id", authenticateApiKey, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+      res.json({
+        success: true,
+        data: {
+          message: "Araç güncelleme simülasyonu başarılı",
+          test_data: { id, ...updateData, updated_at: new Date() }
+        },
+        api_info: {
+          name: "Araç Güncelleme API",
+          description: "Araç bilgilerini günceller",
+          version: "1.0",
+          endpoint: "/api/test/arac-guncelle/:id"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  app.delete("/api/test/arac-sil/:id", authenticateApiKey, async (req, res) => {
+    try {
+      const { id } = req.params;
+      res.json({
+        success: true,
+        data: {
+          message: "Araç silme simülasyonu başarılı",
+          test_data: { deleted_id: id, deleted_at: new Date() }
+        },
+        api_info: {
+          name: "Araç Silme API",
+          description: "Araç kaydını siler",
+          version: "1.0",
+          endpoint: "/api/test/arac-sil/:id"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  // Şoför Yönetimi API'leri
+  app.get("/api/test/sofor-listesi", authenticateApiKey, async (req, res) => {
+    try {
+      const soforListesi = await db.select().from(soforler);
+      res.json({
+        success: true,
+        data: soforListesi,
+        message: "Şoför listesi API test endpoint'i",
+        api_info: {
+          name: "Şoför Listesi API",
+          description: "Tüm şoförleri listeler",
+          version: "1.0",
+          endpoint: "/api/test/sofor-listesi"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  app.post("/api/test/sofor-ekle", authenticateApiKey, async (req, res) => {
+    try {
+      const { ad_soyad, tc_kimlik, ehliyet_no, telefon } = req.body;
+      res.json({
+        success: true,
+        data: {
+          message: "Şoför ekleme simülasyonu başarılı",
+          test_data: { ad_soyad, tc_kimlik, ehliyet_no, telefon, id: "test-" + Date.now() }
+        },
+        api_info: {
+          name: "Şoför Ekleme API",
+          description: "Yeni şoför ekler",
+          version: "1.0",
+          endpoint: "/api/test/sofor-ekle"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  app.put("/api/test/sofor-guncelle/:id", authenticateApiKey, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+      res.json({
+        success: true,
+        data: {
+          message: "Şoför güncelleme simülasyonu başarılı",
+          test_data: { id, ...updateData, updated_at: new Date() }
+        },
+        api_info: {
+          name: "Şoför Güncelleme API",
+          description: "Şoför bilgilerini günceller",
+          version: "1.0",
+          endpoint: "/api/test/sofor-guncelle/:id"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  app.delete("/api/test/sofor-sil/:id", authenticateApiKey, async (req, res) => {
+    try {
+      const { id } = req.params;
+      res.json({
+        success: true,
+        data: {
+          message: "Şoför silme simülasyonu başarılı",
+          test_data: { deleted_id: id, deleted_at: new Date() }
+        },
+        api_info: {
+          name: "Şoför Silme API",
+          description: "Şoför kaydını siler",
+          version: "1.0",
+          endpoint: "/api/test/sofor-sil/:id"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  // Yolculuk Yönetimi API'leri
+  app.get("/api/test/yolculuk-listesi", authenticateApiKey, async (req, res) => {
+    try {
+      const yolculukListesi = await db.select().from(yolculuklar);
+      res.json({
+        success: true,
+        data: yolculukListesi,
+        message: "Yolculuk listesi API test endpoint'i",
+        api_info: {
+          name: "Yolculuk Listesi API",
+          description: "Tüm yolculukları listeler",
+          version: "1.0",
+          endpoint: "/api/test/yolculuk-listesi"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  app.post("/api/test/yolculuk-basla", authenticateApiKey, async (req, res) => {
+    try {
+      const { arac_id, sofor_id, baslangic_konum, bitis_konum } = req.body;
+      res.json({
+        success: true,
+        data: {
+          message: "Yolculuk başlatma simülasyonu başarılı",
+          test_data: { 
+            arac_id, sofor_id, baslangic_konum, bitis_konum, 
+            yolculuk_id: "test-" + Date.now(),
+            baslangi_zamani: new Date(),
+            durum: "devam_ediyor"
+          }
+        },
+        api_info: {
+          name: "Yolculuk Başlatma API",
+          description: "Yeni yolculuk başlatır",
+          version: "1.0",
+          endpoint: "/api/test/yolculuk-basla"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  app.put("/api/test/yolculuk-bitir/:id", authenticateApiKey, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { bitis_konum, mesafe } = req.body;
+      res.json({
+        success: true,
+        data: {
+          message: "Yolculuk bitirme simülasyonu başarılı",
+          test_data: { 
+            yolculuk_id: id, 
+            bitis_konum, 
+            mesafe,
+            bitis_zamani: new Date(),
+            durum: "tamamlandi"
+          }
+        },
+        api_info: {
+          name: "Yolculuk Bitirme API",
+          description: "Yolculuğu tamamlar",
+          version: "1.0",
+          endpoint: "/api/test/yolculuk-bitir/:id"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  // Raporlama API'leri
+  app.get("/api/test/arac-raporu", authenticateApiKey, async (req, res) => {
+    try {
+      const aracListesi = await db.select().from(araclar);
+      const toplamArac = aracListesi.length;
+      const aktifArac = aracListesi.filter((a: any) => a.durum === 'aktif').length;
+      const bakimArac = aracListesi.filter((a: any) => a.durum === 'bakim').length;
+      const arizaArac = aracListesi.filter((a: any) => a.durum === 'ariza').length;
+      
+      res.json({
+        success: true,
+        data: {
+          toplam_arac: toplamArac,
+          aktif_arac: aktifArac,
+          bakimda_arac: bakimArac,
+          arizali_arac: arizaArac,
+          kullanim_orani: `${((aktifArac / toplamArac) * 100).toFixed(1)}%`,
+          detay: aracListesi
+        },
+        message: "Araç raporu API test endpoint'i",
+        api_info: {
+          name: "Araç Raporu API",
+          description: "Araç durum raporu",
+          version: "1.0",
+          endpoint: "/api/test/arac-raporu"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  app.get("/api/test/sofor-raporu", authenticateApiKey, async (req, res) => {
+    try {
+      const soforListesi = await db.select().from(soforler);
+      const toplamSofor = soforListesi.length;
+      const aktifSofor = soforListesi.filter((s: any) => s.durum === 'aktif').length;
+      const izinliSofor = soforListesi.filter((s: any) => s.durum === 'izinli').length;
+      
+      res.json({
+        success: true,
+        data: {
+          toplam_sofor: toplamSofor,
+          aktif_sofor: aktifSofor,
+          izinli_sofor: izinliSofor,
+          musaitlik_orani: `${((aktifSofor / toplamSofor) * 100).toFixed(1)}%`,
+          detay: soforListesi
+        },
+        message: "Şoför raporu API test endpoint'i",
+        api_info: {
+          name: "Şoför Raporu API",
+          description: "Şoför durum raporu",
+          version: "1.0",
+          endpoint: "/api/test/sofor-raporu"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  app.get("/api/test/yolculuk-raporu", authenticateApiKey, async (req, res) => {
+    try {
+      const yolculukListesi = await db.select().from(yolculuklar);
+      const toplamYolculuk = yolculukListesi.length;
+      const tamamlananYolculuk = yolculukListesi.filter((y: any) => y.durum === 'tamamlandi').length;
+      const devamEdenYolculuk = yolculukListesi.filter((y: any) => y.durum === 'devam_ediyor').length;
+      
+      res.json({
+        success: true,
+        data: {
+          toplam_yolculuk: toplamYolculuk,
+          tamamlanan_yolculuk: tamamlananYolculuk,
+          devam_eden_yolculuk: devamEdenYolculuk,
+          tamamlanma_orani: `${((tamamlananYolculuk / toplamYolculuk) * 100).toFixed(1)}%`,
+          detay: yolculukListesi
+        },
+        message: "Yolculuk raporu API test endpoint'i",
+        api_info: {
+          name: "Yolculuk Raporu API",
+          description: "Yolculuk durum raporu",
+          version: "1.0",
+          endpoint: "/api/test/yolculuk-raporu"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  // Bakım Yönetimi API'leri
+  app.get("/api/test/bakim-listesi", authenticateApiKey, async (req, res) => {
+    try {
+      const bakimAraclari = await db.select().from(araclar).where(eq(araclar.durum, 'bakim'));
+      res.json({
+        success: true,
+        data: bakimAraclari.map(arac => ({
+          ...arac,
+          bakim_turu: "Periyodik Bakım",
+          bakim_tarihi: new Date(),
+          tahmini_sure: "2-3 gün",
+          maliyet: "5,000 TL"
+        })),
+        message: "Bakım listesi API test endpoint'i",
+        api_info: {
+          name: "Bakım Listesi API",
+          description: "Bakımdaki araçları listeler",
+          version: "1.0",
+          endpoint: "/api/test/bakim-listesi"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  app.post("/api/test/bakim-planla", authenticateApiKey, async (req, res) => {
+    try {
+      const { arac_id, bakim_turu, planli_tarih } = req.body;
+      res.json({
+        success: true,
+        data: {
+          message: "Bakım planlama simülasyonu başarılı",
+          test_data: { 
+            arac_id, 
+            bakim_turu, 
+            planli_tarih,
+            bakim_id: "test-bakim-" + Date.now(),
+            durum: "planli"
+          }
+        },
+        api_info: {
+          name: "Bakım Planlama API",
+          description: "Araç bakımı planlar",
+          version: "1.0",
+          endpoint: "/api/test/bakim-planla"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  // Yakıt Yönetimi API'leri
+  app.get("/api/test/yakit-durumu", authenticateApiKey, async (req, res) => {
+    try {
+      const aracListesi = await db.select().from(araclar);
+      const yakitDurumu = aracListesi.map((arac: any) => ({
+        arac_id: arac.arac_id,
+        plaka: arac.plaka,
+        marka: arac.marka,
+        yakit_seviyesi: arac.yakit_seviyesi,
+        depo_kapasitesi: "500L",
+        gunluk_tuketim: "80L",
+        maliyet: "45 TL/L"
+      }));
+      
+      res.json({
+        success: true,
+        data: yakitDurumu,
+        message: "Yakıt durumu API test endpoint'i",
+        api_info: {
+          name: "Yakıt Durumu API",
+          description: "Araçların yakıt durumunu gösterir",
+          version: "1.0",
+          endpoint: "/api/test/yakit-durumu"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  app.post("/api/test/yakit-doldur", authenticateApiKey, async (req, res) => {
+    try {
+      const { arac_id, litre, istasyon, fiyat } = req.body;
+      res.json({
+        success: true,
+        data: {
+          message: "Yakıt doldurma simülasyonu başarılı",
+          test_data: { 
+            arac_id, 
+            litre, 
+            istasyon, 
+            fiyat,
+            tarih: new Date(),
+            toplam_maliyet: litre * fiyat,
+            fiş_no: "YAK-" + Date.now()
+          }
+        },
+        api_info: {
+          name: "Yakıt Doldurma API",
+          description: "Yakıt doldurma kaydı",
+          version: "1.0",
+          endpoint: "/api/test/yakit-doldur"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  // Konum Takibi API'leri
+  app.get("/api/test/konum-takibi", authenticateApiKey, async (req, res) => {
+    try {
+      const aracListesi = await db.select().from(araclar);
+      const konumBilgileri = aracListesi.map((arac: any) => ({
+        arac_id: arac.arac_id,
+        plaka: arac.plaka,
+        son_konum: arac.son_konum,
+        enlem: Math.random() * 180 - 90,
+        boylam: Math.random() * 360 - 180,
+        hiz: Math.floor(Math.random() * 80) + "km/h",
+        son_guncelleme: new Date()
+      }));
+      
+      res.json({
+        success: true,
+        data: konumBilgileri,
+        message: "Konum takibi API test endpoint'i",
+        api_info: {
+          name: "Konum Takibi API",
+          description: "Araç konumlarını takip eder",
+          version: "1.0",
+          endpoint: "/api/test/konum-takibi"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  // Bildirimlerin API'leri
+  app.get("/api/test/bildirimler", authenticateApiKey, async (req, res) => {
+    try {
+      const bildirimler = [
+        {
+          id: 1,
+          tip: "uyari",
+          baslik: "Yakıt Seviyesi Düşük",
+          mesaj: "06ABC123 plakalı araç yakıt seviyesi %25'in altında",
+          tarih: new Date(),
+          okundu: false
+        },
+        {
+          id: 2,
+          tip: "bilgi",
+          baslik: "Bakım Hatırlatması",
+          mesaj: "34DEF456 plakalı araç için bakım zamanı geldi",
+          tarih: new Date(),
+          okundu: true
+        },
+        {
+          id: 3,
+          tip: "kritik",
+          baslik: "Araç Arızası",
+          mesaj: "42PQR678 plakalı araç arıza bildirimi",
+          tarih: new Date(),
+          okundu: false
+        }
+      ];
+      
+      res.json({
+        success: true,
+        data: bildirimler,
+        message: "Bildirimler API test endpoint'i",
+        api_info: {
+          name: "Bildirimler API",
+          description: "Sistem bildirimlerini listeler",
+          version: "1.0",
+          endpoint: "/api/test/bildirimler"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  // Test API'lerinin listesi
+  app.get("/api/test/endpoint-listesi", authenticateApiKey, async (req, res) => {
+    try {
+      const endpoints = [
+        { name: "Araç Listesi", endpoint: "/api/test/arac-listesi", method: "GET" },
+        { name: "Araç Ekleme", endpoint: "/api/test/arac-ekle", method: "POST" },
+        { name: "Araç Güncelleme", endpoint: "/api/test/arac-guncelle/:id", method: "PUT" },
+        { name: "Araç Silme", endpoint: "/api/test/arac-sil/:id", method: "DELETE" },
+        { name: "Şoför Listesi", endpoint: "/api/test/sofor-listesi", method: "GET" },
+        { name: "Şoför Ekleme", endpoint: "/api/test/sofor-ekle", method: "POST" },
+        { name: "Şoför Güncelleme", endpoint: "/api/test/sofor-guncelle/:id", method: "PUT" },
+        { name: "Şoför Silme", endpoint: "/api/test/sofor-sil/:id", method: "DELETE" },
+        { name: "Yolculuk Listesi", endpoint: "/api/test/yolculuk-listesi", method: "GET" },
+        { name: "Yolculuk Başlatma", endpoint: "/api/test/yolculuk-basla", method: "POST" },
+        { name: "Yolculuk Bitirme", endpoint: "/api/test/yolculuk-bitir/:id", method: "PUT" },
+        { name: "Araç Raporu", endpoint: "/api/test/arac-raporu", method: "GET" },
+        { name: "Şoför Raporu", endpoint: "/api/test/sofor-raporu", method: "GET" },
+        { name: "Yolculuk Raporu", endpoint: "/api/test/yolculuk-raporu", method: "GET" },
+        { name: "Bakım Listesi", endpoint: "/api/test/bakim-listesi", method: "GET" },
+        { name: "Bakım Planlama", endpoint: "/api/test/bakim-planla", method: "POST" },
+        { name: "Yakıt Durumu", endpoint: "/api/test/yakit-durumu", method: "GET" },
+        { name: "Yakıt Doldurma", endpoint: "/api/test/yakit-doldur", method: "POST" },
+        { name: "Konum Takibi", endpoint: "/api/test/konum-takibi", method: "GET" },
+        { name: "Bildirimler", endpoint: "/api/test/bildirimler", method: "GET" },
+        { name: "Dashboard", endpoint: "/api/test/dashboard", method: "GET" }
+      ];
+      
+      res.json({
+        success: true,
+        data: endpoints,
+        total: endpoints.length,
+        message: "Test API endpoint'leri listesi",
+        api_info: {
+          name: "Test API Endpoint Listesi",
+          description: "Tüm test API endpoint'lerini listeler",
+          version: "1.0",
+          endpoint: "/api/test/endpoint-listesi"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
