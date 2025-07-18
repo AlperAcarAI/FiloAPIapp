@@ -1,6 +1,6 @@
 import { apis, type Api, type InsertApi, type UpdateApi } from "@shared/schema";
 import { db } from "./db";
-import { eq, ilike, or } from "drizzle-orm";
+import { eq, ilike, or, and } from "drizzle-orm";
 
 export interface IStorage {
   // API methods
@@ -24,7 +24,7 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async getApis(searchTerm?: string, statusFilter?: string): Promise<Api[]> {
-    let query = db.select().from(apis);
+    let queryBuilder = db.select().from(apis);
     
     const conditions = [];
     
@@ -42,13 +42,12 @@ export class DatabaseStorage implements IStorage {
     }
     
     if (conditions.length > 0) {
-      query = query.where(
-        conditions.length === 1 ? conditions[0] : 
-        conditions.reduce((acc, condition) => acc && condition)
+      queryBuilder = queryBuilder.where(
+        conditions.length === 1 ? conditions[0] : and(...conditions)
       );
     }
     
-    return await query.orderBy(apis.created_at);
+    return await queryBuilder.orderBy(apis.created_at);
   }
 
   async getApi(id: string): Promise<Api | undefined> {
@@ -82,7 +81,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteApi(id: string): Promise<boolean> {
     const result = await db.delete(apis).where(eq(apis.api_id, id));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async getApiStats(): Promise<{

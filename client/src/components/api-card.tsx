@@ -38,11 +38,15 @@ export function ApiCard({ api, onEdit, onDelete }: ApiCardProps) {
     }
   };
 
-  const formatLastRun = (date: Date | null) => {
+  const formatLastRun = (date: Date | string | null) => {
     if (!date) return "Henüz çalışmadı";
     
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    
+    if (isNaN(dateObj.getTime())) return "Henüz çalışmadı";
+    
+    const diff = now.getTime() - dateObj.getTime();
     const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
