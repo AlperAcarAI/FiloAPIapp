@@ -5,8 +5,9 @@ import { insertApiSchema, updateApiSchema } from "@shared/schema";
 import { z } from "zod";
 import swaggerUi from "swagger-ui-express";
 import { db } from "./db";
-import { araclar, soforler, yolculuklar } from "@shared/schema";
+import { araclar, soforler, yolculuklar, users } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { authenticateToken, authenticateApiKey, generateToken, hashPassword, comparePassword, type AuthRequest } from "./auth";
 
 const swaggerDocument = {
   openapi: "3.0.0",
@@ -332,11 +333,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============== AUTH ENDPOINTS ==============
+  
+  // Kullanıcı kaydı
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Kullanıcı adı ve şifre gerekli"
+        });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: "Şifre en az 6 karakter olmalı"
+        });
+      }
+
+      // Kullanıcı adı kontrolü
+      const [existingUser] = await db.select().from(users).where(eq(users.username, username));
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: "Bu kullanıcı adı zaten kullanılıyor"
+        });
+      }
+
+      // Şifreyi hash'le
+      const hashedPassword = await hashPassword(password);
+
+      // Kullanıcı oluştur
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          username,
+          password: hashedPassword
+        })
+        .returning();
+
+      // Token oluştur
+      const token = generateToken({ id: newUser.id, username: newUser.username });
+
+      res.status(201).json({
+        success: true,
+        message: "Kullanıcı başarıyla oluşturuldu",
+        data: {
+          token,
+          user: {
+            id: newUser.id,
+            username: newUser.username
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Kayıt hatası:", error);
+      res.status(500).json({
+        success: false,
+        message: "Kayıt sırasında bir hata oluştu"
+      });
+    }
+  });
+
+  // Kullanıcı girişi
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Kullanıcı adı ve şifre gerekli"
+        });
+      }
+
+      // Kullanıcı bul
+      const [user] = await db.select().from(users).where(eq(users.username, username));
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: "Kullanıcı adı veya şifre yanlış"
+        });
+      }
+
+      // Şifre kontrol
+      const isPasswordValid = await comparePassword(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({
+          success: false,
+          message: "Kullanıcı adı veya şifre yanlış"
+        });
+      }
+
+      // Token oluştur
+      const token = generateToken({ id: user.id, username: user.username });
+
+      res.json({
+        success: true,
+        message: "Giriş başarılı",
+        data: {
+          token,
+          user: {
+            id: user.id,
+            username: user.username
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Giriş hatası:", error);
+      res.status(500).json({
+        success: false,
+        message: "Giriş sırasında bir hata oluştu"
+      });
+    }
+  });
+
+  // Kullanıcı profili (korumalı)
+  app.get("/api/auth/profile", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      res.json({
+        success: true,
+        data: {
+          id: user!.id,
+          username: user!.username
+        }
+      });
+    } catch (error) {
+      console.error("Profil hatası:", error);
+      res.status(500).json({
+        success: false,
+        message: "Profil bilgileri alınırken hata oluştu"
+      });
+    }
+  });
+
   // ============== TEST API ENDPOINTS ==============
   // These endpoints simulate the actual fleet management APIs
+  // Güvenlik: API Key veya JWT token gerekli
   
   // Araç Listesi API test endpoint
-  app.get("/api/test/araclar", async (req, res) => {
+  app.get("/api/test/araclar", authenticateApiKey, async (req, res) => {
     try {
       const { status, marka, tur } = req.query;
       
@@ -363,7 +503,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Şoför Listesi API test endpoint  
-  app.get("/api/test/soforler", async (req, res) => {
+  app.get("/api/test/soforler", authenticateApiKey, async (req, res) => {
     try {
       const { durum } = req.query;
       
@@ -390,7 +530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Yolculuk Listesi API test endpoint
-  app.get("/api/test/yolculuklar", async (req, res) => {
+  app.get("/api/test/yolculuklar", authenticateApiKey, async (req, res) => {
     try {
       const { durum } = req.query;
       
@@ -444,7 +584,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Araç Detay API test endpoint
-  app.get("/api/test/araclar/:id", async (req, res) => {
+  app.get("/api/test/araclar/:id", authenticateApiKey, async (req, res) => {
     try {
       const { id } = req.params;
       const [arac] = await db.select().from(araclar).where(eq(araclar.arac_id, id));
@@ -471,7 +611,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // API Test Dashboard endpoint
-  app.get("/api/test/dashboard", async (req, res) => {
+  app.get("/api/test/dashboard", authenticateApiKey, async (req, res) => {
     try {
       const tumAraclar = await db.select().from(araclar);
       const tumSoforler = await db.select().from(soforler);

@@ -4,6 +4,12 @@
 
 This is a full-stack API management system built with a modern tech stack. The application allows users to manage API definitions, track their status, and monitor their performance. It features a React frontend with shadcn/ui components and an Express.js backend with PostgreSQL database integration.
 
+**New Security Features (January 2025):**
+- JWT-based authentication system with user registration and login
+- API Key protection for all test endpoints
+- Secure test environment with dual authentication layers
+- User session management with token validation
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -26,6 +32,8 @@ Preferred communication style: Simple, everyday language.
 - **Database Provider**: Neon serverless PostgreSQL
 - **API Documentation**: Swagger/OpenAPI integration
 - **Development**: Hot reload with Vite middleware integration
+- **Security**: JWT authentication with bcrypt password hashing
+- **API Protection**: API Key middleware for test endpoints
 
 ### Key Design Decisions
 1. **Monorepo Structure**: All code organized in a single repository with shared types and schemas
@@ -38,6 +46,8 @@ Preferred communication style: Simple, everyday language.
 ### Database Schema (`shared/schema.ts`)
 - **APIs Table**: Core entity storing API definitions with UUID primary keys
 - **Status Enum**: Predefined status values (aktif, pasif, hata)
+- **Users Table**: User authentication with bcrypt password hashing
+- **Test Data Tables**: Realistic fleet management data (araclar, soforler, yolculuklar)
 - **Timestamps**: Automatic creation and update tracking
 - **Validation**: Zod schemas for runtime type checking
 
@@ -45,13 +55,17 @@ Preferred communication style: Simple, everyday language.
 - **Database Connection**: Neon serverless PostgreSQL with connection pooling
 - **Storage Layer**: Abstracted data access with filtering and search capabilities
 - **RESTful API**: CRUD operations for API management
+- **Authentication Service**: JWT token generation and validation
+- **Security Middleware**: API Key protection for test endpoints
 - **Error Handling**: Centralized error handling with proper HTTP status codes
 
 ### Frontend Components (`client/src/`)
-- **Page Components**: Home dashboard and API detail views
+- **Page Components**: Home dashboard, API detail views, and secure login
 - **Form Components**: Modal forms for creating and editing APIs
+- **Authentication Pages**: Login and registration with form validation
 - **UI Components**: Reusable cards, tables, and interactive elements
 - **Hooks**: Custom hooks for mobile detection and toast notifications
+- **Security Features**: Protected routes and API key management
 
 ## Data Flow
 
@@ -69,6 +83,8 @@ Preferred communication style: Simple, everyday language.
 - **@tanstack/react-query**: Server state management
 - **@radix-ui/***: Accessible UI primitives
 - **swagger-ui-express**: API documentation
+- **jsonwebtoken**: JWT token generation and validation
+- **bcryptjs**: Password hashing and comparison
 
 ### Development Tools
 - **tsx**: TypeScript execution for development

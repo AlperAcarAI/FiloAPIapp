@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Play, Database, Users, Route, BarChart3, Copy } from 'lucide-react';
+import { Play, Database, Users, Route, BarChart3, Copy, Shield, LogOut, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useLocation } from 'wouter';
 
 interface ApiResponse {
   success: boolean;
@@ -22,7 +23,28 @@ export default function ApiTest() {
   const [loading, setLoading] = useState(false);
   const [selectedEndpoint, setSelectedEndpoint] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({});
+  const [apiKey, setApiKey] = useState('test-api-key-2025');
+  const [user, setUser] = useState<any>(null);
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+    setUser(null);
+    setLocation('/login');
+    toast({
+      title: "Çıkış Yapıldı",
+      description: "Güvenli bir şekilde çıkış yaptınız",
+    });
+  };
 
   const testEndpoints = [
     {
@@ -76,7 +98,17 @@ export default function ApiTest() {
       });
 
       const url = `${endpoint}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-      const response = await fetch(url);
+      
+      // API key ile güvenli istek
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (apiKey) {
+        headers['x-api-key'] = apiKey;
+      }
+
+      const response = await fetch(url, { headers });
       const data = await response.json();
 
       setResponse(data);
@@ -119,6 +151,54 @@ export default function ApiTest() {
 
   return (
     <div className="container mx-auto p-6 max-w-6xl">
+      {/* Güvenlik Header */}
+      <div className="mb-6">
+        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Shield className="h-6 w-6 text-blue-600" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-blue-800">Güvenli API Test Ortamı</span>
+                    {user && (
+                      <Badge variant="outline" className="bg-green-100 text-green-800">
+                        <User className="h-3 w-3 mr-1" />
+                        {user.username}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-blue-600">
+                    API Key koruması aktif - Güvenli test ortamı
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLocation('/')}
+                  className="text-blue-600 border-blue-200"
+                >
+                  Ana Sayfa
+                </Button>
+                {user && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleLogout}
+                    className="text-red-600 border-red-200"
+                  >
+                    <LogOut className="h-4 w-4 mr-1" />
+                    Çıkış
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">API Test Ortamı</h1>
         <p className="text-muted-foreground">
@@ -133,6 +213,39 @@ export default function ApiTest() {
         </TabsList>
 
         <TabsContent value="endpoints" className="space-y-6">
+          {/* API Key Ayarları */}
+          <Card className="bg-yellow-50 border-yellow-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Shield className="h-5 w-5 text-yellow-600" />
+                API Key Ayarları
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">API Key</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="API Key girin"
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(apiKey)}
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-yellow-600">
+                  Geçerli API Keys: test-api-key-2025, fleet-management-api-key, demo-api-access-key
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Test Endpoints */}
             <div className="space-y-4">

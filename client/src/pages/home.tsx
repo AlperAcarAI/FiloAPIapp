@@ -171,15 +171,15 @@ export default function Home() {
               <div className="flex items-center gap-3">
                 <TestTube className="h-8 w-8 text-emerald-600" />
                 <div>
-                  <h3 className="text-lg font-semibold text-emerald-800">API Test Ortamı</h3>
+                  <h3 className="text-lg font-semibold text-emerald-800">Güvenli API Test Ortamı</h3>
                   <p className="text-emerald-600">
-                    Filo yönetimi API'lerini gerçek verilerle test edin
+                    JWT ve API Key koruması ile güvenli test ortamı. Giriş gerekli.
                   </p>
                 </div>
               </div>
-              <Link href="/test">
+              <Link href="/login">
                 <Button className="bg-emerald-600 hover:bg-emerald-700">
-                  Test Ortamına Git
+                  Güvenli Test Ortamına Git
                 </Button>
               </Link>
             </div>
