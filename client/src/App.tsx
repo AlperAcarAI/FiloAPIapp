@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/home";
 import ApiDetails from "@/pages/api-details";
+import ApiTest from "@/pages/api-test";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -12,6 +13,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/api/:id" component={ApiDetails} />
+      <Route path="/test" component={ApiTest} />
       <Route component={NotFound} />
     </Switch>
   );

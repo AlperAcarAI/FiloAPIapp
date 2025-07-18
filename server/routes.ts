@@ -4,6 +4,9 @@ import { storage } from "./storage";
 import { insertApiSchema, updateApiSchema } from "@shared/schema";
 import { z } from "zod";
 import swaggerUi from "swagger-ui-express";
+import { db } from "./db";
+import { araclar, soforler, yolculuklar } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 const swaggerDocument = {
   openapi: "3.0.0",
@@ -326,6 +329,174 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error exporting APIs:", error);
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // ============== TEST API ENDPOINTS ==============
+  // These endpoints simulate the actual fleet management APIs
+  
+  // Araç Listesi API test endpoint
+  app.get("/api/test/araclar", async (req, res) => {
+    try {
+      const { status, marka, tur } = req.query;
+      
+      let aracListesi;
+      if (status) {
+        aracListesi = await db.select().from(araclar).where(eq(araclar.durum, status as any));
+      } else {
+        aracListesi = await db.select().from(araclar);
+      }
+      
+      res.json({
+        success: true,
+        data: aracListesi,
+        message: "Araç listesi başarıyla alındı",
+        count: aracListesi.length
+      });
+    } catch (error) {
+      console.error("Araç listesi API hatası:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Araç listesi alınırken hata oluştu" 
+      });
+    }
+  });
+
+  // Şoför Listesi API test endpoint  
+  app.get("/api/test/soforler", async (req, res) => {
+    try {
+      const { durum } = req.query;
+      
+      let soforListesi;
+      if (durum) {
+        soforListesi = await db.select().from(soforler).where(eq(soforler.durum, durum as string));
+      } else {
+        soforListesi = await db.select().from(soforler);
+      }
+      
+      res.json({
+        success: true,
+        data: soforListesi,
+        message: "Şoför listesi başarıyla alındı",
+        count: soforListesi.length
+      });
+    } catch (error) {
+      console.error("Şoför listesi API hatası:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Şoför listesi alınırken hata oluştu" 
+      });
+    }
+  });
+
+  // Yolculuk Listesi API test endpoint
+  app.get("/api/test/yolculuklar", async (req, res) => {
+    try {
+      const { durum } = req.query;
+      
+      let yolculukListesi;
+      if (durum) {
+        yolculukListesi = await db.select({
+          yolculuk_id: yolculuklar.yolculuk_id,
+          baslangic_noktasi: yolculuklar.baslangic_noktasi,
+          bitis_noktasi: yolculuklar.bitis_noktasi,
+          baslama_zamani: yolculuklar.baslama_zamani,
+          bitis_zamani: yolculuklar.bitis_zamani,
+          mesafe: yolculuklar.mesafe,
+          durum: yolculuklar.durum,
+          arac_plaka: araclar.plaka,
+          sofor_adi: soforler.ad_soyad
+        })
+        .from(yolculuklar)
+        .leftJoin(araclar, eq(yolculuklar.arac_id, araclar.arac_id))
+        .leftJoin(soforler, eq(yolculuklar.sofor_id, soforler.sofor_id))
+        .where(eq(yolculuklar.durum, durum as string));
+      } else {
+        yolculukListesi = await db.select({
+          yolculuk_id: yolculuklar.yolculuk_id,
+          baslangic_noktasi: yolculuklar.baslangic_noktasi,
+          bitis_noktasi: yolculuklar.bitis_noktasi,
+          baslama_zamani: yolculuklar.baslama_zamani,
+          bitis_zamani: yolculuklar.bitis_zamani,
+          mesafe: yolculuklar.mesafe,
+          durum: yolculuklar.durum,
+          arac_plaka: araclar.plaka,
+          sofor_adi: soforler.ad_soyad
+        })
+        .from(yolculuklar)
+        .leftJoin(araclar, eq(yolculuklar.arac_id, araclar.arac_id))
+        .leftJoin(soforler, eq(yolculuklar.sofor_id, soforler.sofor_id));
+      }
+      
+      res.json({
+        success: true,
+        data: yolculukListesi,
+        message: "Yolculuk listesi başarıyla alındı",
+        count: yolculukListesi.length
+      });
+    } catch (error) {
+      console.error("Yolculuk listesi API hatası:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Yolculuk listesi alınırken hata oluştu" 
+      });
+    }
+  });
+
+  // Araç Detay API test endpoint
+  app.get("/api/test/araclar/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const [arac] = await db.select().from(araclar).where(eq(araclar.arac_id, id));
+      
+      if (!arac) {
+        return res.status(404).json({
+          success: false,
+          message: "Araç bulunamadı"
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: arac,
+        message: "Araç detayı başarıyla alındı"
+      });
+    } catch (error) {
+      console.error("Araç detay API hatası:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Araç detayı alınırken hata oluştu" 
+      });
+    }
+  });
+
+  // API Test Dashboard endpoint
+  app.get("/api/test/dashboard", async (req, res) => {
+    try {
+      const tumAraclar = await db.select().from(araclar);
+      const tumSoforler = await db.select().from(soforler);
+      const tumYolculuklar = await db.select().from(yolculuklar);
+      
+      const aktifAraclar = await db.select().from(araclar).where(eq(araclar.durum, 'aktif'));
+      const devamEdenYolculuklar = await db.select().from(yolculuklar).where(eq(yolculuklar.durum, 'devam_ediyor'));
+      
+      res.json({
+        success: true,
+        data: {
+          toplam_arac: tumAraclar.length,
+          aktif_arac: aktifAraclar.length,
+          toplam_sofor: tumSoforler.length,
+          devam_eden_yolculuk: devamEdenYolculuklar.length,
+          toplam_yolculuk: tumYolculuklar.length
+        },
+        message: "Dashboard verileri başarıyla alındı"
+      });
+    } catch (error) {
+      console.error("Dashboard API hatası:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Dashboard verileri alınırken hata oluştu" 
+      });
     }
   });
 

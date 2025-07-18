@@ -24,8 +24,6 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async getApis(searchTerm?: string, statusFilter?: string): Promise<Api[]> {
-    let queryBuilder = db.select().from(apis);
-    
     const conditions = [];
     
     if (searchTerm) {
@@ -42,12 +40,12 @@ export class DatabaseStorage implements IStorage {
     }
     
     if (conditions.length > 0) {
-      queryBuilder = queryBuilder.where(
-        conditions.length === 1 ? conditions[0] : and(...conditions)
-      );
+      return await db.select().from(apis)
+        .where(conditions.length === 1 ? conditions[0] : and(...conditions))
+        .orderBy(apis.created_at);
     }
     
-    return await queryBuilder.orderBy(apis.created_at);
+    return await db.select().from(apis).orderBy(apis.created_at);
   }
 
   async getApi(id: string): Promise<Api | undefined> {

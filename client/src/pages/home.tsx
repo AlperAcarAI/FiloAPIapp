@@ -10,7 +10,8 @@ import { ApiCard } from "@/components/api-card";
 import { ApiForm } from "@/components/api-form";
 import { apiService } from "@/lib/api";
 import { type Api, type InsertApi, type UpdateApi } from "@shared/schema";
-import { FileCode, Activity, BarChart3 } from "lucide-react";
+import { FileCode, Activity, BarChart3, TestTube } from "lucide-react";
+import { Link } from "wouter";
 
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -162,6 +163,28 @@ export default function Home() {
         />
 
         <StatsCards stats={stats} />
+
+        {/* Test Environment Banner */}
+        <Card className="shadow-sm border-emerald-200 bg-emerald-50 mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <TestTube className="h-8 w-8 text-emerald-600" />
+                <div>
+                  <h3 className="text-lg font-semibold text-emerald-800">API Test Ortamı</h3>
+                  <p className="text-emerald-600">
+                    Filo yönetimi API'lerini gerçek verilerle test edin
+                  </p>
+                </div>
+              </div>
+              <Link href="/test">
+                <Button className="bg-emerald-600 hover:bg-emerald-700">
+                  Test Ortamına Git
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* API List */}
         <Card className="shadow-sm border-slate-200">
