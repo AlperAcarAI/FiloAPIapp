@@ -47,11 +47,13 @@ export default function ApiTest() {
   };
 
   const testEndpoints = [
+    // Temel Veri Listeleri
     {
       id: 'araclar',
       name: 'Araç Listesi',
       endpoint: '/api/test/araclar',
       description: 'Tüm araçları listeler',
+      category: 'Temel Veriler',
       icon: <Database className="w-4 h-4" />,
       params: [
         { name: 'status', type: 'select', options: ['aktif', 'bakim', 'ariza', 'pasif'] },
@@ -64,6 +66,7 @@ export default function ApiTest() {
       name: 'Şoför Listesi',
       endpoint: '/api/test/soforler',
       description: 'Tüm şoförleri listeler',
+      category: 'Temel Veriler',
       icon: <Users className="w-4 h-4" />,
       params: [
         { name: 'durum', type: 'select', options: ['aktif', 'izinli', 'pasif'] }
@@ -74,6 +77,7 @@ export default function ApiTest() {
       name: 'Yolculuk Listesi',
       endpoint: '/api/test/yolculuklar',
       description: 'Tüm yolculukları listeler',
+      category: 'Temel Veriler',
       icon: <Route className="w-4 h-4" />,
       params: [
         { name: 'durum', type: 'select', options: ['devam_ediyor', 'tamamlandi', 'iptal'] }
@@ -84,31 +88,342 @@ export default function ApiTest() {
       name: 'Dashboard',
       endpoint: '/api/test/dashboard',
       description: 'Özet istatistikler',
+      category: 'Temel Veriler',
       icon: <BarChart3 className="w-4 h-4" />,
+      params: []
+    },
+    
+    // Araç Yönetimi
+    {
+      id: 'arac-listesi',
+      name: 'Araç Listesi (Detaylı)',
+      endpoint: '/api/test/arac-listesi',
+      description: 'Detaylı araç listesi',
+      category: 'Araç Yönetimi',
+      icon: <Database className="w-4 h-4" />,
+      params: []
+    },
+    {
+      id: 'arac-ekle',
+      name: 'Araç Ekleme',
+      endpoint: '/api/test/arac-ekle',
+      description: 'Yeni araç ekler',
+      category: 'Araç Yönetimi',
+      method: 'POST',
+      icon: <Database className="w-4 h-4" />,
+      params: [
+        { name: 'plaka', type: 'text', required: true },
+        { name: 'marka', type: 'text', required: true },
+        { name: 'model', type: 'text', required: true },
+        { name: 'tur', type: 'text', required: true }
+      ]
+    },
+    {
+      id: 'arac-guncelle',
+      name: 'Araç Güncelleme',
+      endpoint: '/api/test/arac-guncelle/test-id',
+      description: 'Araç bilgilerini günceller',
+      category: 'Araç Yönetimi',
+      method: 'PUT',
+      icon: <Database className="w-4 h-4" />,
+      params: [
+        { name: 'plaka', type: 'text' },
+        { name: 'marka', type: 'text' },
+        { name: 'durum', type: 'select', options: ['aktif', 'bakim', 'ariza'] }
+      ]
+    },
+    {
+      id: 'arac-sil',
+      name: 'Araç Silme',
+      endpoint: '/api/test/arac-sil/test-id',
+      description: 'Araç kaydını siler',
+      category: 'Araç Yönetimi',
+      method: 'DELETE',
+      icon: <Database className="w-4 h-4" />,
+      params: []
+    },
+    
+    // Şoför Yönetimi
+    {
+      id: 'sofor-listesi',
+      name: 'Şoför Listesi (Detaylı)',
+      endpoint: '/api/test/sofor-listesi',
+      description: 'Detaylı şoför listesi',
+      category: 'Şoför Yönetimi',
+      icon: <Users className="w-4 h-4" />,
+      params: []
+    },
+    {
+      id: 'sofor-ekle',
+      name: 'Şoför Ekleme',
+      endpoint: '/api/test/sofor-ekle',
+      description: 'Yeni şoför ekler',
+      category: 'Şoför Yönetimi',
+      method: 'POST',
+      icon: <Users className="w-4 h-4" />,
+      params: [
+        { name: 'ad_soyad', type: 'text', required: true },
+        { name: 'tc_kimlik', type: 'text', required: true },
+        { name: 'ehliyet_no', type: 'text', required: true },
+        { name: 'telefon', type: 'text', required: true }
+      ]
+    },
+    {
+      id: 'sofor-guncelle',
+      name: 'Şoför Güncelleme',
+      endpoint: '/api/test/sofor-guncelle/test-id',
+      description: 'Şoför bilgilerini günceller',
+      category: 'Şoför Yönetimi',
+      method: 'PUT',
+      icon: <Users className="w-4 h-4" />,
+      params: [
+        { name: 'telefon', type: 'text' },
+        { name: 'durum', type: 'select', options: ['aktif', 'izinli'] }
+      ]
+    },
+    {
+      id: 'sofor-sil',
+      name: 'Şoför Silme',
+      endpoint: '/api/test/sofor-sil/test-id',
+      description: 'Şoför kaydını siler',
+      category: 'Şoför Yönetimi',
+      method: 'DELETE',
+      icon: <Users className="w-4 h-4" />,
+      params: []
+    },
+    
+    // Yolculuk Yönetimi
+    {
+      id: 'yolculuk-listesi',
+      name: 'Yolculuk Listesi (Detaylı)',
+      endpoint: '/api/test/yolculuk-listesi',
+      description: 'Detaylı yolculuk listesi',
+      category: 'Yolculuk Yönetimi',
+      icon: <Route className="w-4 h-4" />,
+      params: []
+    },
+    {
+      id: 'yolculuk-basla',
+      name: 'Yolculuk Başlatma',
+      endpoint: '/api/test/yolculuk-basla',
+      description: 'Yeni yolculuk başlatır',
+      category: 'Yolculuk Yönetimi',
+      method: 'POST',
+      icon: <Route className="w-4 h-4" />,
+      params: [
+        { name: 'arac_id', type: 'text', required: true },
+        { name: 'sofor_id', type: 'text', required: true },
+        { name: 'baslangic_konum', type: 'text', required: true },
+        { name: 'bitis_konum', type: 'text', required: true }
+      ]
+    },
+    {
+      id: 'yolculuk-bitir',
+      name: 'Yolculuk Bitirme',
+      endpoint: '/api/test/yolculuk-bitir/test-id',
+      description: 'Yolculuğu tamamlar',
+      category: 'Yolculuk Yönetimi',
+      method: 'PUT',
+      icon: <Route className="w-4 h-4" />,
+      params: [
+        { name: 'bitis_konum', type: 'text', required: true },
+        { name: 'mesafe', type: 'text', required: true }
+      ]
+    },
+    
+    // Raporlama
+    {
+      id: 'arac-raporu',
+      name: 'Araç Raporu',
+      endpoint: '/api/test/arac-raporu',
+      description: 'Araç durum raporu',
+      category: 'Raporlama',
+      icon: <BarChart3 className="w-4 h-4" />,
+      params: []
+    },
+    {
+      id: 'sofor-raporu',
+      name: 'Şoför Raporu',
+      endpoint: '/api/test/sofor-raporu',
+      description: 'Şoför durum raporu',
+      category: 'Raporlama',
+      icon: <BarChart3 className="w-4 h-4" />,
+      params: []
+    },
+    {
+      id: 'yolculuk-raporu',
+      name: 'Yolculuk Raporu',
+      endpoint: '/api/test/yolculuk-raporu',
+      description: 'Yolculuk durum raporu',
+      category: 'Raporlama',
+      icon: <BarChart3 className="w-4 h-4" />,
+      params: []
+    },
+    
+    // Bakım Yönetimi
+    {
+      id: 'bakim-listesi',
+      name: 'Bakım Listesi',
+      endpoint: '/api/test/bakim-listesi',
+      description: 'Bakımdaki araçları listeler',
+      category: 'Bakım Yönetimi',
+      icon: <Database className="w-4 h-4" />,
+      params: []
+    },
+    {
+      id: 'bakim-planla',
+      name: 'Bakım Planlama',
+      endpoint: '/api/test/bakim-planla',
+      description: 'Araç bakımı planlar',
+      category: 'Bakım Yönetimi',
+      method: 'POST',
+      icon: <Database className="w-4 h-4" />,
+      params: [
+        { name: 'arac_id', type: 'text', required: true },
+        { name: 'bakim_turu', type: 'select', options: ['Periyodik', 'Onarim', 'Muayene'], required: true },
+        { name: 'planli_tarih', type: 'date', required: true }
+      ]
+    },
+    
+    // Yakıt Yönetimi
+    {
+      id: 'yakit-durumu',
+      name: 'Yakıt Durumu',
+      endpoint: '/api/test/yakit-durumu',
+      description: 'Araçların yakıt durumunu gösterir',
+      category: 'Yakıt Yönetimi',
+      icon: <Database className="w-4 h-4" />,
+      params: []
+    },
+    {
+      id: 'yakit-doldur',
+      name: 'Yakıt Doldurma',
+      endpoint: '/api/test/yakit-doldur',
+      description: 'Yakıt doldurma kaydı',
+      category: 'Yakıt Yönetimi',
+      method: 'POST',
+      icon: <Database className="w-4 h-4" />,
+      params: [
+        { name: 'arac_id', type: 'text', required: true },
+        { name: 'litre', type: 'number', required: true },
+        { name: 'istasyon', type: 'text', required: true },
+        { name: 'fiyat', type: 'number', required: true }
+      ]
+    },
+    
+    // Konum Takibi
+    {
+      id: 'konum-takibi',
+      name: 'Konum Takibi',
+      endpoint: '/api/test/konum-takibi',
+      description: 'Araç konumlarını takip eder',
+      category: 'Konum Takibi',
+      icon: <Route className="w-4 h-4" />,
+      params: []
+    },
+    
+    // Bildirimler
+    {
+      id: 'bildirimler',
+      name: 'Bildirimler',
+      endpoint: '/api/test/bildirimler',
+      description: 'Sistem bildirimlerini listeler',
+      category: 'Bildirimler',
+      icon: <Database className="w-4 h-4" />,
+      params: []
+    },
+    
+    // Performans
+    {
+      id: 'performans-analizi',
+      name: 'Performans Analizi',
+      endpoint: '/api/test/performans-analizi',
+      description: 'Detaylı performans metrikleri',
+      category: 'Performans',
+      icon: <BarChart3 className="w-4 h-4" />,
+      params: []
+    },
+    {
+      id: 'gelir-raporu',
+      name: 'Gelir Raporu',
+      endpoint: '/api/test/gelir-raporu',
+      description: 'Finansal gelir raporları',
+      category: 'Raporlama',
+      icon: <BarChart3 className="w-4 h-4" />,
+      params: []
+    },
+    {
+      id: 'gider-raporu',
+      name: 'Gider Raporu',
+      endpoint: '/api/test/gider-raporu',
+      description: 'Finansal gider raporları',
+      category: 'Raporlama',
+      icon: <BarChart3 className="w-4 h-4" />,
+      params: []
+    },
+    {
+      id: 'kar-zarar-raporu',
+      name: 'Kar-Zarar Raporu',
+      endpoint: '/api/test/kar-zarar-raporu',
+      description: 'Karlılık analizi raporları',
+      category: 'Raporlama',
+      icon: <BarChart3 className="w-4 h-4" />,
+      params: []
+    },
+    
+    // Güvenlik
+    {
+      id: 'guvenlik-raporu',
+      name: 'Güvenlik Raporu',
+      endpoint: '/api/test/guvenlik-raporu',
+      description: 'Güvenlik ve uyumluluk raporları',
+      category: 'Güvenlik',
+      icon: <Shield className="w-4 h-4" />,
+      params: []
+    },
+    
+    // Sistem
+    {
+      id: 'endpoint-listesi',
+      name: 'Endpoint Listesi',
+      endpoint: '/api/test/endpoint-listesi',
+      description: 'Tüm test endpoint\'lerini listeler',
+      category: 'Sistem',
+      icon: <Database className="w-4 h-4" />,
       params: []
     }
   ];
 
-  const callApi = async (endpoint: string, params: Record<string, string> = {}) => {
+  const callApi = async (endpoint: string, params: Record<string, string> = {}, method: string = 'GET') => {
     setLoading(true);
     try {
-      const queryParams = new URLSearchParams();
-      Object.entries(params).forEach(([key, value]) => {
-        if (value) queryParams.append(key, value);
-      });
-
-      const url = `${endpoint}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-      
-      // API key ile güvenli istek
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
+      let url = endpoint;
+      let requestOptions: RequestInit = {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+        }
       };
-      
+
+      // API key ile güvenli istek
       if (apiKey) {
-        headers['x-api-key'] = apiKey;
+        (requestOptions.headers as Record<string, string>)['x-api-key'] = apiKey;
       }
 
-      const response = await fetch(url, { headers });
+      if (method === 'GET') {
+        const queryParams = new URLSearchParams();
+        Object.entries(params).forEach(([key, value]) => {
+          if (value) queryParams.append(key, value);
+        });
+        url = `${endpoint}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      } else {
+        // POST, PUT, DELETE için body'ye params ekle
+        if (Object.keys(params).length > 0) {
+          requestOptions.body = JSON.stringify(params);
+        }
+      }
+
+      const response = await fetch(url, requestOptions);
       const data = await response.json();
 
       setResponse(data);
@@ -247,104 +562,128 @@ export default function ApiTest() {
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Test Endpoints */}
+            {/* Test Endpoints - Kategorilere Göre */}
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Test Endpoint'leri</h2>
-              {testEndpoints.map((endpoint) => (
-                <Card key={endpoint.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {endpoint.icon}
-                        <CardTitle className="text-lg">{endpoint.name}</CardTitle>
-                      </div>
-                      <Badge variant="outline">GET</Badge>
-                    </div>
-                    <CardDescription>{endpoint.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div>
-                        <Label className="text-sm font-medium">Endpoint URL</Label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <code className="text-sm bg-muted px-2 py-1 rounded flex-1">
-                            {endpoint.endpoint}
-                          </code>
+              <h2 className="text-xl font-semibold">Test Endpoint'leri ({testEndpoints.length} API)</h2>
+              
+              {/* Kategorilere göre grupla */}
+              {Object.entries(
+                testEndpoints.reduce((acc, endpoint) => {
+                  const category = endpoint.category || 'Diğer';
+                  if (!acc[category]) acc[category] = [];
+                  acc[category].push(endpoint);
+                  return acc;
+                }, {} as Record<string, typeof testEndpoints>)
+              ).map(([category, endpoints]) => (
+                <div key={category} className="space-y-2">
+                  <h3 className="font-semibold text-lg text-blue-600 border-b border-blue-200 pb-1">
+                    {category} ({endpoints.length})
+                  </h3>
+                  {endpoints.map((endpoint) => (
+                    <Card key={endpoint.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {endpoint.icon}
+                            <CardTitle className="text-lg">{endpoint.name}</CardTitle>
+                          </div>
+                          <Badge variant="outline" className={
+                            endpoint.method === 'POST' ? 'bg-green-100 text-green-800' :
+                            endpoint.method === 'PUT' ? 'bg-orange-100 text-orange-800' :
+                            endpoint.method === 'DELETE' ? 'bg-red-100 text-red-800' :
+                            'bg-blue-100 text-blue-800'
+                          }>
+                            {endpoint.method || 'GET'}
+                          </Badge>
+                        </div>
+                        <CardDescription>{endpoint.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div>
+                            <Label className="text-sm font-medium">Endpoint URL</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <code className="text-sm bg-muted px-2 py-1 rounded flex-1">
+                                {endpoint.endpoint}
+                              </code>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => copyToClipboard(endpoint.endpoint)}
+                              >
+                                <Copy className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {endpoint.params.length > 0 && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Parametreler</Label>
+                              {endpoint.params.map((param) => (
+                                <div key={param.name} className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">
+                                    {param.name} {param.required && <span className="text-red-500">*</span>}
+                                  </Label>
+                                  {param.type === 'select' ? (
+                                    <Select
+                                      value={filters[`${endpoint.id}_${param.name}`] || ''}
+                                      onValueChange={(value) =>
+                                        setFilters(prev => ({
+                                          ...prev,
+                                          [`${endpoint.id}_${param.name}`]: value
+                                        }))
+                                      }
+                                    >
+                                      <SelectTrigger className="h-8">
+                                        <SelectValue placeholder={`${param.name} seçin`} />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {param.options?.map((option) => (
+                                          <SelectItem key={option} value={option}>
+                                            {option}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  ) : (
+                                    <Input
+                                      className="h-8"
+                                      type={param.type === 'number' ? 'number' : param.type === 'date' ? 'date' : 'text'}
+                                      placeholder={`${param.name} girin`}
+                                      value={filters[`${endpoint.id}_${param.name}`] || ''}
+                                      onChange={(e) =>
+                                        setFilters(prev => ({
+                                          ...prev,
+                                          [`${endpoint.id}_${param.name}`]: e.target.value
+                                        }))
+                                      }
+                                    />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
                           <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(endpoint.endpoint)}
+                            className="w-full"
+                            onClick={() => {
+                              const params: Record<string, string> = {};
+                              endpoint.params.forEach(param => {
+                                const value = filters[`${endpoint.id}_${param.name}`];
+                                if (value) params[param.name] = value;
+                              });
+                              callApi(endpoint.endpoint, params, endpoint.method || 'GET');
+                            }}
+                            disabled={loading}
                           >
-                            <Copy className="w-4 h-4" />
+                            <Play className="w-4 h-4 mr-2" />
+                            {loading ? 'Test Ediliyor...' : 'Test Et'}
                           </Button>
                         </div>
-                      </div>
-
-                      {endpoint.params.length > 0 && (
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Parametreler</Label>
-                          {endpoint.params.map((param) => (
-                            <div key={param.name} className="space-y-1">
-                              <Label className="text-xs text-muted-foreground">
-                                {param.name}
-                              </Label>
-                              {param.type === 'select' ? (
-                                <Select
-                                  value={filters[`${endpoint.id}_${param.name}`] || ''}
-                                  onValueChange={(value) =>
-                                    setFilters(prev => ({
-                                      ...prev,
-                                      [`${endpoint.id}_${param.name}`]: value
-                                    }))
-                                  }
-                                >
-                                  <SelectTrigger className="h-8">
-                                    <SelectValue placeholder={`${param.name} seçin`} />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {param.options?.map((option) => (
-                                      <SelectItem key={option} value={option}>
-                                        {option}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <Input
-                                  className="h-8"
-                                  placeholder={`${param.name} girin`}
-                                  value={filters[`${endpoint.id}_${param.name}`] || ''}
-                                  onChange={(e) =>
-                                    setFilters(prev => ({
-                                      ...prev,
-                                      [`${endpoint.id}_${param.name}`]: e.target.value
-                                    }))
-                                  }
-                                />
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <Button
-                        className="w-full"
-                        onClick={() => {
-                          const params: Record<string, string> = {};
-                          endpoint.params.forEach(param => {
-                            const value = filters[`${endpoint.id}_${param.name}`];
-                            if (value) params[param.name] = value;
-                          });
-                          callApi(endpoint.endpoint, params);
-                        }}
-                        disabled={loading}
-                      >
-                        <Play className="w-4 h-4 mr-2" />
-                        {loading ? 'Test Ediliyor...' : 'Test Et'}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               ))}
             </div>
 

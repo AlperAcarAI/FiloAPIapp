@@ -1163,41 +1163,254 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Gelişmiş Raporlama API'leri
+  app.get("/api/test/gelir-raporu", authenticateApiKey, async (req, res) => {
+    try {
+      const gelirVerisi = {
+        gunluk_gelir: 45000,
+        haftalik_gelir: 315000,
+        aylik_gelir: 1350000,
+        yillik_gelir: 16200000,
+        ortalama_gun_gelir: 45000,
+        en_kazancli_gun: "Pazartesi",
+        gelir_kaynaklari: [
+          { kaynak: "Kargo Taşımacılığı", miktar: 850000, yuzde: 63 },
+          { kaynak: "Yolcu Taşımacılığı", miktar: 300000, yuzde: 22 },
+          { kaynak: "Özel Hizmetler", miktar: 200000, yuzde: 15 }
+        ]
+      };
+      
+      res.json({
+        success: true,
+        data: gelirVerisi,
+        message: "Gelir raporu API test endpoint'i",
+        api_info: {
+          name: "Gelir Raporu API",
+          description: "Finansal gelir raporları",
+          version: "1.0",
+          endpoint: "/api/test/gelir-raporu"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  app.get("/api/test/gider-raporu", authenticateApiKey, async (req, res) => {
+    try {
+      const giderVerisi = {
+        gunluk_gider: 28000,
+        haftalik_gider: 196000,
+        aylik_gider: 840000,
+        yillik_gider: 10080000,
+        ortalama_gun_gider: 28000,
+        en_giderli_kategori: "Yakıt",
+        gider_kategorileri: [
+          { kategori: "Yakıt", miktar: 420000, yuzde: 50 },
+          { kategori: "Bakım", miktar: 168000, yuzde: 20 },
+          { kategori: "Personel", miktar: 126000, yuzde: 15 },
+          { kategori: "Sigorta", miktar: 84000, yuzde: 10 },
+          { kategori: "Diğer", miktar: 42000, yuzde: 5 }
+        ]
+      };
+      
+      res.json({
+        success: true,
+        data: giderVerisi,
+        message: "Gider raporu API test endpoint'i",
+        api_info: {
+          name: "Gider Raporu API",
+          description: "Finansal gider raporları",
+          version: "1.0",
+          endpoint: "/api/test/gider-raporu"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  app.get("/api/test/kar-zarar-raporu", authenticateApiKey, async (req, res) => {
+    try {
+      const karZararVerisi = {
+        net_kar: 510000,
+        brut_kar: 1350000,
+        kar_marji: 37.8,
+        onceki_ay_kar: 480000,
+        kar_artis_orani: 6.25,
+        karlillik_analizi: {
+          en_karlı_hizmet: "Kargo Taşımacılığı",
+          en_karlı_rota: "Ankara-İstanbul",
+          en_karlı_arac: "Mercedes Actros",
+          kar_trendi: "Yükseliş"
+        }
+      };
+      
+      res.json({
+        success: true,
+        data: karZararVerisi,
+        message: "Kar-zarar raporu API test endpoint'i",
+        api_info: {
+          name: "Kar-Zarar Raporu API",
+          description: "Karlılık analizi raporları",
+          version: "1.0",
+          endpoint: "/api/test/kar-zarar-raporu"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  // Performans Analizi API'leri
+  app.get("/api/test/performans-analizi", authenticateApiKey, async (req, res) => {
+    try {
+      const performansVerisi = {
+        genel_performans_skoru: 8.5,
+        arac_performansi: {
+          ortalama_hiz: 65,
+          yakit_verimliligi: 4.2,
+          uptime_orani: 94.5,
+          zamaninda_teslimat: 96.8
+        },
+        sofor_performansi: {
+          ortalama_puan: 8.7,
+          guvenli_surus: 92,
+          musteri_memnuniyeti: 4.6,
+          zamaninda_varma: 89
+        },
+        kpi_metrikleri: {
+          malyet_per_km: 2.8,
+          gelir_per_km: 4.2,
+          mudak_basina_kar: 1.4,
+          arac_kullanim_orani: 78
+        }
+      };
+      
+      res.json({
+        success: true,
+        data: performansVerisi,
+        message: "Performans analizi API test endpoint'i",
+        api_info: {
+          name: "Performans Analizi API",
+          description: "Detaylı performans metrikleri",
+          version: "1.0",
+          endpoint: "/api/test/performans-analizi"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
+  // Güvenlik ve Uyumluluk API'leri
+  app.get("/api/test/guvenlik-raporu", authenticateApiKey, async (req, res) => {
+    try {
+      const guvenlikVerisi = {
+        genel_guvenlik_skoru: 9.2,
+        kaza_istatistikleri: {
+          toplam_kaza: 2,
+          hafif_kaza: 1,
+          agir_kaza: 1,
+          kaza_orani: 0.05,
+          kaza_free_gun: 120
+        },
+        uyumluluk_durumu: {
+          ehliyet_gecerliligi: 98,
+          muayene_durumu: 95,
+          sigorta_durumu: 100,
+          izin_belgesi: 97
+        },
+        risk_analizi: {
+          yuksek_risk: 3,
+          orta_risk: 8,
+          dusuk_risk: 23,
+          risk_skoru: 7.8
+        }
+      };
+      
+      res.json({
+        success: true,
+        data: guvenlikVerisi,
+        message: "Güvenlik raporu API test endpoint'i",
+        api_info: {
+          name: "Güvenlik Raporu API",
+          description: "Güvenlik ve uyumluluk raporları",
+          version: "1.0",
+          endpoint: "/api/test/guvenlik-raporu"
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Test API hatası" });
+    }
+  });
+
   // Test API'lerinin listesi
   app.get("/api/test/endpoint-listesi", authenticateApiKey, async (req, res) => {
     try {
       const endpoints = [
-        { name: "Araç Listesi", endpoint: "/api/test/arac-listesi", method: "GET" },
-        { name: "Araç Ekleme", endpoint: "/api/test/arac-ekle", method: "POST" },
-        { name: "Araç Güncelleme", endpoint: "/api/test/arac-guncelle/:id", method: "PUT" },
-        { name: "Araç Silme", endpoint: "/api/test/arac-sil/:id", method: "DELETE" },
-        { name: "Şoför Listesi", endpoint: "/api/test/sofor-listesi", method: "GET" },
-        { name: "Şoför Ekleme", endpoint: "/api/test/sofor-ekle", method: "POST" },
-        { name: "Şoför Güncelleme", endpoint: "/api/test/sofor-guncelle/:id", method: "PUT" },
-        { name: "Şoför Silme", endpoint: "/api/test/sofor-sil/:id", method: "DELETE" },
-        { name: "Yolculuk Listesi", endpoint: "/api/test/yolculuk-listesi", method: "GET" },
-        { name: "Yolculuk Başlatma", endpoint: "/api/test/yolculuk-basla", method: "POST" },
-        { name: "Yolculuk Bitirme", endpoint: "/api/test/yolculuk-bitir/:id", method: "PUT" },
-        { name: "Araç Raporu", endpoint: "/api/test/arac-raporu", method: "GET" },
-        { name: "Şoför Raporu", endpoint: "/api/test/sofor-raporu", method: "GET" },
-        { name: "Yolculuk Raporu", endpoint: "/api/test/yolculuk-raporu", method: "GET" },
-        { name: "Bakım Listesi", endpoint: "/api/test/bakim-listesi", method: "GET" },
-        { name: "Bakım Planlama", endpoint: "/api/test/bakim-planla", method: "POST" },
-        { name: "Yakıt Durumu", endpoint: "/api/test/yakit-durumu", method: "GET" },
-        { name: "Yakıt Doldurma", endpoint: "/api/test/yakit-doldur", method: "POST" },
-        { name: "Konum Takibi", endpoint: "/api/test/konum-takibi", method: "GET" },
-        { name: "Bildirimler", endpoint: "/api/test/bildirimler", method: "GET" },
-        { name: "Dashboard", endpoint: "/api/test/dashboard", method: "GET" }
+        // Temel Veriler
+        { name: "Araç Listesi", endpoint: "/api/test/araclar", method: "GET", category: "Temel Veriler" },
+        { name: "Şoför Listesi", endpoint: "/api/test/soforler", method: "GET", category: "Temel Veriler" },
+        { name: "Yolculuk Listesi", endpoint: "/api/test/yolculuklar", method: "GET", category: "Temel Veriler" },
+        { name: "Dashboard", endpoint: "/api/test/dashboard", method: "GET", category: "Temel Veriler" },
+        
+        // Araç Yönetimi
+        { name: "Araç Listesi (Detaylı)", endpoint: "/api/test/arac-listesi", method: "GET", category: "Araç Yönetimi" },
+        { name: "Araç Ekleme", endpoint: "/api/test/arac-ekle", method: "POST", category: "Araç Yönetimi" },
+        { name: "Araç Güncelleme", endpoint: "/api/test/arac-guncelle/:id", method: "PUT", category: "Araç Yönetimi" },
+        { name: "Araç Silme", endpoint: "/api/test/arac-sil/:id", method: "DELETE", category: "Araç Yönetimi" },
+        
+        // Şoför Yönetimi
+        { name: "Şoför Listesi (Detaylı)", endpoint: "/api/test/sofor-listesi", method: "GET", category: "Şoför Yönetimi" },
+        { name: "Şoför Ekleme", endpoint: "/api/test/sofor-ekle", method: "POST", category: "Şoför Yönetimi" },
+        { name: "Şoför Güncelleme", endpoint: "/api/test/sofor-guncelle/:id", method: "PUT", category: "Şoför Yönetimi" },
+        { name: "Şoför Silme", endpoint: "/api/test/sofor-sil/:id", method: "DELETE", category: "Şoför Yönetimi" },
+        
+        // Yolculuk Yönetimi
+        { name: "Yolculuk Listesi (Detaylı)", endpoint: "/api/test/yolculuk-listesi", method: "GET", category: "Yolculuk Yönetimi" },
+        { name: "Yolculuk Başlatma", endpoint: "/api/test/yolculuk-basla", method: "POST", category: "Yolculuk Yönetimi" },
+        { name: "Yolculuk Bitirme", endpoint: "/api/test/yolculuk-bitir/:id", method: "PUT", category: "Yolculuk Yönetimi" },
+        
+        // Raporlama
+        { name: "Araç Raporu", endpoint: "/api/test/arac-raporu", method: "GET", category: "Raporlama" },
+        { name: "Şoför Raporu", endpoint: "/api/test/sofor-raporu", method: "GET", category: "Raporlama" },
+        { name: "Yolculuk Raporu", endpoint: "/api/test/yolculuk-raporu", method: "GET", category: "Raporlama" },
+        { name: "Gelir Raporu", endpoint: "/api/test/gelir-raporu", method: "GET", category: "Raporlama" },
+        { name: "Gider Raporu", endpoint: "/api/test/gider-raporu", method: "GET", category: "Raporlama" },
+        { name: "Kar-Zarar Raporu", endpoint: "/api/test/kar-zarar-raporu", method: "GET", category: "Raporlama" },
+        
+        // Bakım Yönetimi
+        { name: "Bakım Listesi", endpoint: "/api/test/bakim-listesi", method: "GET", category: "Bakım Yönetimi" },
+        { name: "Bakım Planlama", endpoint: "/api/test/bakim-planla", method: "POST", category: "Bakım Yönetimi" },
+        
+        // Yakıt Yönetimi
+        { name: "Yakıt Durumu", endpoint: "/api/test/yakit-durumu", method: "GET", category: "Yakıt Yönetimi" },
+        { name: "Yakıt Doldurma", endpoint: "/api/test/yakit-doldur", method: "POST", category: "Yakıt Yönetimi" },
+        
+        // Konum Takibi
+        { name: "Konum Takibi", endpoint: "/api/test/konum-takibi", method: "GET", category: "Konum Takibi" },
+        
+        // Bildirimler
+        { name: "Bildirimler", endpoint: "/api/test/bildirimler", method: "GET", category: "Bildirimler" },
+        
+        // Performans ve Güvenlik
+        { name: "Performans Analizi", endpoint: "/api/test/performans-analizi", method: "GET", category: "Performans" },
+        { name: "Güvenlik Raporu", endpoint: "/api/test/guvenlik-raporu", method: "GET", category: "Güvenlik" },
+        
+        // Sistem
+        { name: "Endpoint Listesi", endpoint: "/api/test/endpoint-listesi", method: "GET", category: "Sistem" }
       ];
       
       res.json({
         success: true,
         data: endpoints,
         total: endpoints.length,
+        categories: [...new Set(endpoints.map(e => e.category))],
         message: "Test API endpoint'leri listesi",
         api_info: {
           name: "Test API Endpoint Listesi",
-          description: "Tüm test API endpoint'lerini listeler",
+          description: "Tüm test API endpoint'lerini kategorilere göre listeler",
           version: "1.0",
           endpoint: "/api/test/endpoint-listesi"
         }
