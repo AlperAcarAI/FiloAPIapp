@@ -1,4 +1,4 @@
-import { pgTable, text, serial, uuid, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, uuid, timestamp, pgEnum, integer, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -44,49 +44,35 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
-// Fleet management test data schemas
-export const aracDurumEnum = pgEnum('arac_durum', ['aktif', 'bakim', 'ariza', 'pasif']);
-export const sahiplikEnum = pgEnum('sahiplik', ['sirket', 'kiralama', 'leasing']);
+// Varlık yönetimi şeması
+export const varlikTurEnum = pgEnum('varlik_tur', ['Binek', 'Kamyon', 'Forklift', 'Vinc', 'Ekskavator']);
+export const sahiplikTuruEnum = pgEnum('sahiplik_turu', ['Sirket', 'Kiralik']);
 
-export const araclar = pgTable("araclar", {
-  arac_id: uuid("arac_id").primaryKey().defaultRandom(),
-  plaka: text("plaka").notNull().unique(),
+export const varliklar = pgTable("varliklar", {
+  varlik_id: uuid("varlik_id").primaryKey().defaultRandom(),
+  tur: varlikTurEnum("tur").notNull(),
   marka: text("marka").notNull(),
   model: text("model").notNull(),
-  tur: text("tur").notNull(), // Kamyon, Otobüs, Forklift, vs
-  sahiplik: sahiplikEnum("sahiplik").notNull(),
-  edinim_tarihi: timestamp("edinim_tarihi").notNull(),
-  kullanim_sayaci: text("kullanim_sayaci"), // km veya saat
-  durum: aracDurumEnum("durum").notNull().default('aktif'),
-  son_konum: text("son_konum"),
-  yakit_seviyesi: text("yakit_seviyesi"),
+  plaka: text("plaka").notNull().unique(),
+  sahiplik: sahiplikTuruEnum("sahiplik").notNull(),
+  edinim_tarihi: date("edinim_tarihi").notNull(),
+  kullanim_sayaci: integer("kullanim_sayaci").default(0),
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
 });
 
-export const soforler = pgTable("soforler", {
-  sofor_id: uuid("sofor_id").primaryKey().defaultRandom(),
-  ad_soyad: text("ad_soyad").notNull(),
-  tc_kimlik: text("tc_kimlik").notNull().unique(),
-  ehliyet_no: text("ehliyet_no").notNull(),
-  telefon: text("telefon").notNull(),
-  durum: text("durum").notNull().default('aktif'),
-  created_at: timestamp("created_at").defaultNow(),
+export const insertVarlikSchema = createInsertSchema(varliklar).omit({
+  varlik_id: true,
+  created_at: true,
+  updated_at: true,
 });
 
-export const yolculuklar = pgTable("yolculuklar", {
-  yolculuk_id: uuid("yolculuk_id").primaryKey().defaultRandom(),
-  arac_id: uuid("arac_id").references(() => araclar.arac_id),
-  sofor_id: uuid("sofor_id").references(() => soforler.sofor_id),
-  baslangic_noktasi: text("baslangic_noktasi").notNull(),
-  bitis_noktasi: text("bitis_noktasi").notNull(),
-  baslama_zamani: timestamp("baslama_zamani").notNull(),
-  bitis_zamani: timestamp("bitis_zamani"),
-  mesafe: text("mesafe"),
-  durum: text("durum").notNull().default('devam_ediyor'),
-  created_at: timestamp("created_at").defaultNow(),
-});
+export const updateVarlikSchema = createInsertSchema(varliklar).omit({
+  varlik_id: true,
+  created_at: true,
+  updated_at: true,
+}).partial();
 
-export type Arac = typeof araclar.$inferSelect;
-export type Sofor = typeof soforler.$inferSelect;
-export type Yolculuk = typeof yolculuklar.$inferSelect;
+export type InsertVarlik = z.infer<typeof insertVarlikSchema>;
+export type UpdateVarlik = z.infer<typeof updateVarlikSchema>;
+export type Varlik = typeof varliklar.$inferSelect;

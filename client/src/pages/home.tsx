@@ -164,22 +164,22 @@ export default function Home() {
 
         <StatsCards stats={stats} />
 
-        {/* Test Environment Banner */}
-        <Card className="shadow-sm border-emerald-200 bg-emerald-50 mb-6">
+        {/* Varlık API Test Ortamı */}
+        <Card className="shadow-sm border-blue-200 bg-blue-50 mb-6">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <TestTube className="h-8 w-8 text-emerald-600" />
+                <TestTube className="h-8 w-8 text-blue-600" />
                 <div>
-                  <h3 className="text-lg font-semibold text-emerald-800">Güvenli API Test Ortamı</h3>
-                  <p className="text-emerald-600">
-                    JWT ve API Key koruması ile güvenli test ortamı. Giriş gerekli.
+                  <h3 className="text-lg font-semibold text-blue-800">Varlık API Test Ortamı</h3>
+                  <p className="text-blue-600">
+                    5 farklı endpoint ile tam CRUD işlemleri - GET, POST, PUT, DELETE
                   </p>
                 </div>
               </div>
-              <Link href="/login">
-                <Button className="bg-emerald-600 hover:bg-emerald-700">
-                  Güvenli Test Ortamına Git
+              <Link href="/test">
+                <Button className="bg-blue-600 hover:bg-blue-700">
+                  Varlık API'lerini Test Et
                 </Button>
               </Link>
             </div>
