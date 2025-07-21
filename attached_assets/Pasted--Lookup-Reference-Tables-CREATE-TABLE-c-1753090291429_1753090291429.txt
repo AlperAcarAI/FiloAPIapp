@@ -1,0 +1,362 @@
+-- ========================
+-- Lookup / Reference Tables
+-- ========================
+
+CREATE TABLE countries (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE cities (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(100) NOT NULL,
+  country_id  INT NOT NULL REFERENCES countries(id)
+);
+
+CREATE TABLE companies (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(100) NOT NULL UNIQUE,
+  tax_no      VARCHAR(50),
+  address     VARCHAR(255),
+  phone       VARCHAR(50),
+  city_id     INT REFERENCES cities(id),
+  is_active   BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE policy_types (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(50) NOT NULL UNIQUE,
+  is_active   BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE damage_types (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(50) NOT NULL UNIQUE,
+  is_active   BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE ownership_types (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(50) NOT NULL UNIQUE,
+  is_active   BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE maintenance_types (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(50) NOT NULL UNIQUE,
+  is_active   BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE car_brands (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(50) NOT NULL UNIQUE,
+  is_active   BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE car_types (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(50) NOT NULL UNIQUE,
+  is_active   BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE car_models (
+  id          SERIAL PRIMARY KEY,
+  brand_id    INT NOT NULL REFERENCES car_brands(id),
+  name        VARCHAR(100) NOT NULL,
+  type_id     INT NOT NULL REFERENCES car_types(id),
+  capacity    INT NOT NULL,
+  detail      TEXT,
+  is_active   BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE INDEX idx_car_models_capacity ON car_models(capacity);
+
+CREATE TABLE personnel_positions (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(50) NOT NULL UNIQUE,
+  description VARCHAR(255),
+  is_active   BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE doc_main_types (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(50) NOT NULL UNIQUE,
+  is_active   BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE doc_sub_types (
+  id            SERIAL PRIMARY KEY,
+  main_type_id  INT NOT NULL REFERENCES doc_main_types(id),
+  name          VARCHAR(50) NOT NULL,
+  is_active     BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE penalty_types (
+  id                          SERIAL PRIMARY KEY,
+  name                        VARCHAR(100) NOT NULL,
+  description                 VARCHAR(255),
+  penalty_score               INT NOT NULL,
+  amount_cents                INT NOT NULL,
+  discounted_amount_cents     INT NOT NULL,
+  is_active                   BOOLEAN NOT NULL DEFAULT TRUE,
+  last_date                   DATE
+);
+
+-- ========================
+-- Auth & Authorization Tables
+-- ========================
+
+CREATE TABLE roles (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(50) NOT NULL UNIQUE,    -- e.g. fleet_viewer, fleet_admin
+  description TEXT
+);
+
+CREATE TABLE permissions (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(50) NOT NULL UNIQUE,    -- e.g. assets:read, assets:write
+  description TEXT
+);
+
+CREATE TABLE role_permissions (
+  role_id       INT NOT NULL REFERENCES roles(id),
+  permission_id INT NOT NULL REFERENCES permissions(id),
+  PRIMARY KEY(role_id, permission_id)
+);
+
+CREATE TABLE users (
+  id            SERIAL PRIMARY KEY,
+  email         VARCHAR(150) NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  company_id    INT NOT NULL REFERENCES companies(id),
+  is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at    TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE user_roles (
+  user_id INT NOT NULL REFERENCES users(id),
+  role_id INT NOT NULL REFERENCES roles(id),
+  PRIMARY KEY(user_id, role_id)
+);
+
+CREATE TABLE api_clients (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(100) NOT NULL,          -- e.g. MobileApp, PartnerX
+  company_id  INT NOT NULL REFERENCES companies(id),
+  is_active   BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE api_keys (
+  id          SERIAL PRIMARY KEY,
+  client_id   INT NOT NULL REFERENCES api_clients(id),
+  key_hash    TEXT NOT NULL,                  -- gerçek key sadece bir kez gösterilir
+  description TEXT,
+  is_active   BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE api_tokens (
+  id          SERIAL PRIMARY KEY,
+  client_id   INT NOT NULL REFERENCES api_clients(id),
+  user_id     INT REFERENCES users(id),       -- user bazlı token ise
+  token       TEXT NOT NULL,                  -- JWT jti veya refresh token
+  revoked     BOOLEAN NOT NULL DEFAULT FALSE,
+  expires_at  TIMESTAMP NOT NULL,
+  created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- ========================
+-- Core Business Tables
+-- ========================
+
+CREATE TABLE personnel (
+  id            SERIAL PRIMARY KEY,
+  tc_no         BIGINT UNIQUE,
+  name          VARCHAR(50) NOT NULL,
+  surname       VARCHAR(50) NOT NULL,
+  birthdate     DATE,
+  nation_id     INT REFERENCES countries(id),
+  birthplace_id INT REFERENCES cities(id),
+  address       VARCHAR(255),
+  phone_no      VARCHAR(50),
+  status        VARCHAR(20),
+  is_active     BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE work_areas (
+  id          SERIAL PRIMARY KEY,
+  city_id     INT NOT NULL REFERENCES cities(id),
+  name        VARCHAR(100) NOT NULL,
+  address     VARCHAR(255),
+  manager_id  INT REFERENCES personnel(id),
+  start_date  DATE NOT NULL,
+  end_date    DATE,
+  is_active   BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE personnel_work_areas (
+  id             SERIAL PRIMARY KEY,
+  personnel_id   INT NOT NULL REFERENCES personnel(id),
+  work_area_id   INT NOT NULL REFERENCES work_areas(id),
+  position_id    INT NOT NULL REFERENCES personnel_positions(id),
+  start_date     DATE NOT NULL,
+  end_date       DATE,
+  is_active      BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE assets (
+  id               SERIAL PRIMARY KEY,
+  model_id         INT NOT NULL REFERENCES car_models(id),
+  model_year       INT NOT NULL,
+  plate_number     VARCHAR(20) NOT NULL UNIQUE,
+  chassis_no       VARCHAR(50),
+  engine_no        VARCHAR(50),
+  ownership_type_id INT NOT NULL REFERENCES ownership_types(id),
+  owner_company_id INT REFERENCES companies(id),
+  register_no      VARCHAR(50),
+  register_date    DATE,
+  purchase_date    DATE,
+  created_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+  created_by       INT REFERENCES personnel(id),
+  updated_at       TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_by       INT REFERENCES personnel(id),
+  is_active        BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE asset_documents (
+  id            SERIAL PRIMARY KEY,
+  asset_id      INT NOT NULL REFERENCES assets(id),
+  personnel_id  INT REFERENCES personnel(id),
+  doc_type_id   INT NOT NULL REFERENCES doc_sub_types(id),
+  description   VARCHAR(255),
+  doc_link      TEXT,
+  upload_date   TIMESTAMP NOT NULL DEFAULT NOW(),
+  created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+  created_by    INT REFERENCES personnel(id)
+);
+
+CREATE TABLE assets_policies (
+  id                   SERIAL PRIMARY KEY,
+  asset_id             INT NOT NULL REFERENCES assets(id),
+  policy_type_id       INT NOT NULL REFERENCES policy_types(id),
+  seller_company_id    INT NOT NULL REFERENCES companies(id),
+  insurance_company_id INT NOT NULL REFERENCES companies(id),
+  start_date           DATE NOT NULL,
+  end_date             DATE,
+  policy_number        VARCHAR(100) NOT NULL,
+  amount_cents         INT NOT NULL CHECK (amount_cents >= 0),
+  is_active            BOOLEAN NOT NULL DEFAULT TRUE,
+  pid                  INT REFERENCES assets_policies(id),
+  UNIQUE(asset_id, policy_number)
+);
+
+CREATE TABLE assets_damage_data (
+  id                SERIAL PRIMARY KEY,
+  asset_id          INT NOT NULL REFERENCES assets(id),
+  personnel_id      INT REFERENCES personnel(id),
+  damage_type_id    INT NOT NULL REFERENCES damage_types(id),
+  start_date        DATE NOT NULL,
+  end_date          DATE,
+  event_date        DATE NOT NULL,
+  amount_cents      INT NOT NULL CHECK(amount_cents >= 0),
+  documents         TEXT,
+  is_active         BOOLEAN NOT NULL DEFAULT TRUE,
+  policy_id         INT REFERENCES assets_policies(id)
+);
+
+CREATE TABLE assets_maintenance (
+  id                   SERIAL PRIMARY KEY,
+  asset_id             INT NOT NULL REFERENCES assets(id),
+  maintenance_type_id  INT NOT NULL REFERENCES maintenance_types(id),
+  maintenance_date     DATE NOT NULL,
+  due_by_date          DATE,
+  km_reading           INT,
+  amount_cents         INT NOT NULL CHECK(amount_cents >= 0)
+);
+
+CREATE TABLE rental_agreements (
+  id                   SERIAL PRIMARY KEY,
+  agreement_number     VARCHAR(50) NOT NULL UNIQUE,
+  rental_company_id    INT NOT NULL REFERENCES companies(id),
+  tenant_company_id    INT NOT NULL REFERENCES companies(id),
+  start_date           DATE NOT NULL,
+  end_date             DATE,
+  is_short_term        BOOLEAN NOT NULL DEFAULT FALSE,
+  is_active            BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE rental_assets (
+  id                SERIAL PRIMARY KEY,
+  agreement_id      INT NOT NULL REFERENCES rental_agreements(id) ON DELETE CASCADE,
+  asset_id          INT NOT NULL REFERENCES assets(id),
+  mount_cents       INT NOT NULL,
+  vat_percent       DECIMAL(5,2) NOT NULL,
+  km_hour_limit     INT NOT NULL,
+  km_total_limit    INT NOT NULL
+);
+
+CREATE INDEX idx_rental_assets_vat_kmh
+  ON rental_assets(vat_percent, km_hour_limit);
+
+CREATE TABLE penalties (
+  id                       SERIAL PRIMARY KEY,
+  asset_id                 INT NOT NULL REFERENCES assets(id),
+  driver_id                INT REFERENCES personnel(id),
+  penalty_type_id          INT NOT NULL REFERENCES penalty_types(id),
+  amount_cents             INT NOT NULL,
+  discounted_amount_cents  INT NOT NULL,
+  penalty_date             DATE NOT NULL,
+  last_date                DATE,
+  status                   VARCHAR(20),
+  is_active                BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at               TIMESTAMP NOT NULL DEFAULT NOW(),
+  created_by               INT REFERENCES personnel(id),
+  updated_at               TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_by               INT REFERENCES personnel(id)
+);
+
+CREATE TABLE fin_current_accounts (
+  id                  SERIAL PRIMARY KEY,
+  is_debit            BOOLEAN NOT NULL,     -- TRUE = borç, FALSE = alacak
+  description         VARCHAR(255),
+  payer_company_id    INT NOT NULL REFERENCES companies(id),
+  payee_company_id    INT NOT NULL REFERENCES companies(id),
+  amount_cents        INT NOT NULL,
+  transaction_date    DATE NOT NULL,
+  is_done             BOOLEAN NOT NULL DEFAULT FALSE,
+  is_active           BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+-- ========================
+-- Row-Level Security (RLS)
+-- ========================
+
+-- Örnek: sadece kendi şirketinin araçlarını ve ilişkili kayıtları görebilsin
+
+ALTER TABLE assets                   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assets_policies          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rental_assets            ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY assets_select_company
+  ON assets FOR SELECT
+  USING (owner_company_id = current_setting('jwt.claims.company_id')::int);
+
+CREATE POLICY assets_modify_company
+  ON assets FOR INSERT, UPDATE, DELETE
+  WITH CHECK (owner_company_id = current_setting('jwt.claims.company_id')::int);
+
+CREATE POLICY assets_policies_select_company
+  ON assets_policies FOR SELECT
+  USING (asset_id IN (
+    SELECT id FROM assets
+    WHERE owner_company_id = current_setting('jwt.claims.company_id')::int
+  ));
+
+CREATE POLICY rental_assets_select_company
+  ON rental_assets FOR SELECT
+  USING (asset_id IN (
+    SELECT id FROM assets
+    WHERE owner_company_id = current_setting('jwt.claims.company_id')::int
+  ));
+

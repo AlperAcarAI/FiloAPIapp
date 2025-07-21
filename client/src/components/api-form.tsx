@@ -7,37 +7,47 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertApiSchema, updateApiSchema, type Api, type InsertApi, type UpdateApi } from "@shared/schema";
+import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
-interface ApiFormProps {
+interface AssetFormProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: InsertApi | UpdateApi) => void;
-  api?: Api;
+  onSubmit: (data: InsertAsset | UpdateAsset) => void;
+  asset?: Asset;
   loading?: boolean;
 }
 
-export function ApiForm({ open, onClose, onSubmit, api, loading = false }: ApiFormProps) {
-  const isEditing = !!api;
-  const schema = isEditing ? updateApiSchema : insertApiSchema;
+export function ApiForm({ open, onClose, onSubmit, asset, loading = false }: AssetFormProps) {
+  const isEditing = !!asset;
+  const schema = isEditing ? updateAssetSchema : insertAssetSchema;
 
-  const form = useForm<InsertApi | UpdateApi>({
+  const form = useForm<InsertAsset | UpdateAsset>({
     resolver: zodResolver(schema),
     defaultValues: isEditing ? {
-      ad: api.ad,
-      aciklama: api.aciklama,
-      durum: api.durum,
-      son_calistigi: api.son_calistigi,
+      model_id: asset.model_id,
+      model_year: asset.model_year,
+      plate_number: asset.plate_number,
+      chassis_no: asset.chassis_no,
+      engine_no: asset.engine_no,
+      ownership_type_id: asset.ownership_type_id,
+      owner_company_id: asset.owner_company_id,
+      register_date: asset.register_date,
+      purchase_date: asset.purchase_date,
     } : {
-      ad: "",
-      aciklama: "",
-      durum: "aktif",
-      son_calistigi: undefined,
+      model_id: 1,
+      model_year: 2023,
+      plate_number: "",
+      chassis_no: "",
+      engine_no: "",
+      ownership_type_id: 1,
+      owner_company_id: 1,
+      register_date: null,
+      purchase_date: null,
     },
   });
 
-  const handleSubmit = (data: InsertApi | UpdateApi) => {
+  const handleSubmit = (data: InsertAsset | UpdateAsset) => {
     onSubmit(data);
     form.reset();
   };
@@ -47,7 +57,7 @@ export function ApiForm({ open, onClose, onSubmit, api, loading = false }: ApiFo
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? "API Düzenle" : "Yeni API Ekle"}
+            {isEditing ? "Varlık Düzenle" : "Yeni Varlık Ekle"}
           </DialogTitle>
         </DialogHeader>
         
@@ -55,12 +65,12 @@ export function ApiForm({ open, onClose, onSubmit, api, loading = false }: ApiFo
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
             <FormField
               control={form.control}
-              name="ad"
+              name="plate_number"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>API Adı</FormLabel>
+                  <FormLabel>Plaka No</FormLabel>
                   <FormControl>
-                    <Input placeholder="Örn: FiloServis API" {...field} />
+                    <Input placeholder="Örn: 34 ABC 123" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -69,15 +79,18 @@ export function ApiForm({ open, onClose, onSubmit, api, loading = false }: ApiFo
 
             <FormField
               control={form.control}
-              name="aciklama"
+              name="model_year"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Açıklama</FormLabel>
+                  <FormLabel>Model Yılı</FormLabel>
                   <FormControl>
-                    <Textarea
-                      placeholder="API'nin ne işe yaradığını açıklayın..."
-                      rows={3}
-                      {...field}
+                    <Input
+                      type="number" 
+                      min="2000" 
+                      max="2025"
+                      placeholder="2023"
+                      value={field.value?.toString()}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
                     />
                   </FormControl>
                   <FormMessage />
@@ -87,22 +100,27 @@ export function ApiForm({ open, onClose, onSubmit, api, loading = false }: ApiFo
 
             <FormField
               control={form.control}
-              name="durum"
+              name="chassis_no"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Durum</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Durum seçin" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="aktif">Aktif</SelectItem>
-                      <SelectItem value="pasif">Pasif</SelectItem>
-                      <SelectItem value="hata">Hata</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Şasi No</FormLabel>
+                  <FormControl>
+                    <Input placeholder="WDB1234567890" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="engine_no"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Motor No</FormLabel>
+                  <FormControl>
+                    <Input placeholder="ENG123456" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

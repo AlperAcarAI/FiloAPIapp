@@ -1,78 +1,529 @@
-import { pgTable, text, serial, uuid, timestamp, pgEnum, integer, date } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import {
+  pgTable,
+  text,
+  varchar,
+  timestamp,
+  boolean,
+  serial,
+  integer,
+  date,
+  decimal,
+  bigint,
+  primaryKey,
+  index,
+  unique,
+  check,
+} from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const apiDurumEnum = pgEnum('api_durum', ['aktif', 'pasif', 'hata']);
+// ========================
+// Lookup / Reference Tables
+// ========================
 
-export const apis = pgTable("apis", {
-  api_id: uuid("api_id").primaryKey().defaultRandom(),
-  ad: text("ad").notNull(),
-  aciklama: text("aciklama").notNull(),
-  durum: apiDurumEnum("durum").notNull().default('aktif'),
-  son_calistigi: timestamp("son_calistigi"),
-  created_at: timestamp("created_at").defaultNow(),
-  updated_at: timestamp("updated_at").defaultNow(),
+export const countries = pgTable("countries", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
 });
 
-export const insertApiSchema = createInsertSchema(apis).omit({
-  api_id: true,
-  created_at: true,
-  updated_at: true,
+export const cities = pgTable("cities", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  countryId: integer("country_id").notNull().references(() => countries.id),
 });
 
-export const updateApiSchema = createInsertSchema(apis).omit({
-  api_id: true,
-  created_at: true,
-  updated_at: true,
-}).partial();
+export const companies = pgTable("companies", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  taxNo: varchar("tax_no", { length: 50 }),
+  address: varchar("address", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  cityId: integer("city_id").references(() => cities.id),
+  isActive: boolean("is_active").notNull().default(true),
+});
 
-export type InsertApi = z.infer<typeof insertApiSchema>;
-export type UpdateApi = z.infer<typeof updateApiSchema>;
-export type Api = typeof apis.$inferSelect;
+export const policyTypes = pgTable("policy_types", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const damageTypes = pgTable("damage_types", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const ownershipTypes = pgTable("ownership_types", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const maintenanceTypes = pgTable("maintenance_types", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const carBrands = pgTable("car_brands", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const carTypes = pgTable("car_types", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const carModels = pgTable("car_models", {
+  id: serial("id").primaryKey(),
+  brandId: integer("brand_id").notNull().references(() => carBrands.id),
+  name: varchar("name", { length: 100 }).notNull(),
+  typeId: integer("type_id").notNull().references(() => carTypes.id),
+  capacity: integer("capacity").notNull(),
+  detail: text("detail"),
+  isActive: boolean("is_active").notNull().default(true),
+}, (table) => ({
+  capacityIdx: index("idx_car_models_capacity").on(table.capacity),
+}));
+
+export const personnelPositions = pgTable("personnel_positions", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+  description: varchar("description", { length: 255 }),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const docMainTypes = pgTable("doc_main_types", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const docSubTypes = pgTable("doc_sub_types", {
+  id: serial("id").primaryKey(),
+  mainTypeId: integer("main_type_id").notNull().references(() => docMainTypes.id),
+  name: varchar("name", { length: 50 }).notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const penaltyTypes = pgTable("penalty_types", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: varchar("description", { length: 255 }),
+  penaltyScore: integer("penalty_score").notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  discountedAmountCents: integer("discounted_amount_cents").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  lastDate: date("last_date"),
+});
+
+// ========================
+// Auth & Authorization Tables
+// ========================
+
+export const roles = pgTable("roles", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+  description: text("description"),
+});
+
+export const permissions = pgTable("permissions", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+  description: text("description"),
+});
+
+export const rolePermissions = pgTable("role_permissions", {
+  roleId: integer("role_id").notNull().references(() => roles.id),
+  permissionId: integer("permission_id").notNull().references(() => permissions.id),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.roleId, table.permissionId] }),
+}));
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  email: varchar("email", { length: 150 }).notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  companyId: integer("company_id").notNull().references(() => companies.id),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const userRoles = pgTable("user_roles", {
+  userId: integer("user_id").notNull().references(() => users.id),
+  roleId: integer("role_id").notNull().references(() => roles.id),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.userId, table.roleId] }),
+}));
+
+export const apiClients = pgTable("api_clients", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  companyId: integer("company_id").notNull().references(() => companies.id),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
+export const apiKeys = pgTable("api_keys", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id").notNull().references(() => apiClients.id),
+  keyHash: text("key_hash").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const apiTokens = pgTable("api_tokens", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id").notNull().references(() => apiClients.id),
+  userId: integer("user_id").references(() => users.id),
+  token: text("token").notNull(),
+  revoked: boolean("revoked").notNull().default(false),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Sessions table for authentication
+export const sessions = pgTable("sessions", {
+  sid: varchar("sid").primaryKey(),
+  sess: text("sess").notNull(),
+  expire: timestamp("expire").notNull(),
+}, (table) => ({
+  expireIdx: index("IDX_session_expire").on(table.expire),
+}));
+
+// ========================
+// Core Business Tables
+// ========================
+
+export const personnel = pgTable("personnel", {
+  id: serial("id").primaryKey(),
+  tcNo: bigint("tc_no", { mode: "bigint" }).unique(),
+  name: varchar("name", { length: 50 }).notNull(),
+  surname: varchar("surname", { length: 50 }).notNull(),
+  birthdate: date("birthdate"),
+  nationId: integer("nation_id").references(() => countries.id),
+  birthplaceId: integer("birthplace_id").references(() => cities.id),
+  address: varchar("address", { length: 255 }),
+  phoneNo: varchar("phone_no", { length: 50 }),
+  status: varchar("status", { length: 20 }),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const workAreas = pgTable("work_areas", {
+  id: serial("id").primaryKey(),
+  cityId: integer("city_id").notNull().references(() => cities.id),
+  name: varchar("name", { length: 100 }).notNull(),
+  address: varchar("address", { length: 255 }),
+  managerId: integer("manager_id").references(() => personnel.id),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const personnelWorkAreas = pgTable("personnel_work_areas", {
+  id: serial("id").primaryKey(),
+  personnelId: integer("personnel_id").notNull().references(() => personnel.id),
+  workAreaId: integer("work_area_id").notNull().references(() => workAreas.id),
+  positionId: integer("position_id").notNull().references(() => personnelPositions.id),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const assets = pgTable("assets", {
+  id: serial("id").primaryKey(),
+  modelId: integer("model_id").notNull().references(() => carModels.id),
+  modelYear: integer("model_year").notNull(),
+  plateNumber: varchar("plate_number", { length: 20 }).notNull().unique(),
+  chassisNo: varchar("chassis_no", { length: 50 }),
+  engineNo: varchar("engine_no", { length: 50 }),
+  ownershipTypeId: integer("ownership_type_id").notNull().references(() => ownershipTypes.id),
+  ownerCompanyId: integer("owner_company_id").references(() => companies.id),
+  registerNo: varchar("register_no", { length: 50 }),
+  registerDate: date("register_date"),
+  purchaseDate: date("purchase_date"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => personnel.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => personnel.id),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const assetDocuments = pgTable("asset_documents", {
+  id: serial("id").primaryKey(),
+  assetId: integer("asset_id").notNull().references(() => assets.id),
+  personnelId: integer("personnel_id").references(() => personnel.id),
+  docTypeId: integer("doc_type_id").notNull().references(() => docSubTypes.id),
+  description: varchar("description", { length: 255 }),
+  docLink: text("doc_link"),
+  uploadDate: timestamp("upload_date").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => personnel.id),
+});
+
+export const assetsPolicies = pgTable("assets_policies", {
+  id: serial("id").primaryKey(),
+  assetId: integer("asset_id").notNull().references(() => assets.id),
+  policyTypeId: integer("policy_type_id").notNull().references(() => policyTypes.id),
+  sellerCompanyId: integer("seller_company_id").notNull().references(() => companies.id),
+  insuranceCompanyId: integer("insurance_company_id").notNull().references(() => companies.id),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  policyNumber: varchar("policy_number", { length: 100 }).notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  pid: integer("pid"),
+}, (table) => ({
+  amountCheck: check("amount_cents_check", sql`amount_cents >= 0`),
+  policyUnique: unique().on(table.assetId, table.policyNumber),
+}));
+
+export const assetsDamageData = pgTable("assets_damage_data", {
+  id: serial("id").primaryKey(),
+  assetId: integer("asset_id").notNull().references(() => assets.id),
+  personnelId: integer("personnel_id").references(() => personnel.id),
+  damageTypeId: integer("damage_type_id").notNull().references(() => damageTypes.id),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  eventDate: date("event_date").notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  documents: text("documents"),
+  isActive: boolean("is_active").notNull().default(true),
+  policyId: integer("policy_id").references(() => assetsPolicies.id),
+}, (table) => ({
+  amountCheck: check("amount_cents_check", sql`amount_cents >= 0`),
+}));
+
+export const assetsMaintenance = pgTable("assets_maintenance", {
+  id: serial("id").primaryKey(),
+  assetId: integer("asset_id").notNull().references(() => assets.id),
+  maintenanceTypeId: integer("maintenance_type_id").notNull().references(() => maintenanceTypes.id),
+  maintenanceDate: date("maintenance_date").notNull(),
+  dueByDate: date("due_by_date"),
+  kmReading: integer("km_reading"),
+  amountCents: integer("amount_cents").notNull(),
+}, (table) => ({
+  amountCheck: check("amount_cents_check", sql`amount_cents >= 0`),
+}));
+
+export const rentalAgreements = pgTable("rental_agreements", {
+  id: serial("id").primaryKey(),
+  agreementNumber: varchar("agreement_number", { length: 50 }).notNull().unique(),
+  rentalCompanyId: integer("rental_company_id").notNull().references(() => companies.id),
+  tenantCompanyId: integer("tenant_company_id").notNull().references(() => companies.id),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  isShortTerm: boolean("is_short_term").notNull().default(false),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const rentalAssets = pgTable("rental_assets", {
+  id: serial("id").primaryKey(),
+  agreementId: integer("agreement_id").notNull().references(() => rentalAgreements.id, { onDelete: "cascade" }),
+  assetId: integer("asset_id").notNull().references(() => assets.id),
+  mountCents: integer("mount_cents").notNull(),
+  vatPercent: decimal("vat_percent", { precision: 5, scale: 2 }).notNull(),
+  kmHourLimit: integer("km_hour_limit").notNull(),
+  kmTotalLimit: integer("km_total_limit").notNull(),
+}, (table) => ({
+  vatKmIdx: index("idx_rental_assets_vat_kmh").on(table.vatPercent, table.kmHourLimit),
+}));
+
+export const penalties = pgTable("penalties", {
+  id: serial("id").primaryKey(),
+  assetId: integer("asset_id").notNull().references(() => assets.id),
+  driverId: integer("driver_id").references(() => personnel.id),
+  penaltyTypeId: integer("penalty_type_id").notNull().references(() => penaltyTypes.id),
+  amountCents: integer("amount_cents").notNull(),
+  discountedAmountCents: integer("discounted_amount_cents").notNull(),
+  penaltyDate: date("penalty_date").notNull(),
+  lastDate: date("last_date"),
+  status: varchar("status", { length: 20 }),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => personnel.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => personnel.id),
+});
+
+export const finCurrentAccounts = pgTable("fin_current_accounts", {
+  id: serial("id").primaryKey(),
+  isDebit: boolean("is_debit").notNull(),
+  description: varchar("description", { length: 255 }),
+  payerCompanyId: integer("payer_company_id").notNull().references(() => companies.id),
+  payeeCompanyId: integer("payee_company_id").notNull().references(() => companies.id),
+  amountCents: integer("amount_cents").notNull(),
+  transactionDate: date("transaction_date").notNull(),
+  isDone: boolean("is_done").notNull().default(false),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+// ========================
+// Relations
+// ========================
+
+export const countriesRelations = relations(countries, ({ many }) => ({
+  cities: many(cities),
+  personnel: many(personnel),
+}));
+
+export const citiesRelations = relations(cities, ({ one, many }) => ({
+  country: one(countries, {
+    fields: [cities.countryId],
+    references: [countries.id],
+  }),
+  companies: many(companies),
+  workAreas: many(workAreas),
+  personnel: many(personnel),
+}));
+
+export const companiesRelations = relations(companies, ({ one, many }) => ({
+  city: one(cities, {
+    fields: [companies.cityId],
+    references: [cities.id],
+  }),
+  users: many(users),
+  apiClients: many(apiClients),
+  assets: many(assets),
+  assetsPoliciesAsSeller: many(assetsPolicies, { relationName: "sellerCompany" }),
+  assetsPoliciesAsInsurance: many(assetsPolicies, { relationName: "insuranceCompany" }),
+  rentalAgreementsAsRental: many(rentalAgreements, { relationName: "rentalCompany" }),
+  rentalAgreementsAsTenant: many(rentalAgreements, { relationName: "tenantCompany" }),
+  finCurrentAccountsAsPayer: many(finCurrentAccounts, { relationName: "payerCompany" }),
+  finCurrentAccountsAsPayee: many(finCurrentAccounts, { relationName: "payeeCompany" }),
+}));
+
+export const carBrandsRelations = relations(carBrands, ({ many }) => ({
+  models: many(carModels),
+}));
+
+export const carTypesRelations = relations(carTypes, ({ many }) => ({
+  models: many(carModels),
+}));
+
+export const carModelsRelations = relations(carModels, ({ one, many }) => ({
+  brand: one(carBrands, {
+    fields: [carModels.brandId],
+    references: [carBrands.id],
+  }),
+  type: one(carTypes, {
+    fields: [carModels.typeId],
+    references: [carTypes.id],
+  }),
+  assets: many(assets),
+}));
+
+export const assetsRelations = relations(assets, ({ one, many }) => ({
+  model: one(carModels, {
+    fields: [assets.modelId],
+    references: [carModels.id],
+  }),
+  ownershipType: one(ownershipTypes, {
+    fields: [assets.ownershipTypeId],
+    references: [ownershipTypes.id],
+  }),
+  ownerCompany: one(companies, {
+    fields: [assets.ownerCompanyId],
+    references: [companies.id],
+  }),
+  createdByPersonnel: one(personnel, {
+    fields: [assets.createdBy],
+    references: [personnel.id],
+    relationName: "assetCreator",
+  }),
+  updatedByPersonnel: one(personnel, {
+    fields: [assets.updatedBy],
+    references: [personnel.id],
+    relationName: "assetUpdater",
+  }),
+  documents: many(assetDocuments),
+  policies: many(assetsPolicies),
+  damageData: many(assetsDamageData),
+  maintenance: many(assetsMaintenance),
+  rentalAssets: many(rentalAssets),
+  penalties: many(penalties),
+}));
+
+export const usersRelations = relations(users, ({ one, many }) => ({
+  company: one(companies, {
+    fields: [users.companyId],
+    references: [companies.id],
+  }),
+  userRoles: many(userRoles),
+  apiTokens: many(apiTokens),
+}));
+
+// Zod schemas for key tables
+export const insertAssetSchema = createInsertSchema(assets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateAssetSchema = insertAssetSchema.partial();
+
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCompanySchema = createInsertSchema(companies).omit({
+  id: true,
+});
+
+export const insertCountrySchema = createInsertSchema(countries).omit({
+  id: true,
+});
+
+export const insertCitySchema = createInsertSchema(cities).omit({
+  id: true,
+});
+
+export const insertCarBrandSchema = createInsertSchema(carBrands).omit({
+  id: true,
+});
+
+export const insertCarModelSchema = createInsertSchema(carModels).omit({
+  id: true,
+});
+
+export const insertPersonnelSchema = createInsertSchema(personnel).omit({
+  id: true,
+});
+
+// Types
+export type Asset = typeof assets.$inferSelect;
+export type InsertAsset = z.infer<typeof insertAssetSchema>;
+export type UpdateAsset = z.infer<typeof updateAssetSchema>;
+
 export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
 
-// Varlık yönetimi şeması
-export const varlikTurEnum = pgEnum('varlik_tur', ['Binek', 'Kamyon', 'Forklift', 'Vinc', 'Ekskavator']);
-export const sahiplikTuruEnum = pgEnum('sahiplik_turu', ['Sirket', 'Kiralik']);
+export type Company = typeof companies.$inferSelect;
+export type InsertCompany = z.infer<typeof insertCompanySchema>;
 
-export const varliklar = pgTable("varliklar", {
-  varlik_id: uuid("varlik_id").primaryKey().defaultRandom(),
-  tur: varlikTurEnum("tur").notNull(),
-  marka: text("marka").notNull(),
-  model: text("model").notNull(),
-  plaka: text("plaka").notNull().unique(),
-  sahiplik: sahiplikTuruEnum("sahiplik").notNull(),
-  edinim_tarihi: date("edinim_tarihi").notNull(),
-  kullanim_sayaci: integer("kullanim_sayaci").default(0),
-  created_at: timestamp("created_at").defaultNow(),
-  updated_at: timestamp("updated_at").defaultNow(),
-});
+export type Country = typeof countries.$inferSelect;
+export type InsertCountry = z.infer<typeof insertCountrySchema>;
 
-export const insertVarlikSchema = createInsertSchema(varliklar).omit({
-  varlik_id: true,
-  created_at: true,
-  updated_at: true,
-});
+export type City = typeof cities.$inferSelect;
+export type InsertCity = z.infer<typeof insertCitySchema>;
 
-export const updateVarlikSchema = createInsertSchema(varliklar).omit({
-  varlik_id: true,
-  created_at: true,
-  updated_at: true,
-}).partial();
+export type CarBrand = typeof carBrands.$inferSelect;
+export type InsertCarBrand = z.infer<typeof insertCarBrandSchema>;
 
-export type InsertVarlik = z.infer<typeof insertVarlikSchema>;
-export type UpdateVarlik = z.infer<typeof updateVarlikSchema>;
-export type Varlik = typeof varliklar.$inferSelect;
+export type CarModel = typeof carModels.$inferSelect;
+export type InsertCarModel = z.infer<typeof insertCarModelSchema>;
+
+export type Personnel = typeof personnel.$inferSelect;
+export type InsertPersonnel = z.infer<typeof insertPersonnelSchema>;
+
+export type OwnershipType = typeof ownershipTypes.$inferSelect;
+export type PolicyType = typeof policyTypes.$inferSelect;
+export type DamageType = typeof damageTypes.$inferSelect;
+export type MaintenanceType = typeof maintenanceTypes.$inferSelect;
