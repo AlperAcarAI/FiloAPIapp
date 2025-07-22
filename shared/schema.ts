@@ -25,6 +25,7 @@ import { z } from "zod";
 export const countries = pgTable("countries", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 100 }).notNull().unique(),
+  phoneCode: varchar("phone_code", { length: 10 }),
 });
 
 export const cities = pgTable("cities", {
