@@ -164,22 +164,23 @@ export default function Home() {
 
         <StatsCards stats={stats} />
 
-        {/* Varlık API Test Ortamı */}
-        <Card className="shadow-sm border-blue-200 bg-blue-50 mb-6">
+        {/* Güvenli API Test Ortamı */}
+        <Card className="shadow-sm border-blue-200 bg-green-50 mb-6">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <TestTube className="h-8 w-8 text-blue-600" />
+                <TestTube className="h-8 w-8 text-green-600" />
                 <div>
-                  <h3 className="text-lg font-semibold text-blue-800">Varlık API Test Ortamı</h3>
-                  <p className="text-blue-600">
-                    5 farklı endpoint ile tam CRUD işlemleri - GET, POST, PUT, DELETE
+                  <h3 className="text-lg font-semibold text-green-800">Güvenli API Test Ortamı</h3>
+                  <p className="text-green-600">
+                    Güvenli API'leri test edin: Şehirler, Ceza Türleri, Ülkeler, Poliçe Türleri, Ödeme Yöntemleri ve Bakım Türleri
                   </p>
                 </div>
               </div>
-              <Link href="/test">
-                <Button className="bg-blue-600 hover:bg-blue-700">
-                  Varlık API'lerini Test Et
+              <Link to="/api-test">
+                <Button variant="outline" className="bg-white hover:bg-green-100 text-green-700 border-green-300">
+                  <TestTube className="h-4 w-4 mr-2" />
+                  Referans API'leri Test Et
                 </Button>
               </Link>
             </div>

@@ -23,7 +23,7 @@ export default function ApiTest() {
   const [loading, setLoading] = useState(false);
   const [selectedEndpoint, setSelectedEndpoint] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({});
-  const [apiKey, setApiKey] = useState('test-api-key-2025');
+  const [apiKey, setApiKey] = useState('ak_demo2025key');
   const [user, setUser] = useState<any>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -47,6 +47,68 @@ export default function ApiTest() {
   };
 
   const testEndpoints = [
+    // Referans Veri API'leri (Secure)
+    {
+      id: 'getCities',
+      name: 'Şehirler API',
+      endpoint: '/api/secure/getCities',
+      description: 'Türkiye\'deki 81 şehrin listesini getirir',
+      category: 'Referans Veriler',
+      icon: <Database className="w-4 h-4" />,
+      requiresAuth: true,
+      params: []
+    },
+    {
+      id: 'getPenaltyTypes',
+      name: 'Ceza Türleri API',
+      endpoint: '/api/secure/getPenaltyTypes',
+      description: '301 trafik cezası türünün detaylı listesini getirir',
+      category: 'Referans Veriler',
+      icon: <Shield className="w-4 h-4" />,
+      requiresAuth: true,
+      params: []
+    },
+    {
+      id: 'getCountries',
+      name: 'Ülkeler API',
+      endpoint: '/api/secure/getCountries',
+      description: 'Dünya ülkeleri ve telefon kodlarının listesini getirir',
+      category: 'Referans Veriler',
+      icon: <Database className="w-4 h-4" />,
+      requiresAuth: true,
+      params: []
+    },
+    {
+      id: 'getPolicyTypes',
+      name: 'Poliçe Türleri API',
+      endpoint: '/api/secure/getPolicyTypes',
+      description: 'Sigorta poliçe türlerinin listesini getirir',
+      category: 'Referans Veriler',
+      icon: <Shield className="w-4 h-4" />,
+      requiresAuth: true,
+      params: []
+    },
+    {
+      id: 'getPaymentMethods',
+      name: 'Ödeme Yöntemleri API',
+      endpoint: '/api/secure/getPaymentMethods',
+      description: 'Ödeme yöntemlerinin listesini getirir',
+      category: 'Referans Veriler',
+      icon: <Database className="w-4 h-4" />,
+      requiresAuth: true,
+      params: []
+    },
+    {
+      id: 'getMaintenanceTypes',
+      name: 'Bakım Türleri API',
+      endpoint: '/api/secure/getMaintenanceTypes',
+      description: 'Araç bakım türlerinin listesini getirir',
+      category: 'Referans Veriler',
+      icon: <Database className="w-4 h-4" />,
+      requiresAuth: true,
+      params: []
+    },
+
     // Temel Veri Listeleri
     {
       id: 'araclar',
@@ -394,7 +456,7 @@ export default function ApiTest() {
     }
   ];
 
-  const callApi = async (endpoint: string, params: Record<string, string> = {}, method: string = 'GET') => {
+  const callApi = async (endpoint: string, params: Record<string, string> = {}, method: string = 'GET', requiresAuth: boolean = false) => {
     setLoading(true);
     try {
       let url = endpoint;
@@ -405,8 +467,8 @@ export default function ApiTest() {
         }
       };
 
-      // API key ile güvenli istek
-      if (apiKey) {
+      // Secure API'ler için API key gerekli
+      if (requiresAuth && apiKey) {
         (requestOptions.headers as Record<string, string>)['x-api-key'] = apiKey;
       }
 
@@ -672,7 +734,7 @@ export default function ApiTest() {
                                 const value = filters[`${endpoint.id}_${param.name}`];
                                 if (value) params[param.name] = value;
                               });
-                              callApi(endpoint.endpoint, params, endpoint.method || 'GET');
+                              callApi(endpoint.endpoint, params, endpoint.method || 'GET', endpoint.requiresAuth || false);
                             }}
                             disabled={loading}
                           >
