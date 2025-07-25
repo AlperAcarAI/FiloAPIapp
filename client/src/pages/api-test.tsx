@@ -73,12 +73,22 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     method: "GET", 
     category: "Referans Veriler",
     dataCount: "7 bakım türü"
+  },
+  {
+    id: "addPolicyType",
+    name: "Poliçe Tipi Ekleme API",
+    description: "Yeni bir poliçe tipi ekler. Aynı isimde varsa uyarı döndürür",
+    endpoint: "/api/secure/addPolicyType",
+    method: "POST",
+    category: "Veri İşlemleri",
+    dataCount: "Yeni kayıt"
   }
 ];
 
 export default function ApiTest() {
   const [selectedApi, setSelectedApi] = useState<ApiEndpoint | null>(null);
   const [apiKey, setApiKey] = useState("ak_demo2025key");
+  const [requestBody, setRequestBody] = useState("{\n  \"name\": \"Yeni Poliçe Tipi\",\n  \"isActive\": true\n}");
   const [response, setResponse] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,13 +109,25 @@ export default function ApiTest() {
     setResponse(null);
 
     try {
-      const response = await fetch(`${window.location.origin}${endpoint.endpoint}`, {
+      const fetchOptions: RequestInit = {
         method: endpoint.method,
         headers: {
           'Content-Type': 'application/json',
           'X-API-Key': apiKey
         }
-      });
+      };
+
+      // POST metodunda request body ekle
+      if (endpoint.method === 'POST' && requestBody.trim()) {
+        try {
+          JSON.parse(requestBody); // JSON validasyonu
+          fetchOptions.body = requestBody;
+        } catch (jsonError) {
+          throw new Error('Geçersiz JSON formatı');
+        }
+      }
+
+      const response = await fetch(`${window.location.origin}${endpoint.endpoint}`, fetchOptions);
 
       const data = await response.json();
       
@@ -303,6 +325,37 @@ export default function ApiTest() {
                           {selectedApi.description}
                         </p>
                       </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          API Anahtarı
+                        </label>
+                        <Input
+                          value={apiKey}
+                          onChange={(e) => setApiKey(e.target.value)}
+                          placeholder="API anahtarınızı giriniz"
+                          className="font-mono text-sm"
+                        />
+                      </div>
+
+                      {/* POST Request Body */}
+                      {selectedApi?.method === 'POST' && (
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Request Body (JSON)
+                          </label>
+                          <Textarea
+                            value={requestBody}
+                            onChange={(e) => setRequestBody(e.target.value)}
+                            placeholder='{"name": "Yeni Poliçe Tipi", "isActive": true}'
+                            className="min-h-[120px] font-mono text-sm"
+                            rows={6}
+                          />
+                          <p className="text-xs text-slate-500 mt-1">
+                            Geçerli JSON formatında veri giriniz
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

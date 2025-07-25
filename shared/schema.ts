@@ -625,6 +625,13 @@ export type PolicyType = typeof policyTypes.$inferSelect;
 export type DamageType = typeof damageTypes.$inferSelect;
 export type MaintenanceType = typeof maintenanceTypes.$inferSelect;
 
+// Policy Type Schemas
+export const insertPolicyTypeSchema = createInsertSchema(policyTypes).omit({
+  id: true,
+});
+
+export type InsertPolicyType = z.infer<typeof insertPolicyTypeSchema>;
+
 // API Management Schemas and Types
 export const insertApiClientSchema = createInsertSchema(apiClients).omit({
   id: true,

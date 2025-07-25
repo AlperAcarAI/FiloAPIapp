@@ -25,7 +25,8 @@ import {
   insertApiKeySchema,
   insertApiEndpointSchema,
   insertRoleSchema,
-  insertPermissionSchema
+  insertPermissionSchema,
+  insertPolicyTypeSchema
 } from "@shared/schema";
 import { eq, and, desc, sql, count, avg, gte } from "drizzle-orm";
 import { 
@@ -318,6 +319,104 @@ export function registerApiManagementRoutes(app: Express) {
                       },
                       count: { type: 'integer', example: 7 },
                       timestamp: { type: 'string', example: '2025-01-25T10:30:00.000Z' }
+                    }
+                  }
+                }
+              }
+            },
+            '401': { description: 'Geçersiz API anahtarı' },
+            '429': { description: 'Rate limit aşıldı' }
+          }
+        }
+      },
+      '/api/secure/addPolicyType': {
+        post: {
+          summary: 'Yeni Poliçe Tipi Ekle',
+          description: 'Yeni bir poliçe tipi ekler. Aynı isimde poliçe tipi varsa uyarı döndürür.',
+          tags: ['Referans Veriler'],
+          security: [{ ApiKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['name'],
+                  properties: {
+                    name: { 
+                      type: 'string', 
+                      maxLength: 50,
+                      example: 'Kasko Plus Sigortası',
+                      description: 'Poliçe tipi adı (maksimum 50 karakter)'
+                    },
+                    isActive: { 
+                      type: 'boolean', 
+                      default: true,
+                      example: true,
+                      description: 'Poliçe tipinin aktif olup olmadığı'
+                    }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '201': {
+              description: 'Poliçe tipi başarıyla eklendi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Poliçe tipi başarıyla eklendi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer', example: 8 },
+                          name: { type: 'string', example: 'Kasko Plus Sigortası' },
+                          isActive: { type: 'boolean', example: true }
+                        }
+                      },
+                      timestamp: { type: 'string', example: '2025-01-25T10:30:00.000Z' }
+                    }
+                  }
+                }
+              }
+            },
+            '400': {
+              description: 'Geçersiz veri formatı',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: false },
+                      error: { type: 'string', example: 'VALIDATION_ERROR' },
+                      message: { type: 'string', example: 'Geçersiz veri formatı.' },
+                      details: { type: 'array', items: { type: 'object' } }
+                    }
+                  }
+                }
+              }
+            },
+            '409': {
+              description: 'Aynı isimde poliçe tipi zaten mevcut',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: false },
+                      error: { type: 'string', example: 'DUPLICATE_POLICY_TYPE' },
+                      message: { type: 'string', example: "'Kasko Plus Sigortası' isimli poliçe tipi zaten mevcut." },
+                      existingPolicyType: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer', example: 3 },
+                          name: { type: 'string', example: 'Kasko Plus Sigortası' }
+                        }
+                      }
                     }
                   }
                 }
@@ -972,6 +1071,86 @@ export function registerApiManagementRoutes(app: Express) {
           success: false,
           error: "MAINTENANCE_TYPES_FETCH_ERROR",
           message: "Bakım türleri listesi alınırken bir hata oluştu."
+        });
+      }
+    }
+  );
+
+  // Yeni Poliçe Tipi Ekleme API - Yazma izni gerekir
+  app.post(
+    "/api/secure/addPolicyType", 
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(50),
+    authorizeEndpoint(['data:write']),
+    async (req: ApiRequest, res) => {
+      try {
+        // Request body'yi validate et
+        const validatedData = insertPolicyTypeSchema.parse(req.body);
+        
+        // Aynı isimle poliçe tipi var mı kontrol et
+        const existingPolicyType = await db.select({
+          id: policyTypes.id,
+          name: policyTypes.name
+        }).from(policyTypes)
+          .where(eq(policyTypes.name, validatedData.name))
+          .limit(1);
+        
+        if (existingPolicyType.length > 0) {
+          return res.status(409).json({
+            success: false,
+            error: "DUPLICATE_POLICY_TYPE",
+            message: `'${validatedData.name}' isimli poliçe tipi zaten mevcut.`,
+            existingPolicyType: existingPolicyType[0],
+            clientInfo: {
+              id: req.apiClient?.id,
+              name: req.apiClient?.name,
+              companyId: req.apiClient?.companyId
+            },
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        // Yeni poliçe tipini ekle
+        const [newPolicyType] = await db.insert(policyTypes).values({
+          name: validatedData.name,
+          isActive: validatedData.isActive ?? true
+        }).returning({
+          id: policyTypes.id,
+          name: policyTypes.name,
+          isActive: policyTypes.isActive
+        });
+        
+        res.status(201).json({
+          success: true,
+          message: "Poliçe tipi başarıyla eklendi.",
+          data: newPolicyType,
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+        
+      } catch (error) {
+        console.error("Poliçe tipi ekleme hatası:", error);
+        
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            success: false,
+            error: "VALIDATION_ERROR",
+            message: "Geçersiz veri formatı.",
+            details: error.errors,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        res.status(500).json({
+          success: false,
+          error: "POLICY_TYPE_CREATE_ERROR",
+          message: "Poliçe tipi eklenirken bir hata oluştu.",
+          timestamp: new Date().toISOString()
         });
       }
     }
