@@ -52,6 +52,12 @@ export const policyTypes = pgTable("policy_types", {
   isActive: boolean("is_active").notNull().default(true),
 });
 
+export const paymentMethods = pgTable("payment_methods", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
 export const damageTypes = pgTable("damage_types", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 50 }).notNull().unique(),

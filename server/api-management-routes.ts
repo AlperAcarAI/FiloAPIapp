@@ -16,7 +16,8 @@ import {
   cities,
   penaltyTypes,
   countries,
-  policyTypes
+  policyTypes,
+  paymentMethods
 } from "@shared/schema";
 import { 
   insertApiClientSchema,
@@ -577,6 +578,44 @@ export function registerApiManagementRoutes(app: Express) {
           success: false,
           error: "POLICY_TYPES_FETCH_ERROR",
           message: "Poliçe türleri listesi alınırken bir hata oluştu."
+        });
+      }
+    }
+  );
+
+  // Payment Methods API - Ödeme yöntemleri listesi (Okuma izni gerekir)
+  app.get(
+    "/api/secure/getPaymentMethods", 
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(100),
+    authorizeEndpoint(['data:read']),
+    async (req: ApiRequest, res) => {
+      try {
+        const paymentMethodsList = await db.select({
+          id: paymentMethods.id,
+          name: paymentMethods.name
+        }).from(paymentMethods)
+          .where(eq(paymentMethods.isActive, true))
+          .orderBy(paymentMethods.name);
+        
+        res.json({
+          success: true,
+          data: paymentMethodsList,
+          count: paymentMethodsList.length,
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error("Payment methods getirme hatası:", error);
+        res.status(500).json({
+          success: false,
+          error: "PAYMENT_METHODS_FETCH_ERROR",
+          message: "Ödeme yöntemleri listesi alınırken bir hata oluştu."
         });
       }
     }
