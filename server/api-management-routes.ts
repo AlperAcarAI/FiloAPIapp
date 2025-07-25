@@ -13,7 +13,8 @@ import {
   roles,
   users,
   companies,
-  cities
+  cities,
+  penaltyTypes
 } from "@shared/schema";
 import { 
   insertApiClientSchema,
@@ -455,6 +456,50 @@ export function registerApiManagementRoutes(app: Express) {
           success: false,
           error: "CITIES_FETCH_ERROR",
           message: "Şehir listesi alınırken bir hata oluştu."
+        });
+      }
+    }
+  );
+
+  // Penalty Types API - Ceza türleri listesi (Okuma izni gerekir)
+  app.get(
+    "/api/secure/getPenaltyTypes", 
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(100),
+    authorizeEndpoint(['data:read']),
+    async (req: ApiRequest, res) => {
+      try {
+        const penaltyTypesList = await db.select({
+          id: penaltyTypes.id,
+          name: penaltyTypes.name,
+          description: penaltyTypes.description,
+          penaltyScore: penaltyTypes.penaltyScore,
+          amountCents: penaltyTypes.amountCents,
+          discountedAmountCents: penaltyTypes.discountedAmountCents,
+          isActive: penaltyTypes.isActive,
+          lastDate: penaltyTypes.lastDate
+        }).from(penaltyTypes)
+          .where(eq(penaltyTypes.isActive, true))
+          .orderBy(penaltyTypes.penaltyScore, penaltyTypes.name);
+        
+        res.json({
+          success: true,
+          data: penaltyTypesList,
+          count: penaltyTypesList.length,
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error("Penalty types getirme hatası:", error);
+        res.status(500).json({
+          success: false,
+          error: "PENALTY_TYPES_FETCH_ERROR",
+          message: "Ceza türleri listesi alınırken bir hata oluştu."
         });
       }
     }
