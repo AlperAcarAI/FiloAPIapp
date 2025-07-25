@@ -17,7 +17,8 @@ import {
   penaltyTypes,
   countries,
   policyTypes,
-  paymentMethods
+  paymentMethods,
+  maintenanceTypes
 } from "@shared/schema";
 import { 
   insertApiClientSchema,
@@ -616,6 +617,44 @@ export function registerApiManagementRoutes(app: Express) {
           success: false,
           error: "PAYMENT_METHODS_FETCH_ERROR",
           message: "Ödeme yöntemleri listesi alınırken bir hata oluştu."
+        });
+      }
+    }
+  );
+
+  // Maintenance Types API - Bakım türleri listesi (Okuma izni gerekir)
+  app.get(
+    "/api/secure/getMaintenanceTypes", 
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(100),
+    authorizeEndpoint(['data:read']),
+    async (req: ApiRequest, res) => {
+      try {
+        const maintenanceTypesList = await db.select({
+          id: maintenanceTypes.id,
+          name: maintenanceTypes.name
+        }).from(maintenanceTypes)
+          .where(eq(maintenanceTypes.isActive, true))
+          .orderBy(maintenanceTypes.name);
+        
+        res.json({
+          success: true,
+          data: maintenanceTypesList,
+          count: maintenanceTypesList.length,
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error("Maintenance types getirme hatası:", error);
+        res.status(500).json({
+          success: false,
+          error: "MAINTENANCE_TYPES_FETCH_ERROR",
+          message: "Bakım türleri listesi alınırken bir hata oluştu."
         });
       }
     }
