@@ -2,11 +2,11 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { authenticateToken } from "./auth";
-import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset, cities, type City } from "@shared/schema";
+import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset, cities, type City, apis, type Api, type InsertApi, type UpdateApi, insertApiSchema, updateApiSchema } from "@shared/schema";
 import { z } from "zod";
 import { db } from "./db";
 import { assets } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, ilike, or, count } from "drizzle-orm";
 import { registerApiManagementRoutes } from "./api-management-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -195,6 +195,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Kayıt hatası:", error);
       res.status(500).json({ error: "Kullanıcı oluşturulamadı" });
+    }
+  });
+
+  // API Management endpoints
+  app.get("/api/apis", async (req, res) => {
+    try {
+      const searchTerm = req.query.search as string;
+      const statusFilter = req.query.status as string;
+      
+      let query = db.select().from(apis);
+      
+      if (searchTerm) {
+        query = query.where(
+          or(
+            ilike(apis.name, `%${searchTerm}%`),
+            ilike(apis.description, `%${searchTerm}%`)
+          )
+        );
+      }
+      
+      if (statusFilter && statusFilter !== 'all') {
+        query = query.where(eq(apis.status, statusFilter));
+      }
+      
+      const result = await query.orderBy(apis.created_at);
+      res.json(result);
+    } catch (error) {
+      console.error("APIs getirme hatası:", error);
+      res.status(500).json({ error: "APIs getirilemedi" });
+    }
+  });
+
+  app.get("/api/apis/stats", async (req, res) => {
+    try {
+      const total = await db.select({ count: count() }).from(apis);
+      const active = await db.select({ count: count() }).from(apis).where(eq(apis.status, 'aktif'));
+      const inactive = await db.select({ count: count() }).from(apis).where(eq(apis.status, 'pasif'));
+      const error = await db.select({ count: count() }).from(apis).where(eq(apis.status, 'hata'));
+      
+      res.json({
+        total: total[0].count,
+        active: active[0].count,
+        inactive: inactive[0].count,
+        error: error[0].count
+      });
+    } catch (error) {
+      console.error("API stats hatası:", error);
+      res.status(500).json({ error: "API stats getirilemedi" });
+    }
+  });
+
+  app.post("/api/apis", async (req, res) => {
+    try {
+      const validatedData = insertApiSchema.parse(req.body);
+      const newApi = await db.insert(apis).values({
+        ...validatedData,
+        created_at: new Date(),
+        updated_at: new Date()
+      }).returning();
+      res.status(201).json(newApi[0]);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Geçersiz veri", details: error.errors });
+      }
+      console.error("API oluşturma hatası:", error);
+      res.status(500).json({ error: "API oluşturulamadı" });
+    }
+  });
+
+  app.put("/api/apis/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = updateApiSchema.parse(req.body);
+      
+      const updatedApi = await db
+        .update(apis)
+        .set({ ...validatedData, updated_at: new Date() })
+        .where(eq(apis.api_id, id))
+        .returning();
+      
+      if (updatedApi.length === 0) {
+        return res.status(404).json({ error: "API bulunamadı" });
+      }
+      
+      res.json(updatedApi[0]);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Geçersiz veri", details: error.errors });
+      }
+      console.error("API güncelleme hatası:", error);
+      res.status(500).json({ error: "API güncellenemedi" });
+    }
+  });
+
+  app.delete("/api/apis/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deletedApi = await db
+        .delete(apis)
+        .where(eq(apis.api_id, id))
+        .returning();
+      
+      if (deletedApi.length === 0) {
+        return res.status(404).json({ error: "API bulunamadı" });
+      }
+      
+      res.json({ message: "API başarıyla silindi", api: deletedApi[0] });
+    } catch (error) {
+      console.error("API silme hatası:", error);
+      res.status(500).json({ error: "API silinemedi" });
     }
   });
 
