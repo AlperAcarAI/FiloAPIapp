@@ -41,8 +41,325 @@ import {
   getApiStats
 } from "./api-security";
 import { authenticateToken } from "./auth";
+import swaggerUi from 'swagger-ui-express';
 
 export function registerApiManagementRoutes(app: Express) {
+  
+  // ========================
+  // SWAGGER API DOKÜMANTASYONU
+  // ========================
+  
+  const swaggerDocument = {
+    openapi: '3.0.0',
+    info: {
+      title: 'Güvenli API Management Sistemi',
+      version: '2.0.0',
+      description: 'Sigorta ve filo yönetimi için güvenli referans veri API\'leri. Tüm endpoint\'ler API anahtarı ile korunmaktadır.',
+      contact: {
+        name: 'API Desteği',
+        email: 'api-support@example.com'
+      }
+    },
+    servers: [
+      {
+        url: process.env.NODE_ENV === 'production' ? 'https://your-domain.replit.app' : 'http://localhost:5000',
+        description: process.env.NODE_ENV === 'production' ? 'Production Server' : 'Development Server'
+      }
+    ],
+    paths: {
+      '/api/secure/getCities': {
+        get: {
+          summary: 'Şehirler Listesi',
+          description: 'Türkiye\'deki 81 şehrin tam listesini döndürür. Sigorta ve filo yönetimi uygulamaları için kullanılır.',
+          tags: ['Referans Veriler'],
+          security: [{ ApiKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Başarılı yanıt',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      data: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'integer', example: 1 },
+                            name: { type: 'string', example: 'Adana' }
+                          }
+                        }
+                      },
+                      count: { type: 'integer', example: 81 },
+                      timestamp: { type: 'string', example: '2025-01-25T10:30:00.000Z' }
+                    }
+                  }
+                }
+              }
+            },
+            '401': { 
+              description: 'Geçersiz API anahtarı',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: false },
+                      error: { type: 'string', example: 'UNAUTHORIZED' },
+                      message: { type: 'string', example: 'Geçersiz API anahtarı' }
+                    }
+                  }
+                }
+              }
+            },
+            '429': { 
+              description: 'Rate limit aşıldı',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: false },
+                      error: { type: 'string', example: 'RATE_LIMIT_EXCEEDED' },
+                      message: { type: 'string', example: 'Çok fazla istek gönderildi' }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      '/api/secure/getPenaltyTypes': {
+        get: {
+          summary: 'Ceza Türleri Listesi',
+          description: '301 farklı trafik cezası türünün detaylı listesini döndürür. Filo yönetimi ve sürücü değerlendirme sistemleri için kullanılır.',
+          tags: ['Referans Veriler'],
+          security: [{ ApiKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Başarılı yanıt',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      data: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'integer', example: 1 },
+                            name: { type: 'string', example: 'Hız Sınırı Aşımı' },
+                            description: { type: 'string', example: 'Belirlenen hız sınırını aşma' },
+                            penaltyScore: { type: 'integer', example: 10 },
+                            amountCents: { type: 'integer', example: 23500 },
+                            discountedAmountCents: { type: 'integer', example: 11750 },
+                            isActive: { type: 'boolean', example: true },
+                            lastDate: { type: 'string', format: 'date', example: '2025-12-31' }
+                          }
+                        }
+                      },
+                      count: { type: 'integer', example: 301 },
+                      timestamp: { type: 'string', example: '2025-01-25T10:30:00.000Z' }
+                    }
+                  }
+                }
+              }
+            },
+            '401': { description: 'Geçersiz API anahtarı' },
+            '429': { description: 'Rate limit aşıldı' }
+          }
+        }
+      },
+      '/api/secure/getCountries': {
+        get: {
+          summary: 'Ülkeler Listesi',
+          description: 'Dünya ülkeleri ve telefon kodlarının tam listesini döndürür. Uluslararası sigorta ve müşteri kayıt sistemleri için kullanılır.',
+          tags: ['Referans Veriler'],
+          security: [{ ApiKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Başarılı yanıt',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      data: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'integer', example: 1 },
+                            name: { type: 'string', example: 'Türkiye' },
+                            iso_code: { type: 'string', example: 'TR' },
+                            phone_code: { type: 'string', example: '+90' }
+                          }
+                        }
+                      },
+                      count: { type: 'integer', example: 195 },
+                      timestamp: { type: 'string', example: '2025-01-25T10:30:00.000Z' }
+                    }
+                  }
+                }
+              }
+            },
+            '401': { description: 'Geçersiz API anahtarı' },
+            '429': { description: 'Rate limit aşıldı' }
+          }
+        }
+      },
+      '/api/secure/getPolicyTypes': {
+        get: {
+          summary: 'Poliçe Türleri Listesi',
+          description: 'Sigorta poliçe türlerinin listesini döndürür. Sigorta yönetim sistemleri için kullanılır.',
+          tags: ['Referans Veriler'],
+          security: [{ ApiKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Başarılı yanıt',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      data: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'integer', example: 1 },
+                            name: { type: 'string', example: 'Kasko Sigortası' },
+                            is_active: { type: 'boolean', example: true }
+                          }
+                        }
+                      },
+                      count: { type: 'integer', example: 7 },
+                      timestamp: { type: 'string', example: '2025-01-25T10:30:00.000Z' }
+                    }
+                  }
+                }
+              }
+            },
+            '401': { description: 'Geçersiz API anahtarı' },
+            '429': { description: 'Rate limit aşıldı' }
+          }
+        }
+      },
+      '/api/secure/getPaymentMethods': {
+        get: {
+          summary: 'Ödeme Yöntemleri Listesi',
+          description: 'Ödeme yöntemlerinin listesini döndürür. E-ticaret ve ödeme işleme sistemleri için kullanılır.',
+          tags: ['Referans Veriler'],
+          security: [{ ApiKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Başarılı yanıt',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      data: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'integer', example: 1 },
+                            name: { type: 'string', example: 'Kredi Kartı' },
+                            is_active: { type: 'boolean', example: true }
+                          }
+                        }
+                      },
+                      count: { type: 'integer', example: 7 },
+                      timestamp: { type: 'string', example: '2025-01-25T10:30:00.000Z' }
+                    }
+                  }
+                }
+              }
+            },
+            '401': { description: 'Geçersiz API anahtarı' },
+            '429': { description: 'Rate limit aşıldı' }
+          }
+        }
+      },
+      '/api/secure/getMaintenanceTypes': {
+        get: {
+          summary: 'Bakım Türleri Listesi',
+          description: 'Araç bakım türlerinin listesini döndürür. Filo yönetimi ve araç bakım takip sistemleri için kullanılır.',
+          tags: ['Referans Veriler'],
+          security: [{ ApiKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Başarılı yanıt',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      data: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'integer', example: 1 },
+                            name: { type: 'string', example: 'Muayene' },
+                            is_active: { type: 'boolean', example: true }
+                          }
+                        }
+                      },
+                      count: { type: 'integer', example: 7 },
+                      timestamp: { type: 'string', example: '2025-01-25T10:30:00.000Z' }
+                    }
+                  }
+                }
+              }
+            },
+            '401': { description: 'Geçersiz API anahtarı' },
+            '429': { description: 'Rate limit aşıldı' }
+          }
+        }
+      }
+    },
+    components: {
+      securitySchemes: {
+        ApiKeyAuth: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'X-API-Key',
+          description: 'API anahtarınızı X-API-Key header\'ında gönderin. Demo anahtarı: ak_demo2025key'
+        }
+      }
+    },
+    tags: [
+      {
+        name: 'Referans Veriler',
+        description: 'Sigorta ve filo yönetimi için temel referans veri API\'leri'
+      }
+    ]
+  };
+
+  // Swagger UI setup
+  app.use('/api/docs', swaggerUi.serve);
+  app.get('/api/docs', swaggerUi.setup(swaggerDocument, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'API Dokümantasyonu',
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayRequestDuration: true,
+      filter: true,
+      tagsSorter: 'alpha',
+      operationsSorter: 'alpha'
+    }
+  }));
   
   // ========================
   // ADMİN PANEL ROUTE'LARI (JWT ile korunuyor)
