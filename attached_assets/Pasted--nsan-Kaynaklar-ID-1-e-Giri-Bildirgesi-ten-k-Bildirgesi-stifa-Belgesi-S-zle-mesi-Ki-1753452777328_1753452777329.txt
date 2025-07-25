@@ -1,0 +1,112 @@
+İnsan Kaynakları (ID: 1)
+İşe Giriş Bildirgesi
+İşten Çıkış Bildirgesi
+İstifa Belgesi
+İş Sözleşmesi
+Kimlik Fotokopisi
+İkametgah Belgesi
+Sabıka Kaydı
+Sağlık Raporu
+Diploma ve Eğitim Belgeleri
+Sertifikalar
+Askerlik Durum Belgesi
+SGK Hizmet Dökümü
+Performans Değerlendirme Formu
+Disiplin Cezası Tutanağı
+İzin Talep Formu
+Doğum İzni Belgesi
+Hastalık Raporu
+Personel Zimmet Formu
+Maaş Bordrosu
+Avans Talep Formu
+Fazla Mesai Onay Formu
+Görevlendirme Yazısı
+Vardiya Planları
+Eğitim Katılım Belgesi
+Personel Değerlendirme Anketi
+Referans Yazısı
+İç Yönerge İmza Formu
+Finans (ID: 2)
+Fatura (Gelen)
+Fatura (Giden)
+Tahsilat Makbuzu
+Ödeme Makbuzu
+Gider Pusulası
+Banka Hesap Ekstresi
+Nakit Akış Tablosu
+Bütçe Planı
+Gelir Tablosu
+Bilanço
+Maaş Ödeme Talimatı
+Prim Ödeme Belgesi
+Vergi Beyannamesi
+KDV Beyannamesi
+Muhtasar Beyanname
+Damga Vergisi Beyannamesi
+SGK Prim Bildirgesi
+Kredi Sözleşmesi
+Leasing Sözleşmesi
+Finansal Denetim Raporu
+Harcama Formu
+Avans Geri Ödeme Formu
+Kasa Raporu
+POS Günlük Raporu
+Tahsilat Takip Çizelgesi
+Sigorta (ID: 3)
+Zorunlu Trafik Sigortası Poliçesi
+Kasko Poliçesi
+Ferdi Kaza Sigortası Poliçesi
+Poliçe Ek Sözleşmesi
+Hasar Bildirim Formu
+Hasar Tespit Raporu
+Eksper Raporu
+Sigorta Teklif Formu
+Poliçe Yenileme Formu
+Poliçe İptal Belgesi
+Sigorta Primi Ödeme Dekontu
+Sigorta Tazminat Talep Formu
+Araç Sigortası Zeyilname
+Yangın Sigortası Poliçesi
+Sorumluluk Sigortası Poliçesi
+Filo (ID: 4)
+Araç Ruhsatı
+Araç Trafik Sigorta Poliçesi
+Muayene Raporu
+Egzoz Emisyon Ölçüm Belgesi
+Araç Kiralama Sözleşmesi
+Araç Satış Sözleşmesi
+Araç Teslim-Tesellüm Formu
+Araç Zimmet Formu
+Sürücü Ehliyet Fotokopisi
+Sürücü Sertifikası
+Araç Takip Raporu
+Yakıt Tüketim Raporu
+Bakım-Onarım Faturası
+Servis Raporu
+Kaza Tespit Tutanağı
+Trafik Cezası Bildirimi
+Araç Devir Belgesi
+Arıza Bildirim Formu
+Km Takip Formu
+Lastik Değişim Formu
+Diğer (ID: 5)
+Ticaret Sicil Gazetesi
+Vergi Levhası
+İmza Sirküleri
+Faaliyet Belgesi
+İşyeri Açma ve Çalışma Ruhsatı
+Noter Onaylı Sözleşmeler
+Genel Kurul Tutanağı
+ISO Kalite Belgesi
+CE Sertifikası
+İhale Evrakları
+Sözleşme Taslakları
+Yetki Belgeleri
+Marka Tescil Belgesi
+Teknik Şartname
+Proje Raporu
+İSG Uygunluk Belgesi
+Yangın Eğitim Katılım Sertifikası
+Taahhütname
+Gizlilik Sözleşmesi
+İşbirliği Protokolü
