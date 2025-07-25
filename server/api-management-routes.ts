@@ -18,7 +18,8 @@ import {
   countries,
   policyTypes,
   paymentMethods,
-  maintenanceTypes
+  maintenanceTypes,
+  personnel
 } from "@shared/schema";
 import { 
   insertApiClientSchema,
@@ -29,7 +30,8 @@ import {
   insertPolicyTypeSchema,
   insertPenaltyTypeSchema,
   updatePenaltyTypeSchema,
-  insertMaintenanceTypeSchema
+  insertMaintenanceTypeSchema,
+  insertPersonnelSchema
 } from "@shared/schema";
 import { eq, and, desc, sql, count, avg, gte, not } from "drizzle-orm";
 import { 
@@ -527,6 +529,94 @@ export function registerApiManagementRoutes(app: Express) {
             '400': { description: 'Geçersiz veri formatı' },
             '401': { description: 'Geçersiz API anahtarı' },
             '409': { description: 'Aynı isimde bakım türü zaten mevcut' },
+            '429': { description: 'Rate limit aşıldı' }
+          }
+        }
+      },
+      '/api/secure/addPersonnel': {
+        post: {
+          summary: 'Yeni Personel Ekle',
+          description: 'Sisteme yeni personel ekler. TC numarası ile mükerrer kayıt kontrolü yapar.',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['name', 'surname'],
+                  properties: {
+                    tcNo: { type: 'string', example: '12345678901', description: 'TC Kimlik Numarası (11 haneli)' },
+                    name: { type: 'string', example: 'Ahmet' },
+                    surname: { type: 'string', example: 'Yılmaz' },
+                    birthdate: { type: 'string', format: 'date', example: '1990-01-01' },
+                    nationId: { type: 'integer', example: 1, description: 'Ülke ID (countries tablosundan)' },
+                    birthplaceId: { type: 'integer', example: 1, description: 'Doğum yeri ID (cities tablosundan)' },
+                    address: { type: 'string', example: 'Örnek Mahalle, Örnek Sokak No:1' },
+                    phoneNo: { type: 'string', example: '05551234567' },
+                    status: { type: 'string', example: 'aktif' },
+                    isActive: { type: 'boolean', example: true, default: true }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '201': {
+              description: 'Personel başarıyla eklendi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Personel başarıyla eklendi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer', example: 101 },
+                          tcNo: { type: 'string', example: '12345678901' },
+                          name: { type: 'string', example: 'Ahmet' },
+                          surname: { type: 'string', example: 'Yılmaz' },
+                          birthdate: { type: 'string', format: 'date', example: '1990-01-01' },
+                          phoneNo: { type: 'string', example: '05551234567' },
+                          status: { type: 'string', example: 'aktif' },
+                          isActive: { type: 'boolean', example: true }
+                        }
+                      },
+                      timestamp: { type: 'string', example: '2025-01-25T12:00:00.000Z' }
+                    }
+                  }
+                }
+              }
+            },
+            '400': { description: 'Geçersiz veri formatı' },
+            '401': { description: 'Geçersiz API anahtarı' },
+            '409': { 
+              description: 'Aynı TC numaralı personel zaten mevcut',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: false },
+                      error: { type: 'string', example: 'DUPLICATE_TC_NUMBER' },
+                      message: { type: 'string', example: '12345678901 TC numaralı personel zaten kayıtlı.' },
+                      existingPersonnel: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer', example: 50 },
+                          name: { type: 'string', example: 'Mehmet' },
+                          surname: { type: 'string', example: 'Demir' },
+                          tcNo: { type: 'string', example: '12345678901' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
             '429': { description: 'Rate limit aşıldı' }
           }
         }
@@ -1571,6 +1661,105 @@ export function registerApiManagementRoutes(app: Express) {
           success: false,
           error: 'SERVER_ERROR',
           message: 'Bakım türü eklenirken sunucu hatası oluştu.',
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // POST endpoint - Personel ekleme
+  app.post(
+    "/api/secure/addPersonnel",
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(20),
+    authorizeEndpoint(['data:write']),
+    async (req: ApiRequest, res) => {
+      try {
+        // API için özel personnel schema - TC numarasını string olarak kabul et
+        const apiPersonnelSchema = z.object({
+          tcNo: z.string().optional().transform((val) => val ? BigInt(val) : undefined),
+          name: z.string(),
+          surname: z.string(),
+          birthdate: z.string().optional(),
+          nationId: z.number().optional(),
+          birthplaceId: z.number().optional(),
+          address: z.string().optional(),
+          phoneNo: z.string().optional(),
+          status: z.string().optional(),
+          isActive: z.boolean().optional().default(true)
+        });
+        
+        const validatedData = apiPersonnelSchema.parse(req.body);
+        
+        // TC numarası kontrolü - aynı TC numarasında personel var mı kontrol et
+        if (validatedData.tcNo) {
+          const existingPersonnel = await db
+            .select()
+            .from(personnel)
+            .where(eq(personnel.tcNo, validatedData.tcNo))
+            .limit(1);
+
+          if (existingPersonnel.length > 0) {
+            return res.status(409).json({
+              success: false,
+              error: 'DUPLICATE_TC_NUMBER',
+              message: `${validatedData.tcNo} TC numaralı personel zaten kayıtlı.`,
+              existingPersonnel: {
+                id: existingPersonnel[0].id,
+                name: existingPersonnel[0].name,
+                surname: existingPersonnel[0].surname,
+                tcNo: existingPersonnel[0].tcNo?.toString()
+              },
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+
+        // Yeni personel ekle
+        const [insertedPersonnel] = await db.insert(personnel)
+          .values(validatedData)
+          .returning({
+            id: personnel.id,
+            tcNo: personnel.tcNo,
+            name: personnel.name,
+            surname: personnel.surname,
+            birthdate: personnel.birthdate,
+            phoneNo: personnel.phoneNo,
+            status: personnel.status,
+            isActive: personnel.isActive
+          });
+
+        res.status(201).json({
+          success: true,
+          message: 'Personel başarıyla eklendi.',
+          data: {
+            ...insertedPersonnel,
+            tcNo: insertedPersonnel.tcNo?.toString() // BigInt'i string'e çevir
+          },
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error) {
+        console.error('Personel ekleme hatası:', error);
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            success: false,
+            error: 'VALIDATION_ERROR',
+            message: 'Geçersiz veri formatı.',
+            details: error.errors,
+            timestamp: new Date().toISOString()
+          });
+        }
+        res.status(500).json({
+          success: false,
+          error: 'SERVER_ERROR',
+          message: 'Personel eklenirken sunucu hatası oluştu.',
           timestamp: new Date().toISOString()
         });
       }

@@ -109,6 +109,15 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     method: "POST",
     category: "Veri İşlemleri",
     dataCount: "Yeni bakım türü"
+  },
+  {
+    id: "addPersonnel",
+    name: "Personel Ekleme API",
+    description: "Yeni personel ekler. TC numarası kontrolü ile mükerrer kayıt engellenir",
+    endpoint: "/api/secure/addPersonnel",
+    method: "POST",
+    category: "Veri İşlemleri",
+    dataCount: "Yeni personel"
   }
 ];
 
@@ -145,6 +154,16 @@ export default function ApiTest() {
       case 'addMaintenanceType':
         return JSON.stringify({
           name: "Test Bakım Türü",
+          isActive: true
+        }, null, 2);
+      case 'addPersonnel':
+        return JSON.stringify({
+          tcNo: "12345678901",
+          name: "Ahmet",
+          surname: "Yılmaz",
+          birthdate: "1990-01-01",
+          phoneNo: "05551234567",
+          status: "aktif",
           isActive: true
         }, null, 2);
       default:
