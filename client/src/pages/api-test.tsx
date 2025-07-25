@@ -1,513 +1,130 @@
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Play, Database, Users, Route, BarChart3, Copy, Shield, LogOut, User } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useLocation } from 'wouter';
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Play, Copy, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Link } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
-interface ApiResponse {
-  success: boolean;
-  data?: any;
-  message?: string;
-  count?: number;
+interface ApiEndpoint {
+  id: string;
+  name: string;
+  description: string;
+  endpoint: string;
+  method: string;
+  category: string;
+  dataCount?: string;
 }
 
+const API_ENDPOINTS: ApiEndpoint[] = [
+  {
+    id: "getCities",
+    name: "Şehirler API",
+    description: "Türkiye'deki 81 şehrin listesini döndürür",
+    endpoint: "/api/secure/getCities",
+    method: "GET",
+    category: "Referans Veriler",
+    dataCount: "81 şehir"
+  },
+  {
+    id: "getPenaltyTypes", 
+    name: "Ceza Türleri API",
+    description: "301 trafik cezası türünün detaylı listesini döndürür",
+    endpoint: "/api/secure/getPenaltyTypes",
+    method: "GET",
+    category: "Referans Veriler",
+    dataCount: "301 ceza türü"
+  },
+  {
+    id: "getCountries",
+    name: "Ülkeler API", 
+    description: "Dünya ülkeleri ve telefon kodlarının listesini döndürür",
+    endpoint: "/api/secure/getCountries",
+    method: "GET",
+    category: "Referans Veriler",
+    dataCount: "195 ülke"
+  },
+  {
+    id: "getPolicyTypes",
+    name: "Poliçe Türleri API",
+    description: "Sigorta poliçe türlerinin listesini döndürür", 
+    endpoint: "/api/secure/getPolicyTypes",
+    method: "GET",
+    category: "Referans Veriler",
+    dataCount: "7 poliçe türü"
+  },
+  {
+    id: "getPaymentMethods",
+    name: "Ödeme Yöntemleri API",
+    description: "Ödeme yöntemlerinin listesini döndürür",
+    endpoint: "/api/secure/getPaymentMethods", 
+    method: "GET",
+    category: "Referans Veriler",
+    dataCount: "7 ödeme yöntemi"
+  },
+  {
+    id: "getMaintenanceTypes",
+    name: "Bakım Türleri API",
+    description: "Araç bakım türlerinin listesini döndürür",
+    endpoint: "/api/secure/getMaintenanceTypes",
+    method: "GET", 
+    category: "Referans Veriler",
+    dataCount: "7 bakım türü"
+  }
+];
+
 export default function ApiTest() {
-  const [response, setResponse] = useState<ApiResponse | null>(null);
+  const [selectedApi, setSelectedApi] = useState<ApiEndpoint | null>(null);
+  const [apiKey, setApiKey] = useState("ak_demo2025key");
+  const [response, setResponse] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [selectedEndpoint, setSelectedEndpoint] = useState('');
-  const [filters, setFilters] = useState<Record<string, string>>({});
-  const [apiKey, setApiKey] = useState('ak_demo2025key');
-  const [user, setUser] = useState<any>(null);
-  const [, setLocation] = useLocation();
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+  const testApi = async (endpoint: ApiEndpoint) => {
+    if (!apiKey.trim()) {
+      toast({
+        title: "Hata!",
+        description: "API anahtarı gerekli",
+        variant: "destructive"
+      });
+      return;
     }
-  }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-    setUser(null);
-    setLocation('/login');
-    toast({
-      title: "Çıkış Yapıldı",
-      description: "Güvenli bir şekilde çıkış yaptınız",
-    });
-  };
-
-  const testEndpoints = [
-    // Referans Veri API'leri (Secure)
-    {
-      id: 'getCities',
-      name: 'Şehirler API',
-      endpoint: '/api/secure/getCities',
-      description: 'Türkiye\'deki 81 şehrin listesini getirir',
-      category: 'Referans Veriler',
-      icon: <Database className="w-4 h-4" />,
-      requiresAuth: true,
-      params: []
-    },
-    {
-      id: 'getPenaltyTypes',
-      name: 'Ceza Türleri API',
-      endpoint: '/api/secure/getPenaltyTypes',
-      description: '301 trafik cezası türünün detaylı listesini getirir',
-      category: 'Referans Veriler',
-      icon: <Shield className="w-4 h-4" />,
-      requiresAuth: true,
-      params: []
-    },
-    {
-      id: 'getCountries',
-      name: 'Ülkeler API',
-      endpoint: '/api/secure/getCountries',
-      description: 'Dünya ülkeleri ve telefon kodlarının listesini getirir',
-      category: 'Referans Veriler',
-      icon: <Database className="w-4 h-4" />,
-      requiresAuth: true,
-      params: []
-    },
-    {
-      id: 'getPolicyTypes',
-      name: 'Poliçe Türleri API',
-      endpoint: '/api/secure/getPolicyTypes',
-      description: 'Sigorta poliçe türlerinin listesini getirir',
-      category: 'Referans Veriler',
-      icon: <Shield className="w-4 h-4" />,
-      requiresAuth: true,
-      params: []
-    },
-    {
-      id: 'getPaymentMethods',
-      name: 'Ödeme Yöntemleri API',
-      endpoint: '/api/secure/getPaymentMethods',
-      description: 'Ödeme yöntemlerinin listesini getirir',
-      category: 'Referans Veriler',
-      icon: <Database className="w-4 h-4" />,
-      requiresAuth: true,
-      params: []
-    },
-    {
-      id: 'getMaintenanceTypes',
-      name: 'Bakım Türleri API',
-      endpoint: '/api/secure/getMaintenanceTypes',
-      description: 'Araç bakım türlerinin listesini getirir',
-      category: 'Referans Veriler',
-      icon: <Database className="w-4 h-4" />,
-      requiresAuth: true,
-      params: []
-    },
-
-    // Temel Veri Listeleri
-    {
-      id: 'araclar',
-      name: 'Araç Listesi',
-      endpoint: '/api/test/araclar',
-      description: 'Tüm araçları listeler',
-      category: 'Temel Veriler',
-      icon: <Database className="w-4 h-4" />,
-      params: [
-        { name: 'status', type: 'select', options: ['aktif', 'bakim', 'ariza', 'pasif'] },
-        { name: 'marka', type: 'text' },
-        { name: 'tur', type: 'text' }
-      ]
-    },
-    {
-      id: 'soforler',
-      name: 'Şoför Listesi',
-      endpoint: '/api/test/soforler',
-      description: 'Tüm şoförleri listeler',
-      category: 'Temel Veriler',
-      icon: <Users className="w-4 h-4" />,
-      params: [
-        { name: 'durum', type: 'select', options: ['aktif', 'izinli', 'pasif'] }
-      ]
-    },
-    {
-      id: 'yolculuklar',
-      name: 'Yolculuk Listesi',
-      endpoint: '/api/test/yolculuklar',
-      description: 'Tüm yolculukları listeler',
-      category: 'Temel Veriler',
-      icon: <Route className="w-4 h-4" />,
-      params: [
-        { name: 'durum', type: 'select', options: ['devam_ediyor', 'tamamlandi', 'iptal'] }
-      ]
-    },
-    {
-      id: 'dashboard',
-      name: 'Dashboard',
-      endpoint: '/api/test/dashboard',
-      description: 'Özet istatistikler',
-      category: 'Temel Veriler',
-      icon: <BarChart3 className="w-4 h-4" />,
-      params: []
-    },
-    
-    // Araç Yönetimi
-    {
-      id: 'arac-listesi',
-      name: 'Araç Listesi (Detaylı)',
-      endpoint: '/api/test/arac-listesi',
-      description: 'Detaylı araç listesi',
-      category: 'Araç Yönetimi',
-      icon: <Database className="w-4 h-4" />,
-      params: []
-    },
-    {
-      id: 'arac-ekle',
-      name: 'Araç Ekleme',
-      endpoint: '/api/test/arac-ekle',
-      description: 'Yeni araç ekler',
-      category: 'Araç Yönetimi',
-      method: 'POST',
-      icon: <Database className="w-4 h-4" />,
-      params: [
-        { name: 'plaka', type: 'text', required: true },
-        { name: 'marka', type: 'text', required: true },
-        { name: 'model', type: 'text', required: true },
-        { name: 'tur', type: 'text', required: true }
-      ]
-    },
-    {
-      id: 'arac-guncelle',
-      name: 'Araç Güncelleme',
-      endpoint: '/api/test/arac-guncelle/test-id',
-      description: 'Araç bilgilerini günceller',
-      category: 'Araç Yönetimi',
-      method: 'PUT',
-      icon: <Database className="w-4 h-4" />,
-      params: [
-        { name: 'plaka', type: 'text' },
-        { name: 'marka', type: 'text' },
-        { name: 'durum', type: 'select', options: ['aktif', 'bakim', 'ariza'] }
-      ]
-    },
-    {
-      id: 'arac-sil',
-      name: 'Araç Silme',
-      endpoint: '/api/test/arac-sil/test-id',
-      description: 'Araç kaydını siler',
-      category: 'Araç Yönetimi',
-      method: 'DELETE',
-      icon: <Database className="w-4 h-4" />,
-      params: []
-    },
-    
-    // Şoför Yönetimi
-    {
-      id: 'sofor-listesi',
-      name: 'Şoför Listesi (Detaylı)',
-      endpoint: '/api/test/sofor-listesi',
-      description: 'Detaylı şoför listesi',
-      category: 'Şoför Yönetimi',
-      icon: <Users className="w-4 h-4" />,
-      params: []
-    },
-    {
-      id: 'sofor-ekle',
-      name: 'Şoför Ekleme',
-      endpoint: '/api/test/sofor-ekle',
-      description: 'Yeni şoför ekler',
-      category: 'Şoför Yönetimi',
-      method: 'POST',
-      icon: <Users className="w-4 h-4" />,
-      params: [
-        { name: 'ad_soyad', type: 'text', required: true },
-        { name: 'tc_kimlik', type: 'text', required: true },
-        { name: 'ehliyet_no', type: 'text', required: true },
-        { name: 'telefon', type: 'text', required: true }
-      ]
-    },
-    {
-      id: 'sofor-guncelle',
-      name: 'Şoför Güncelleme',
-      endpoint: '/api/test/sofor-guncelle/test-id',
-      description: 'Şoför bilgilerini günceller',
-      category: 'Şoför Yönetimi',
-      method: 'PUT',
-      icon: <Users className="w-4 h-4" />,
-      params: [
-        { name: 'telefon', type: 'text' },
-        { name: 'durum', type: 'select', options: ['aktif', 'izinli'] }
-      ]
-    },
-    {
-      id: 'sofor-sil',
-      name: 'Şoför Silme',
-      endpoint: '/api/test/sofor-sil/test-id',
-      description: 'Şoför kaydını siler',
-      category: 'Şoför Yönetimi',
-      method: 'DELETE',
-      icon: <Users className="w-4 h-4" />,
-      params: []
-    },
-    
-    // Yolculuk Yönetimi
-    {
-      id: 'yolculuk-listesi',
-      name: 'Yolculuk Listesi (Detaylı)',
-      endpoint: '/api/test/yolculuk-listesi',
-      description: 'Detaylı yolculuk listesi',
-      category: 'Yolculuk Yönetimi',
-      icon: <Route className="w-4 h-4" />,
-      params: []
-    },
-    {
-      id: 'yolculuk-basla',
-      name: 'Yolculuk Başlatma',
-      endpoint: '/api/test/yolculuk-basla',
-      description: 'Yeni yolculuk başlatır',
-      category: 'Yolculuk Yönetimi',
-      method: 'POST',
-      icon: <Route className="w-4 h-4" />,
-      params: [
-        { name: 'arac_id', type: 'text', required: true },
-        { name: 'sofor_id', type: 'text', required: true },
-        { name: 'baslangic_konum', type: 'text', required: true },
-        { name: 'bitis_konum', type: 'text', required: true }
-      ]
-    },
-    {
-      id: 'yolculuk-bitir',
-      name: 'Yolculuk Bitirme',
-      endpoint: '/api/test/yolculuk-bitir/test-id',
-      description: 'Yolculuğu tamamlar',
-      category: 'Yolculuk Yönetimi',
-      method: 'PUT',
-      icon: <Route className="w-4 h-4" />,
-      params: [
-        { name: 'bitis_konum', type: 'text', required: true },
-        { name: 'mesafe', type: 'text', required: true }
-      ]
-    },
-    
-    // Raporlama
-    {
-      id: 'arac-raporu',
-      name: 'Araç Raporu',
-      endpoint: '/api/test/arac-raporu',
-      description: 'Araç durum raporu',
-      category: 'Raporlama',
-      icon: <BarChart3 className="w-4 h-4" />,
-      params: []
-    },
-    {
-      id: 'sofor-raporu',
-      name: 'Şoför Raporu',
-      endpoint: '/api/test/sofor-raporu',
-      description: 'Şoför durum raporu',
-      category: 'Raporlama',
-      icon: <BarChart3 className="w-4 h-4" />,
-      params: []
-    },
-    {
-      id: 'yolculuk-raporu',
-      name: 'Yolculuk Raporu',
-      endpoint: '/api/test/yolculuk-raporu',
-      description: 'Yolculuk durum raporu',
-      category: 'Raporlama',
-      icon: <BarChart3 className="w-4 h-4" />,
-      params: []
-    },
-    
-    // Bakım Yönetimi
-    {
-      id: 'bakim-listesi',
-      name: 'Bakım Listesi',
-      endpoint: '/api/test/bakim-listesi',
-      description: 'Bakımdaki araçları listeler',
-      category: 'Bakım Yönetimi',
-      icon: <Database className="w-4 h-4" />,
-      params: []
-    },
-    {
-      id: 'bakim-planla',
-      name: 'Bakım Planlama',
-      endpoint: '/api/test/bakim-planla',
-      description: 'Araç bakımı planlar',
-      category: 'Bakım Yönetimi',
-      method: 'POST',
-      icon: <Database className="w-4 h-4" />,
-      params: [
-        { name: 'arac_id', type: 'text', required: true },
-        { name: 'bakim_turu', type: 'select', options: ['Periyodik', 'Onarim', 'Muayene'], required: true },
-        { name: 'planli_tarih', type: 'date', required: true }
-      ]
-    },
-    
-    // Yakıt Yönetimi
-    {
-      id: 'yakit-durumu',
-      name: 'Yakıt Durumu',
-      endpoint: '/api/test/yakit-durumu',
-      description: 'Araçların yakıt durumunu gösterir',
-      category: 'Yakıt Yönetimi',
-      icon: <Database className="w-4 h-4" />,
-      params: []
-    },
-    {
-      id: 'yakit-doldur',
-      name: 'Yakıt Doldurma',
-      endpoint: '/api/test/yakit-doldur',
-      description: 'Yakıt doldurma kaydı',
-      category: 'Yakıt Yönetimi',
-      method: 'POST',
-      icon: <Database className="w-4 h-4" />,
-      params: [
-        { name: 'arac_id', type: 'text', required: true },
-        { name: 'litre', type: 'number', required: true },
-        { name: 'istasyon', type: 'text', required: true },
-        { name: 'fiyat', type: 'number', required: true }
-      ]
-    },
-    
-    // Konum Takibi
-    {
-      id: 'konum-takibi',
-      name: 'Konum Takibi',
-      endpoint: '/api/test/konum-takibi',
-      description: 'Araç konumlarını takip eder',
-      category: 'Konum Takibi',
-      icon: <Route className="w-4 h-4" />,
-      params: []
-    },
-    
-    // Bildirimler
-    {
-      id: 'bildirimler',
-      name: 'Bildirimler',
-      endpoint: '/api/test/bildirimler',
-      description: 'Sistem bildirimlerini listeler',
-      category: 'Bildirimler',
-      icon: <Database className="w-4 h-4" />,
-      params: []
-    },
-    
-    // Performans
-    {
-      id: 'performans-analizi',
-      name: 'Performans Analizi',
-      endpoint: '/api/test/performans-analizi',
-      description: 'Detaylı performans metrikleri',
-      category: 'Performans',
-      icon: <BarChart3 className="w-4 h-4" />,
-      params: []
-    },
-    {
-      id: 'gelir-raporu',
-      name: 'Gelir Raporu',
-      endpoint: '/api/test/gelir-raporu',
-      description: 'Finansal gelir raporları',
-      category: 'Raporlama',
-      icon: <BarChart3 className="w-4 h-4" />,
-      params: []
-    },
-    {
-      id: 'gider-raporu',
-      name: 'Gider Raporu',
-      endpoint: '/api/test/gider-raporu',
-      description: 'Finansal gider raporları',
-      category: 'Raporlama',
-      icon: <BarChart3 className="w-4 h-4" />,
-      params: []
-    },
-    {
-      id: 'kar-zarar-raporu',
-      name: 'Kar-Zarar Raporu',
-      endpoint: '/api/test/kar-zarar-raporu',
-      description: 'Karlılık analizi raporları',
-      category: 'Raporlama',
-      icon: <BarChart3 className="w-4 h-4" />,
-      params: []
-    },
-    
-    // Güvenlik
-    {
-      id: 'guvenlik-raporu',
-      name: 'Güvenlik Raporu',
-      endpoint: '/api/test/guvenlik-raporu',
-      description: 'Güvenlik ve uyumluluk raporları',
-      category: 'Güvenlik',
-      icon: <Shield className="w-4 h-4" />,
-      params: []
-    },
-    
-    // Sistem
-    {
-      id: 'endpoint-listesi',
-      name: 'Endpoint Listesi',
-      endpoint: '/api/test/endpoint-listesi',
-      description: 'Tüm test endpoint\'lerini listeler',
-      category: 'Sistem',
-      icon: <Database className="w-4 h-4" />,
-      params: []
-    }
-  ];
-
-  const callApi = async (endpoint: string, params: Record<string, string> = {}, method: string = 'GET', requiresAuth: boolean = false) => {
     setLoading(true);
+    setError(null);
+    setResponse(null);
+
     try {
-      let url = endpoint;
-      let requestOptions: RequestInit = {
-        method: method,
+      const response = await fetch(`${window.location.origin}${endpoint.endpoint}`, {
+        method: endpoint.method,
         headers: {
           'Content-Type': 'application/json',
+          'X-API-Key': apiKey
         }
-      };
+      });
 
-      // Secure API'ler için API key gerekli
-      if (requiresAuth && apiKey) {
-        (requestOptions.headers as Record<string, string>)['x-api-key'] = apiKey;
-      }
-
-      if (method === 'GET') {
-        const queryParams = new URLSearchParams();
-        Object.entries(params).forEach(([key, value]) => {
-          if (value) queryParams.append(key, value);
-        });
-        url = `${endpoint}${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-      } else {
-        // POST, PUT, DELETE için body'ye params ekle
-        if (Object.keys(params).length > 0) {
-          requestOptions.body = JSON.stringify(params);
-        }
-      }
-
-      const response = await fetch(url, requestOptions);
       const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
 
       setResponse(data);
-      
-      if (data.success) {
-        toast({
-          title: "Başarılı",
-          description: data.message || "API çağrısı başarılı",
-        });
-      } else {
-        toast({
-          title: "Hata",
-          description: data.message || "API çağrısı başarısız",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('API çağrısı hatası:', error);
       toast({
-        title: "Hata",
-        description: "API çağrısı sırasında hata oluştu",
-        variant: "destructive",
+        title: "Başarılı!",
+        description: `${endpoint.name} başarıyla test edildi`
+      });
+    } catch (err: any) {
+      const errorMessage = err.message || "Bilinmeyen hata";
+      setError(errorMessage);
+      toast({
+        title: "Test Başarısız!",
+        description: errorMessage,
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -517,360 +134,246 @@ export default function ApiTest() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({
-      title: "Kopyalandı",
-      description: "Metin panoya kopyalandı",
+      title: "Kopyalandı!",
+      description: "Metin panoya kopyalandı"
     });
   };
 
-  const formatJson = (obj: any) => {
-    return JSON.stringify(obj, null, 2);
+  const getStatusBadge = (status: "success" | "error" | "loading") => {
+    if (status === "success") {
+      return <Badge className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />Başarılı</Badge>;
+    }
+    if (status === "error") {
+      return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Hata</Badge>;
+    }
+    return <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" />Test Ediliyor</Badge>;
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
-      {/* Güvenlik Header */}
-      <div className="mb-6">
-        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Shield className="h-6 w-6 text-blue-600" />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-blue-800">Güvenli API Test Ortamı</span>
-                    {user && (
-                      <Badge variant="outline" className="bg-green-100 text-green-800">
-                        <User className="h-3 w-3 mr-1" />
-                        {user.username}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-blue-600">
-                    API Key koruması aktif - Güvenli test ortamı
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setLocation('/')}
-                  className="text-blue-600 border-blue-200"
-                >
+    <div className="min-h-screen bg-slate-50">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Link to="/">
+                <Button variant="outline" size="sm" className="mr-4">
+                  <ArrowLeft size={16} className="mr-2" />
                   Ana Sayfa
                 </Button>
-                {user && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleLogout}
-                    className="text-red-600 border-red-200"
-                  >
-                    <LogOut className="h-4 w-4 mr-1" />
-                    Çıkış
-                  </Button>
-                )}
+              </Link>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">
+                  API Test Ortamı
+                </h1>
+                <p className="text-slate-600">
+                  Güvenli API endpoint'lerini test edin
+                </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">API Test Ortamı</h1>
-        <p className="text-muted-foreground">
-          Filo yönetimi API'lerini gerçek verilerle test edin
-        </p>
-      </div>
-
-      <Tabs defaultValue="endpoints" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="endpoints">API Testleri</TabsTrigger>
-          <TabsTrigger value="documentation">Dokümantasyon</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="endpoints" className="space-y-6">
-          {/* API Key Ayarları */}
-          <Card className="bg-yellow-50 border-yellow-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Shield className="h-5 w-5 text-yellow-600" />
-                API Key Ayarları
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">API Key</Label>
-                <div className="flex gap-2">
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* API List Panel */}
+          <div className="lg:col-span-1">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Play className="w-5 h-5 mr-2" />
+                  API Endpoint'leri
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* API Key Input */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    API Anahtarı
+                  </label>
                   <Input
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="API Key girin"
-                    className="flex-1"
+                    placeholder="API anahtarınızı girin"
+                    className="font-mono text-sm"
                   />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyToClipboard(apiKey)}
-                  >
-                    <Copy className="w-4 h-4" />
-                  </Button>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Demo: ak_demo2025key
+                  </p>
                 </div>
-                <p className="text-xs text-yellow-600">
-                  Geçerli API Keys: test-api-key-2025, fleet-management-api-key, demo-api-access-key
-                </p>
-              </div>
-            </CardContent>
-          </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Test Endpoints - Kategorilere Göre */}
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Test Endpoint'leri ({testEndpoints.length} API)</h2>
-              
-              {/* Kategorilere göre grupla */}
-              {Object.entries(
-                testEndpoints.reduce((acc, endpoint) => {
-                  const category = endpoint.category || 'Diğer';
-                  if (!acc[category]) acc[category] = [];
-                  acc[category].push(endpoint);
-                  return acc;
-                }, {} as Record<string, typeof testEndpoints>)
-              ).map(([category, endpoints]) => (
-                <div key={category} className="space-y-2">
-                  <h3 className="font-semibold text-lg text-blue-600 border-b border-blue-200 pb-1">
-                    {category} ({endpoints.length})
-                  </h3>
-                  {endpoints.map((endpoint) => (
-                    <Card key={endpoint.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {endpoint.icon}
-                            <CardTitle className="text-lg">{endpoint.name}</CardTitle>
-                          </div>
-                          <Badge variant="outline" className={
-                            endpoint.method === 'POST' ? 'bg-green-100 text-green-800' :
-                            endpoint.method === 'PUT' ? 'bg-orange-100 text-orange-800' :
-                            endpoint.method === 'DELETE' ? 'bg-red-100 text-red-800' :
-                            'bg-blue-100 text-blue-800'
-                          }>
-                            {endpoint.method || 'GET'}
-                          </Badge>
-                        </div>
-                        <CardDescription>{endpoint.description}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div>
-                            <Label className="text-sm font-medium">Endpoint URL</Label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <code className="text-sm bg-muted px-2 py-1 rounded flex-1">
-                                {endpoint.endpoint}
-                              </code>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => copyToClipboard(endpoint.endpoint)}
-                              >
-                                <Copy className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-
-                          {endpoint.params.length > 0 && (
-                            <div className="space-y-2">
-                              <Label className="text-sm font-medium">Parametreler</Label>
-                              {endpoint.params.map((param) => (
-                                <div key={param.name} className="space-y-1">
-                                  <Label className="text-xs text-muted-foreground">
-                                    {param.name} {param.required && <span className="text-red-500">*</span>}
-                                  </Label>
-                                  {param.type === 'select' ? (
-                                    <Select
-                                      value={filters[`${endpoint.id}_${param.name}`] || ''}
-                                      onValueChange={(value) =>
-                                        setFilters(prev => ({
-                                          ...prev,
-                                          [`${endpoint.id}_${param.name}`]: value
-                                        }))
-                                      }
-                                    >
-                                      <SelectTrigger className="h-8">
-                                        <SelectValue placeholder={`${param.name} seçin`} />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {param.options?.map((option) => (
-                                          <SelectItem key={option} value={option}>
-                                            {option}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  ) : (
-                                    <Input
-                                      className="h-8"
-                                      type={param.type === 'number' ? 'number' : param.type === 'date' ? 'date' : 'text'}
-                                      placeholder={`${param.name} girin`}
-                                      value={filters[`${endpoint.id}_${param.name}`] || ''}
-                                      onChange={(e) =>
-                                        setFilters(prev => ({
-                                          ...prev,
-                                          [`${endpoint.id}_${param.name}`]: e.target.value
-                                        }))
-                                      }
-                                    />
-                                  )}
-                                </div>
-                              ))}
-                            </div>
+                {/* API Endpoints */}
+                <div className="space-y-2">
+                  <h3 className="font-medium text-slate-800 text-sm">Referans Veriler</h3>
+                  {API_ENDPOINTS.map((endpoint) => (
+                    <div
+                      key={endpoint.id}
+                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                        selectedApi?.id === endpoint.id
+                          ? "border-blue-300 bg-blue-50"
+                          : "border-slate-200 hover:bg-slate-50"
+                      }`}
+                      onClick={() => setSelectedApi(endpoint)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-slate-800 text-sm">
+                            {endpoint.name}
+                          </h4>
+                          <p className="text-xs text-slate-600 mt-1">
+                            {endpoint.description}
+                          </p>
+                          {endpoint.dataCount && (
+                            <p className="text-xs text-blue-600 mt-1 font-medium">
+                              {endpoint.dataCount}
+                            </p>
                           )}
-
-                          <Button
-                            className="w-full"
-                            onClick={() => {
-                              const params: Record<string, string> = {};
-                              endpoint.params.forEach(param => {
-                                const value = filters[`${endpoint.id}_${param.name}`];
-                                if (value) params[param.name] = value;
-                              });
-                              callApi(endpoint.endpoint, params, endpoint.method || 'GET', endpoint.requiresAuth || false);
-                            }}
-                            disabled={loading}
-                          >
-                            <Play className="w-4 h-4 mr-2" />
-                            {loading ? 'Test Ediliyor...' : 'Test Et'}
-                          </Button>
                         </div>
-                      </CardContent>
-                    </Card>
+                        <Badge variant="secondary" className="text-xs ml-2">
+                          {endpoint.method}
+                        </Badge>
+                      </div>
+                    </div>
                   ))}
                 </div>
-              ))}
-            </div>
+              </CardContent>
+            </Card>
+          </div>
 
-            {/* Response Display */}
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold">API Yanıtı</h2>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Sonuç</CardTitle>
-                  <CardDescription>
-                    API çağrısının döndürdüğü yanıt
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {response ? (
+          {/* Test Panel */}
+          <div className="lg:col-span-2">
+            {selectedApi ? (
+              <div className="space-y-6">
+                {/* API Details */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center">
+                        {selectedApi.name}
+                        <Badge className="ml-2">{selectedApi.method}</Badge>
+                      </CardTitle>
+                      <Button
+                        onClick={() => testApi(selectedApi)}
+                        disabled={loading}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        <Play className="w-4 h-4 mr-2" />
+                        {loading ? "Test Ediliyor..." : "Test Et"}
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
                     <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={response.success ? "default" : "destructive"}>
-                          {response.success ? "Başarılı" : "Hata"}
-                        </Badge>
-                        {response.count !== undefined && (
-                          <Badge variant="outline">{response.count} kayıt</Badge>
-                        )}
-                      </div>
-
-                      {response.message && (
-                        <p className="text-sm text-muted-foreground">
-                          {response.message}
-                        </p>
-                      )}
-
                       <div>
-                        <Label className="text-sm font-medium mb-2 block">
-                          JSON Yanıtı
-                        </Label>
-                        <div className="relative">
-                          <Textarea
-                            value={formatJson(response)}
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Endpoint
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <Input
+                            value={`${window.location.origin}${selectedApi.endpoint}`}
                             readOnly
-                            className="min-h-[300px] font-mono text-sm"
+                            className="font-mono text-sm"
                           />
                           <Button
-                            variant="ghost"
+                            variant="outline" 
                             size="sm"
-                            className="absolute top-2 right-2"
-                            onClick={() => copyToClipboard(formatJson(response))}
+                            onClick={() => copyToClipboard(`${window.location.origin}${selectedApi.endpoint}`)}
                           >
                             <Copy className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Açıklama
+                        </label>
+                        <p className="text-slate-600 text-sm">
+                          {selectedApi.description}
+                        </p>
+                      </div>
                     </div>
-                  ) : (
-                    <p className="text-muted-foreground text-center py-8">
-                      Bir API endpoint'i test edin
-                    </p>
-                  )}
+                  </CardContent>
+                </Card>
+
+                {/* Response */}
+                {(response || error || loading) && (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle>Yanıt</CardTitle>
+                        {loading && getStatusBadge("loading")}
+                        {response && getStatusBadge("success")}
+                        {error && getStatusBadge("error")}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {loading && (
+                        <div className="flex items-center space-x-2 text-slate-600">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          <span>API testi yapılıyor...</span>
+                        </div>
+                      )}
+                      
+                      {error && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                          <div className="flex items-center space-x-2 text-red-800 mb-2">
+                            <XCircle className="w-4 h-4" />
+                            <span className="font-medium">Test Başarısız</span>
+                          </div>
+                          <p className="text-red-700 text-sm">{error}</p>
+                        </div>
+                      )}
+
+                      {response && (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-slate-700">JSON Yanıt</span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => copyToClipboard(JSON.stringify(response, null, 2))}
+                            >
+                              <Copy className="w-4 h-4 mr-2" />
+                              Kopyala
+                            </Button>
+                          </div>
+                          <Textarea
+                            value={JSON.stringify(response, null, 2)}
+                            readOnly
+                            className="font-mono text-xs h-96 resize-none"
+                          />
+                          
+                          {Array.isArray(response?.data) && (
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                              <p className="text-green-800 text-sm">
+                                <strong>Toplam Kayıt:</strong> {response.data.length}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <Play className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-slate-700 mb-2">
+                    API Seç ve Test Et
+                  </h3>
+                  <p className="text-slate-500">
+                    Sol panelden bir API endpoint'i seçin ve test etmeye başlayın.
+                  </p>
                 </CardContent>
               </Card>
-            </div>
+            )}
           </div>
-        </TabsContent>
-
-        <TabsContent value="documentation" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>API Dokümantasyonu</CardTitle>
-              <CardDescription>
-                Test endpoint'lerinin detaylı açıklamaları
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Test Verileri</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">Araçlar</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold">8</p>
-                      <p className="text-xs text-muted-foreground">
-                        Kamyon, minibüs, forklift
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">Şoförler</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold">5</p>
-                      <p className="text-xs text-muted-foreground">
-                        Aktif ve izinli şoförler
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">Yolculuklar</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold">3</p>
-                      <p className="text-xs text-muted-foreground">
-                        Tamamlanan ve devam eden
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">API Özellikleri</h3>
-                <ul className="space-y-2 text-sm">
-                  <li>• Gerçek PostgreSQL veritabanı ile çalışır</li>
-                  <li>• Filtreleme ve arama parametreleri destekler</li>
-                  <li>• JSON formatında yanıt döner</li>
-                  <li>• Hata durumlarında detaylı mesaj verir</li>
-                  <li>• İlişkisel veriler JOIN ile birleştirilir</li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
     </div>
   );
 }
