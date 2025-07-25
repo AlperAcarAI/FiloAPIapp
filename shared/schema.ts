@@ -201,6 +201,37 @@ export const sessions = pgTable("sessions", {
 }));
 
 // ========================
+// AUDIT TRAIL SYSTEM
+// ========================
+
+// Merkezi audit log tablosu - Tüm veritabanı değişikliklerini izler
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  tableName: varchar("table_name", { length: 64 }).notNull(),
+  recordId: integer("record_id").notNull(),
+  operation: varchar("operation", { length: 10 }).notNull(), // INSERT, UPDATE, DELETE
+  oldValues: text("old_values"), // JSON format
+  newValues: text("new_values"), // JSON format
+  changedFields: text("changed_fields").array(), // Array of field names
+  userId: integer("user_id").references(() => users.id),
+  apiClientId: integer("api_client_id").references(() => apiClients.id),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+}, (table) => ({
+  tableRecordIdx: index("idx_audit_table_record").on(table.tableName, table.recordId),
+  userIdx: index("idx_audit_user").on(table.userId),
+  timestampIdx: index("idx_audit_timestamp").on(table.timestamp),
+}));
+
+// Temel audit alanları için ortak fonksiyon - diğer tablolara eklenecek
+// Bu alanlar şu şekilde kullanılacak:
+// createdBy: integer("created_by").references(() => users.id)
+// updatedBy: integer("updated_by").references(() => users.id)  
+// createdAt: timestamp("created_at").notNull().defaultNow()
+// updatedAt: timestamp("updated_at").notNull().defaultNow()
+
+// ========================
 // API Management Tables
 // ========================
 

@@ -224,6 +224,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API Güvenlik ve Yönetim Route'larını kaydet
   registerApiManagementRoutes(app);
 
+  // Audit Route'larını kaydet
+  const { registerAuditRoutes } = await import("./audit-routes");
+  registerAuditRoutes(app);
+
   const httpServer = createServer(app);
   return httpServer;
 }
