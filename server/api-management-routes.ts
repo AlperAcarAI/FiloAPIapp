@@ -15,7 +15,8 @@ import {
   companies,
   cities,
   penaltyTypes,
-  countries
+  countries,
+  policyTypes
 } from "@shared/schema";
 import { 
   insertApiClientSchema,
@@ -538,6 +539,45 @@ export function registerApiManagementRoutes(app: Express) {
           success: false,
           error: "COUNTRIES_FETCH_ERROR",
           message: "Ülke listesi alınırken bir hata oluştu."
+        });
+      }
+    }
+  );
+
+  // Policy Types API - Poliçe türleri listesi (Okuma izni gerekir)
+  app.get(
+    "/api/secure/getPolicyTypes", 
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(100),
+    authorizeEndpoint(['data:read']),
+    async (req: ApiRequest, res) => {
+      try {
+        const policyTypesList = await db.select({
+          id: policyTypes.id,
+          name: policyTypes.name,
+          isActive: policyTypes.isActive
+        }).from(policyTypes)
+          .where(eq(policyTypes.isActive, true))
+          .orderBy(policyTypes.name);
+        
+        res.json({
+          success: true,
+          data: policyTypesList,
+          count: policyTypesList.length,
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error("Policy types getirme hatası:", error);
+        res.status(500).json({
+          success: false,
+          error: "POLICY_TYPES_FETCH_ERROR",
+          message: "Poliçe türleri listesi alınırken bir hata oluştu."
         });
       }
     }
