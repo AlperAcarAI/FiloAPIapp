@@ -555,8 +555,7 @@ export function registerApiManagementRoutes(app: Express) {
       try {
         const policyTypesList = await db.select({
           id: policyTypes.id,
-          name: policyTypes.name,
-          isActive: policyTypes.isActive
+          name: policyTypes.name
         }).from(policyTypes)
           .where(eq(policyTypes.isActive, true))
           .orderBy(policyTypes.name);
