@@ -28,7 +28,8 @@ import {
   insertPermissionSchema,
   insertPolicyTypeSchema,
   insertPenaltyTypeSchema,
-  updatePenaltyTypeSchema
+  updatePenaltyTypeSchema,
+  insertMaintenanceTypeSchema
 } from "@shared/schema";
 import { eq, and, desc, sql, count, avg, gte, not } from "drizzle-orm";
 import { 
@@ -474,6 +475,58 @@ export function registerApiManagementRoutes(app: Express) {
             '401': { description: 'Geçersiz API anahtarı' },
             '404': { description: 'Ceza türü bulunamadı' },
             '409': { description: 'Aynı isimde başka bir ceza türü zaten mevcut' },
+            '429': { description: 'Rate limit aşıldı' }
+          }
+        }
+      },
+      '/api/secure/addMaintenanceType': {
+        post: {
+          summary: 'Yeni Bakım Türü Ekle',
+          description: 'Sisteme yeni bir bakım türü ekler. Araç bakım kategorileri için kullanılır.',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['name'],
+                  properties: {
+                    name: { type: 'string', example: 'Test Bakım Türü' },
+                    isActive: { type: 'boolean', example: true, default: true }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '201': {
+              description: 'Bakım türü başarıyla eklendi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Bakım türü başarıyla eklendi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer', example: 8 },
+                          name: { type: 'string', example: 'Test Bakım Türü' },
+                          isActive: { type: 'boolean', example: true }
+                        }
+                      },
+                      timestamp: { type: 'string', example: '2025-01-25T12:00:00.000Z' }
+                    }
+                  }
+                }
+              }
+            },
+            '400': { description: 'Geçersiz veri formatı' },
+            '401': { description: 'Geçersiz API anahtarı' },
+            '409': { description: 'Aynı isimde bakım türü zaten mevcut' },
             '429': { description: 'Rate limit aşıldı' }
           }
         }
@@ -1444,6 +1497,80 @@ export function registerApiManagementRoutes(app: Express) {
           success: false,
           error: "SERVER_ERROR",
           message: "Ceza türü güncellenirken sunucu hatası oluştu.",
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // POST endpoint - Bakım türü ekleme
+  app.post(
+    "/api/secure/addMaintenanceType",
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(30),
+    authorizeEndpoint(['data:write', 'asset:write']),
+    async (req: ApiRequest, res) => {
+      try {
+        // Request body'yi validate et
+        const validatedData = insertMaintenanceTypeSchema.parse(req.body);
+        
+        // Aynı isimde bakım türü var mı kontrol et
+        const existing = await db
+          .select()
+          .from(maintenanceTypes)
+          .where(eq(maintenanceTypes.name, validatedData.name))
+          .limit(1);
+
+        if (existing.length > 0) {
+          return res.status(409).json({
+            success: false,
+            error: 'DUPLICATE_MAINTENANCE_TYPE',
+            message: `'${validatedData.name}' isimli bakım türü zaten mevcut.`,
+            existingMaintenanceType: {
+              id: existing[0].id,
+              name: existing[0].name
+            },
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // Yeni bakım türü ekle
+        const [insertedMaintenanceType] = await db.insert(maintenanceTypes)
+          .values(validatedData)
+          .returning({
+            id: maintenanceTypes.id,
+            name: maintenanceTypes.name,
+            isActive: maintenanceTypes.isActive
+          });
+
+        res.status(201).json({
+          success: true,
+          message: 'Bakım türü başarıyla eklendi.',
+          data: insertedMaintenanceType,
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error) {
+        console.error('Bakım türü ekleme hatası:', error);
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            success: false,
+            error: 'VALIDATION_ERROR',
+            message: 'Geçersiz veri formatı.',
+            details: error.errors,
+            timestamp: new Date().toISOString()
+          });
+        }
+        res.status(500).json({
+          success: false,
+          error: 'SERVER_ERROR',
+          message: 'Bakım türü eklenirken sunucu hatası oluştu.',
           timestamp: new Date().toISOString()
         });
       }

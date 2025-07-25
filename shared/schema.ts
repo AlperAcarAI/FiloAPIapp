@@ -643,6 +643,13 @@ export const insertPolicyTypeSchema = createInsertSchema(policyTypes).omit({
 
 export type InsertPolicyType = z.infer<typeof insertPolicyTypeSchema>;
 
+// Maintenance Type Schemas
+export const insertMaintenanceTypeSchema = createInsertSchema(maintenanceTypes).omit({
+  id: true,
+});
+
+export type InsertMaintenanceType = z.infer<typeof insertMaintenanceTypeSchema>;
+
 // API Management Schemas and Types
 export const insertApiClientSchema = createInsertSchema(apiClients).omit({
   id: true,

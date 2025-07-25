@@ -100,6 +100,15 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     method: "PUT",
     category: "Veri İşlemleri", 
     dataCount: "Güncelleme"
+  },
+  {
+    id: "addMaintenanceType",
+    name: "Bakım Türü Ekleme API",
+    description: "Yeni bir bakım türü ekler. Araç bakım kategorileri için kullanılır",
+    endpoint: "/api/secure/addMaintenanceType",
+    method: "POST",
+    category: "Veri İşlemleri",
+    dataCount: "Yeni bakım türü"
   }
 ];
 
@@ -132,6 +141,11 @@ export default function ApiTest() {
           penaltyScore: 15,
           amountCents: 75000,
           discountedAmountCents: 56250
+        }, null, 2);
+      case 'addMaintenanceType':
+        return JSON.stringify({
+          name: "Test Bakım Türü",
+          isActive: true
         }, null, 2);
       default:
         return "{}";
