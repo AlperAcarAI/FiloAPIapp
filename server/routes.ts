@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db } from "./db";
 import { assets } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { registerApiManagementRoutes } from "./api-management-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Asset API'leri - Tam CRUD operasyonları
@@ -196,6 +197,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Kullanıcı oluşturulamadı" });
     }
   });
+
+  // API Güvenlik ve Yönetim Route'larını kaydet
+  registerApiManagementRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

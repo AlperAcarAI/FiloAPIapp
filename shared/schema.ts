@@ -199,6 +199,63 @@ export const sessions = pgTable("sessions", {
 }));
 
 // ========================
+// API Management Tables
+// ========================
+
+export const apiEndpoints = pgTable("api_endpoints", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 150 }).notNull(),
+  endpoint: varchar("endpoint", { length: 255 }).notNull().unique(),
+  method: varchar("method", { length: 10 }).notNull(), // GET, POST, PUT, DELETE
+  description: text("description"),
+  requiredPermissions: text("required_permissions").array(), // JSON array of permission names
+  rateLimit: integer("rate_limit").default(100), // requests per minute
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const apiRequestLogs = pgTable("api_request_logs", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id").references(() => apiClients.id),
+  userId: integer("user_id").references(() => users.id),
+  endpointId: integer("endpoint_id").references(() => apiEndpoints.id),
+  method: varchar("method", { length: 10 }).notNull(),
+  endpoint: varchar("endpoint", { length: 255 }).notNull(),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  requestBody: text("request_body"),
+  responseStatus: integer("response_status"),
+  responseTime: integer("response_time"), // milliseconds
+  errorMessage: text("error_message"),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+}, (table) => ({
+  timestampIdx: index("idx_api_logs_timestamp").on(table.timestamp),
+  clientEndpointIdx: index("idx_api_logs_client_endpoint").on(table.clientId, table.endpointId),
+}));
+
+export const apiClientPermissions = pgTable("api_client_permissions", {
+  clientId: integer("client_id").notNull().references(() => apiClients.id),
+  permissionId: integer("permission_id").notNull().references(() => permissions.id),
+  grantedAt: timestamp("granted_at").notNull().defaultNow(),
+  grantedBy: integer("granted_by").references(() => users.id),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.clientId, table.permissionId] }),
+}));
+
+export const apiRateLimit = pgTable("api_rate_limit", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id").notNull().references(() => apiClients.id),
+  endpointId: integer("endpoint_id").references(() => apiEndpoints.id),
+  requestCount: integer("request_count").notNull().default(0),
+  windowStart: timestamp("window_start").notNull().defaultNow(),
+  windowEnd: timestamp("window_end").notNull(),
+}, (table) => ({
+  clientEndpointIdx: index("idx_rate_limit_client_endpoint").on(table.clientId, table.endpointId),
+  windowIdx: index("idx_rate_limit_window").on(table.windowStart, table.windowEnd),
+}));
+
+// ========================
 // Core Business Tables
 // ========================
 
@@ -528,3 +585,54 @@ export type OwnershipType = typeof ownershipTypes.$inferSelect;
 export type PolicyType = typeof policyTypes.$inferSelect;
 export type DamageType = typeof damageTypes.$inferSelect;
 export type MaintenanceType = typeof maintenanceTypes.$inferSelect;
+
+// API Management Schemas and Types
+export const insertApiClientSchema = createInsertSchema(apiClients).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertApiKeySchema = createInsertSchema(apiKeys).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertApiEndpointSchema = createInsertSchema(apiEndpoints).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertApiTokenSchema = createInsertSchema(apiTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertRoleSchema = createInsertSchema(roles).omit({
+  id: true,
+});
+
+export const insertPermissionSchema = createInsertSchema(permissions).omit({
+  id: true,
+});
+
+// API Management Types
+export type ApiClient = typeof apiClients.$inferSelect;
+export type InsertApiClient = z.infer<typeof insertApiClientSchema>;
+
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
+
+export type ApiEndpoint = typeof apiEndpoints.$inferSelect;
+export type InsertApiEndpoint = z.infer<typeof insertApiEndpointSchema>;
+
+export type ApiToken = typeof apiTokens.$inferSelect;
+export type InsertApiToken = z.infer<typeof insertApiTokenSchema>;
+
+export type ApiRequestLog = typeof apiRequestLogs.$inferSelect;
+
+export type Role = typeof roles.$inferSelect;
+export type InsertRole = z.infer<typeof insertRoleSchema>;
+
+export type Permission = typeof permissions.$inferSelect;
+export type InsertPermission = z.infer<typeof insertPermissionSchema>;
