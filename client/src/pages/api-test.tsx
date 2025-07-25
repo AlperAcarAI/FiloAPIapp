@@ -136,6 +136,15 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     method: "PUT",
     category: "Veri İşlemleri",
     dataCount: "Güncelleme"
+  },
+  {
+    id: "getDocTypes",
+    name: "Dokuman Kategorileri Listeleme API",
+    description: "Dokuman ekleme için hiyerarşik kategori listesi döndürür",
+    endpoint: "/api/secure/getDocTypes",
+    method: "GET",
+    category: "Veri Okuma",
+    dataCount: "107 alt kategori"
   }
 ];
 

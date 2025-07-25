@@ -20,7 +20,9 @@ import {
   paymentMethods,
   maintenanceTypes,
   personnel,
-  workAreas
+  workAreas,
+  docMainTypes,
+  docSubTypes
 } from "@shared/schema";
 import { 
   insertApiClientSchema,
@@ -679,6 +681,80 @@ export function registerApiManagementRoutes(app: Express) {
             '404': { description: 'Çalışma alanı bulunamadı' },
             '409': { description: 'Aynı şehirde aynı isimde çalışma alanı zaten mevcut' },
             '429': { description: 'Rate limit aşıldı' }
+          }
+        }
+      },
+      '/api/secure/getDocTypes': {
+        get: {
+          summary: 'Dokuman Kategorileri Listele',
+          description: 'Dokuman ekleme için hiyerarşik kategori listesi döndürür. Ana kategoriler ve alt kategorileri birlikte getirir.',
+          tags: ['Veri Okuma'],
+          security: [{ ApiKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Dokuman kategorileri başarıyla getirildi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Dokuman kategorileri başarıyla getirildi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          docTypes: {
+                            type: 'array',
+                            items: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'integer', example: 1 },
+                                name: { type: 'string', example: 'İnsan Kaynakları' },
+                                isActive: { type: 'boolean', example: true },
+                                subTypes: {
+                                  type: 'array',
+                                  items: {
+                                    type: 'object',
+                                    properties: {
+                                      id: { type: 'integer', example: 1 },
+                                      name: { type: 'string', example: 'İşe Giriş Bildirgesi' },
+                                      isActive: { type: 'boolean', example: true },
+                                      mainTypeId: { type: 'integer', example: 1 }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          statistics: {
+                            type: 'object',
+                            properties: {
+                              totalMainTypes: { type: 'integer', example: 5 },
+                              totalSubTypes: { type: 'integer', example: 107 },
+                              categoriesBreakdown: {
+                                type: 'array',
+                                items: {
+                                  type: 'object',
+                                  properties: {
+                                    mainType: { type: 'string', example: 'İnsan Kaynakları' },
+                                    subTypeCount: { type: 'integer', example: 27 }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      timestamp: { type: 'string', example: '2025-01-25T14:15:00.000Z' }
+                    }
+                  }
+                }
+              }
+            },
+            '401': { description: 'Geçersiz API anahtarı' },
+            '403': { description: 'Okuma yetkisi yok' },
+            '429': { description: 'Rate limit aşıldı' },
+            '500': { description: 'Sunucu hatası' }
           }
         }
       },
@@ -2130,6 +2206,104 @@ export function registerApiManagementRoutes(app: Express) {
           success: false,
           error: "SERVER_ERROR",
           message: "Çalışma alanı güncellenirken sunucu hatası oluştu.",
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // GET endpoint - Dokuman kategorileri listeleme
+  app.get(
+    "/api/secure/getDocTypes",
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(100),
+    authorizeEndpoint(['data:read']),
+    async (req: ApiRequest, res) => {
+      try {
+        // Ana kategorileri ve alt kategorilerini join ile çek
+        const docTypesData = await db
+          .select({
+            mainTypeId: docMainTypes.id,
+            mainTypeName: docMainTypes.name,
+            mainTypeActive: docMainTypes.isActive,
+            subTypeId: docSubTypes.id,
+            subTypeName: docSubTypes.name,
+            subTypeActive: docSubTypes.isActive
+          })
+          .from(docMainTypes)
+          .leftJoin(docSubTypes, eq(docMainTypes.id, docSubTypes.mainTypeId))
+          .where(eq(docMainTypes.isActive, true))
+          .orderBy(docMainTypes.id, docSubTypes.id);
+
+        // Veriyi hiyerarşik yapıya dönüştür
+        const docTypesHierarchy = docTypesData.reduce((acc, row) => {
+          // Ana kategoriyi bul veya oluştur
+          let mainCategory = acc.find(cat => cat.id === row.mainTypeId);
+          if (!mainCategory) {
+            mainCategory = {
+              id: row.mainTypeId,
+              name: row.mainTypeName,
+              isActive: row.mainTypeActive,
+              subTypes: []
+            };
+            acc.push(mainCategory);
+          }
+
+          // Alt kategori varsa ekle
+          if (row.subTypeId && row.subTypeName && row.subTypeActive) {
+            mainCategory.subTypes.push({
+              id: row.subTypeId,
+              name: row.subTypeName,
+              isActive: row.subTypeActive,
+              mainTypeId: row.mainTypeId
+            });
+          }
+
+          return acc;
+        }, [] as Array<{
+          id: number;
+          name: string;
+          isActive: boolean;
+          subTypes: Array<{
+            id: number;
+            name: string;
+            isActive: boolean;
+            mainTypeId: number;
+          }>;
+        }>);
+
+        // İstatistikleri hesapla
+        const stats = {
+          totalMainTypes: docTypesHierarchy.length,
+          totalSubTypes: docTypesHierarchy.reduce((sum, main) => sum + main.subTypes.length, 0),
+          categoriesBreakdown: docTypesHierarchy.map(main => ({
+            mainType: main.name,
+            subTypeCount: main.subTypes.length
+          }))
+        };
+
+        res.json({
+          success: true,
+          message: 'Dokuman kategorileri başarıyla getirildi.',
+          data: {
+            docTypes: docTypesHierarchy,
+            statistics: stats
+          },
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error) {
+        console.error('Dokuman kategorileri getirme hatası:', error);
+        res.status(500).json({
+          success: false,
+          error: 'SERVER_ERROR',
+          message: 'Dokuman kategorileri getirilirken sunucu hatası oluştu.',
           timestamp: new Date().toISOString()
         });
       }
