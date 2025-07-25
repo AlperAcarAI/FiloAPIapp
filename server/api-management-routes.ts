@@ -19,7 +19,8 @@ import {
   policyTypes,
   paymentMethods,
   maintenanceTypes,
-  personnel
+  personnel,
+  workAreas
 } from "@shared/schema";
 import { 
   insertApiClientSchema,
@@ -31,7 +32,9 @@ import {
   insertPenaltyTypeSchema,
   updatePenaltyTypeSchema,
   insertMaintenanceTypeSchema,
-  insertPersonnelSchema
+  insertPersonnelSchema,
+  insertWorkAreaSchema,
+  updateWorkAreaSchema
 } from "@shared/schema";
 import { eq, and, desc, sql, count, avg, gte, not } from "drizzle-orm";
 import { 
@@ -529,6 +532,152 @@ export function registerApiManagementRoutes(app: Express) {
             '400': { description: 'Geçersiz veri formatı' },
             '401': { description: 'Geçersiz API anahtarı' },
             '409': { description: 'Aynı isimde bakım türü zaten mevcut' },
+            '429': { description: 'Rate limit aşıldı' }
+          }
+        }
+      },
+      '/api/secure/addWorkArea': {
+        post: {
+          summary: 'Yeni Çalışma Alanı Ekle',
+          description: 'Sisteme yeni çalışma alanı ekler. Aynı şehirde aynı isimde alan kontrolü yapar.',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['cityId', 'name', 'startDate'],
+                  properties: {
+                    cityId: { type: 'integer', example: 1, description: 'Şehir ID (cities tablosundan)' },
+                    name: { type: 'string', example: 'Merkez Ofis' },
+                    address: { type: 'string', example: 'Atatürk Caddesi No:123' },
+                    managerId: { type: 'integer', example: 1, description: 'Yönetici personel ID' },
+                    startDate: { type: 'string', format: 'date', example: '2025-01-01' },
+                    endDate: { type: 'string', format: 'date', example: '2025-12-31' },
+                    isActive: { type: 'boolean', example: true, default: true }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '201': {
+              description: 'Çalışma alanı başarıyla eklendi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Çalışma alanı başarıyla eklendi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer', example: 1 },
+                          cityId: { type: 'integer', example: 1 },
+                          name: { type: 'string', example: 'Merkez Ofis' },
+                          address: { type: 'string', example: 'Atatürk Caddesi No:123' },
+                          managerId: { type: 'integer', example: 1 },
+                          startDate: { type: 'string', format: 'date', example: '2025-01-01' },
+                          endDate: { type: 'string', format: 'date', example: '2025-12-31' },
+                          isActive: { type: 'boolean', example: true }
+                        }
+                      },
+                      timestamp: { type: 'string', example: '2025-01-25T14:00:00.000Z' }
+                    }
+                  }
+                }
+              }
+            },
+            '400': { description: 'Geçersiz veri formatı' },
+            '401': { description: 'Geçersiz API anahtarı' },
+            '409': { 
+              description: 'Aynı şehirde aynı isimde çalışma alanı zaten mevcut',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: false },
+                      error: { type: 'string', example: 'DUPLICATE_WORK_AREA' },
+                      message: { type: 'string', example: "Bu şehirde 'Merkez Ofis' isimli çalışma alanı zaten mevcut." }
+                    }
+                  }
+                }
+              }
+            },
+            '429': { description: 'Rate limit aşıldı' }
+          }
+        }
+      },
+      '/api/secure/updateWorkArea/{id}': {
+        put: {
+          summary: 'Çalışma Alanı Güncelle',
+          description: 'Mevcut çalışma alanı bilgilerini günceller.',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: 'id',
+              in: 'path',
+              required: true,
+              schema: { type: 'integer' },
+              description: 'Güncellenecek çalışma alanının ID\'si'
+            }
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    cityId: { type: 'integer', example: 2 },
+                    name: { type: 'string', example: 'Güncellenen Ofis' },
+                    address: { type: 'string', example: 'Yeni Adres' },
+                    managerId: { type: 'integer', example: 2 },
+                    startDate: { type: 'string', format: 'date', example: '2025-02-01' },
+                    endDate: { type: 'string', format: 'date', example: '2025-11-30' },
+                    isActive: { type: 'boolean', example: false }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '200': {
+              description: 'Çalışma alanı başarıyla güncellendi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Çalışma alanı başarıyla güncellendi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer', example: 1 },
+                          cityId: { type: 'integer', example: 2 },
+                          name: { type: 'string', example: 'Güncellenen Ofis' },
+                          address: { type: 'string', example: 'Yeni Adres' },
+                          managerId: { type: 'integer', example: 2 },
+                          startDate: { type: 'string', format: 'date', example: '2025-02-01' },
+                          endDate: { type: 'string', format: 'date', example: '2025-11-30' },
+                          isActive: { type: 'boolean', example: false }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '400': { description: 'Geçersiz veri formatı veya ID' },
+            '401': { description: 'Geçersiz API anahtarı' },
+            '404': { description: 'Çalışma alanı bulunamadı' },
+            '409': { description: 'Aynı şehirde aynı isimde çalışma alanı zaten mevcut' },
             '429': { description: 'Rate limit aşıldı' }
           }
         }
@@ -1760,6 +1909,227 @@ export function registerApiManagementRoutes(app: Express) {
           success: false,
           error: 'SERVER_ERROR',
           message: 'Personel eklenirken sunucu hatası oluştu.',
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // POST endpoint - Çalışma alanı ekleme
+  app.post(
+    "/api/secure/addWorkArea",
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(20),
+    authorizeEndpoint(['data:write']),
+    async (req: ApiRequest, res) => {
+      try {
+        // API için özel workArea schema - date alanlarını string olarak kabul et
+        const apiWorkAreaSchema = z.object({
+          cityId: z.number(),
+          name: z.string(),
+          address: z.string().optional(),
+          managerId: z.number().optional(),
+          startDate: z.string(),
+          endDate: z.string().optional(),
+          isActive: z.boolean().optional().default(true)
+        });
+        
+        const validatedData = apiWorkAreaSchema.parse(req.body);
+        
+        // İsim kontrolü - aynı şehirde aynı isimde çalışma alanı var mı kontrol et
+        const existingWorkArea = await db
+          .select()
+          .from(workAreas)
+          .where(and(
+            eq(workAreas.name, validatedData.name),
+            eq(workAreas.cityId, validatedData.cityId)
+          ))
+          .limit(1);
+
+        if (existingWorkArea.length > 0) {
+          return res.status(409).json({
+            success: false,
+            error: 'DUPLICATE_WORK_AREA',
+            message: `Bu şehirde '${validatedData.name}' isimli çalışma alanı zaten mevcut.`,
+            existingWorkArea: {
+              id: existingWorkArea[0].id,
+              name: existingWorkArea[0].name,
+              cityId: existingWorkArea[0].cityId
+            },
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // Yeni çalışma alanı ekle
+        const [insertedWorkArea] = await db.insert(workAreas)
+          .values(validatedData)
+          .returning({
+            id: workAreas.id,
+            cityId: workAreas.cityId,
+            name: workAreas.name,
+            address: workAreas.address,
+            managerId: workAreas.managerId,
+            startDate: workAreas.startDate,
+            endDate: workAreas.endDate,
+            isActive: workAreas.isActive
+          });
+
+        res.status(201).json({
+          success: true,
+          message: 'Çalışma alanı başarıyla eklendi.',
+          data: insertedWorkArea,
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error) {
+        console.error('Çalışma alanı ekleme hatası:', error);
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            success: false,
+            error: 'VALIDATION_ERROR',
+            message: 'Geçersiz veri formatı.',
+            details: error.errors,
+            timestamp: new Date().toISOString()
+          });
+        }
+        res.status(500).json({
+          success: false,
+          error: 'SERVER_ERROR',
+          message: 'Çalışma alanı eklenirken sunucu hatası oluştu.',
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // PUT endpoint - Çalışma alanı güncelleme
+  app.put(
+    "/api/secure/updateWorkArea/:id",
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(20),
+    authorizeEndpoint(['data:write']),
+    async (req: ApiRequest, res) => {
+      try {
+        const workAreaId = parseInt(req.params.id);
+        
+        if (isNaN(workAreaId)) {
+          return res.status(400).json({
+            success: false,
+            error: 'INVALID_ID',
+            message: 'Geçersiz çalışma alanı ID.',
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // API için partial update schema
+        const apiUpdateWorkAreaSchema = z.object({
+          cityId: z.number().optional(),
+          name: z.string().optional(),
+          address: z.string().optional(),
+          managerId: z.number().optional(),
+          startDate: z.string().optional(),
+          endDate: z.string().optional(),
+          isActive: z.boolean().optional()
+        });
+        
+        const validatedData = apiUpdateWorkAreaSchema.parse(req.body);
+
+        // Çalışma alanının var olup olmadığını kontrol et
+        const existingWorkArea = await db.select({
+          id: workAreas.id,
+          name: workAreas.name,
+          cityId: workAreas.cityId
+        }).from(workAreas)
+          .where(eq(workAreas.id, workAreaId))
+          .limit(1);
+
+        if (existingWorkArea.length === 0) {
+          return res.status(404).json({
+            success: false,
+            error: 'WORK_AREA_NOT_FOUND',
+            message: 'Güncellenecek çalışma alanı bulunamadı.',
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // İsim ve şehir değiştiriliyorsa mükerrer kontrol yap
+        if (validatedData.name || validatedData.cityId) {
+          const newName = validatedData.name || existingWorkArea[0].name;
+          const newCityId = validatedData.cityId || existingWorkArea[0].cityId;
+          
+          const duplicateCheck = await db.select({
+            id: workAreas.id,
+            name: workAreas.name
+          }).from(workAreas)
+            .where(and(
+              eq(workAreas.name, newName),
+              eq(workAreas.cityId, newCityId),
+              not(eq(workAreas.id, workAreaId))
+            ))
+            .limit(1);
+
+          if (duplicateCheck.length > 0) {
+            return res.status(409).json({
+              success: false,
+              error: "DUPLICATE_WORK_AREA",
+              message: `Bu şehirde '${newName}' isimli başka bir çalışma alanı zaten mevcut.`,
+              existingWorkArea: duplicateCheck[0],
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+
+        // Çalışma alanını güncelle
+        const [updatedWorkArea] = await db.update(workAreas)
+          .set(validatedData)
+          .where(eq(workAreas.id, workAreaId))
+          .returning({
+            id: workAreas.id,
+            cityId: workAreas.cityId,
+            name: workAreas.name,
+            address: workAreas.address,
+            managerId: workAreas.managerId,
+            startDate: workAreas.startDate,
+            endDate: workAreas.endDate,
+            isActive: workAreas.isActive
+          });
+
+        res.json({
+          success: true,
+          message: "Çalışma alanı başarıyla güncellendi.",
+          data: updatedWorkArea,
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error) {
+        console.error("Çalışma alanı güncelleme hatası:", error);
+        
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            success: false,
+            error: "VALIDATION_ERROR",
+            message: "Geçersiz veri formatı.",
+            details: error.errors,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        res.status(500).json({
+          success: false,
+          error: "SERVER_ERROR",
+          message: "Çalışma alanı güncellenirken sunucu hatası oluştu.",
           timestamp: new Date().toISOString()
         });
       }

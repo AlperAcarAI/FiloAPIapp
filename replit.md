@@ -144,7 +144,9 @@ Kapsamlı API güvenlik sistemi başarıyla kuruldu ve test edildi:
 - `POST /api/secure/addPenaltyType` - Ceza türü ekleme API
 - `PUT /api/secure/updatePenaltyType/{id}` - Ceza türü güncelleme API
 - `POST /api/secure/addMaintenanceType` - Bakım türü ekleme API ✅ 
-- `POST /api/secure/addPersonnel` - Personel ekleme API ✅ YENİ
+- `POST /api/secure/addPersonnel` - Personel ekleme API ✅
+- `POST /api/secure/addWorkArea` - Çalışma alanı ekleme API ✅ YENİ
+- `PUT /api/secure/updateWorkArea/{id}` - Çalışma alanı güncelleme API ✅ YENİ
 - Tüm endpoint'ler izin kontrolü ve duplicate kontrol yapıyor ✅
 
 **Yönetim Sistemi:**

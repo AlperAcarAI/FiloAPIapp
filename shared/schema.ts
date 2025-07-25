@@ -605,6 +605,12 @@ export const insertPersonnelSchema = createInsertSchema(personnel).omit({
   id: true,
 });
 
+export const insertWorkAreaSchema = createInsertSchema(workAreas).omit({
+  id: true,
+});
+
+export const updateWorkAreaSchema = insertWorkAreaSchema.partial();
+
 // Types
 export type Asset = typeof assets.$inferSelect;
 export type InsertAsset = z.infer<typeof insertAssetSchema>;
@@ -630,6 +636,10 @@ export type InsertCarModel = z.infer<typeof insertCarModelSchema>;
 
 export type Personnel = typeof personnel.$inferSelect;
 export type InsertPersonnel = z.infer<typeof insertPersonnelSchema>;
+
+export type WorkArea = typeof workAreas.$inferSelect;
+export type InsertWorkArea = z.infer<typeof insertWorkAreaSchema>;
+export type UpdateWorkArea = z.infer<typeof updateWorkAreaSchema>;
 
 export type OwnershipType = typeof ownershipTypes.$inferSelect;
 export type PolicyType = typeof policyTypes.$inferSelect;

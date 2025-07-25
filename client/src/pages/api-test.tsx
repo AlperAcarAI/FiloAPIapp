@@ -118,6 +118,24 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     method: "POST",
     category: "Veri İşlemleri",
     dataCount: "Yeni personel"
+  },
+  {
+    id: "addWorkArea",
+    name: "Çalışma Alanı Ekleme API",
+    description: "Yeni çalışma alanı ekler. Aynı şehirde aynı isimde alan kontrolü yapar",
+    endpoint: "/api/secure/addWorkArea",
+    method: "POST",
+    category: "Veri İşlemleri",
+    dataCount: "Yeni çalışma alanı"
+  },
+  {
+    id: "updateWorkArea",
+    name: "Çalışma Alanı Güncelleme API",
+    description: "Mevcut çalışma alanı bilgilerini günceller",
+    endpoint: "/api/secure/updateWorkArea/1",
+    method: "PUT",
+    category: "Veri İşlemleri",
+    dataCount: "Güncelleme"
   }
 ];
 
@@ -165,6 +183,22 @@ export default function ApiTest() {
           phoneNo: "05551234567",
           status: "aktif",
           isActive: true
+        }, null, 2);
+      case 'addWorkArea':
+        return JSON.stringify({
+          cityId: 1,
+          name: "Merkez Ofis",
+          address: "Atatürk Caddesi No:123",
+          managerId: 1,
+          startDate: "2025-01-01",
+          endDate: "2025-12-31",
+          isActive: true
+        }, null, 2);
+      case 'updateWorkArea':
+        return JSON.stringify({
+          name: "Güncellenen Çalışma Alanı",
+          address: "Yeni Adres",
+          isActive: false
         }, null, 2);
       default:
         return "{}";
