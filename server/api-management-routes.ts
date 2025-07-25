@@ -26,9 +26,11 @@ import {
   insertApiEndpointSchema,
   insertRoleSchema,
   insertPermissionSchema,
-  insertPolicyTypeSchema
+  insertPolicyTypeSchema,
+  insertPenaltyTypeSchema,
+  updatePenaltyTypeSchema
 } from "@shared/schema";
-import { eq, and, desc, sql, count, avg, gte } from "drizzle-orm";
+import { eq, and, desc, sql, count, avg, gte, not } from "drizzle-orm";
 import { 
   authenticateApiKey,
   authenticateApiToken,
@@ -291,6 +293,191 @@ export function registerApiManagementRoutes(app: Express) {
           }
         }
       },
+      '/api/secure/addPolicyType': {
+        post: {
+          summary: 'Yeni Poliçe Tipi Ekle',
+          description: 'Sisteme yeni bir poliçe tipi ekler. Aynı isimde bir kayıt varsa hata döndürür.',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['name'],
+                  properties: {
+                    name: { type: 'string', example: 'Yeni Poliçe Tipi' },
+                    isActive: { type: 'boolean', example: true, default: true }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '201': {
+              description: 'Poliçe tipi başarıyla eklendi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Poliçe tipi başarıyla eklendi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer', example: 8 },
+                          name: { type: 'string', example: 'Yeni Poliçe Tipi' },
+                          isActive: { type: 'boolean', example: true }
+                        }
+                      },
+                      timestamp: { type: 'string', example: '2025-01-25T12:00:00.000Z' }
+                    }
+                  }
+                }
+              }
+            },
+            '400': { description: 'Geçersiz veri formatı' },
+            '401': { description: 'Geçersiz API anahtarı' },
+            '409': { description: 'Aynı isimde poliçe tipi zaten mevcut' },
+            '429': { description: 'Rate limit aşıldı' }
+          }
+        }
+      },
+      '/api/secure/addPenaltyType': {
+        post: {
+          summary: 'Yeni Ceza Türü Ekle',
+          description: 'Sisteme yeni bir trafik cezası türü ekler. Detaylı ceza bilgileri ile birlikte.',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['name', 'penaltyScore', 'amountCents', 'discountedAmountCents'],
+                  properties: {
+                    name: { type: 'string', example: 'Test Ceza Türü' },
+                    description: { type: 'string', example: 'Test amaçlı oluşturulan ceza türü' },
+                    penaltyScore: { type: 'integer', example: 10 },
+                    amountCents: { type: 'integer', example: 50000 },
+                    discountedAmountCents: { type: 'integer', example: 37500 },
+                    isActive: { type: 'boolean', example: true, default: true },
+                    lastDate: { type: 'string', format: 'date', example: '2025-12-31' }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '201': {
+              description: 'Ceza türü başarıyla eklendi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Ceza türü başarıyla eklendi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer', example: 302 },
+                          name: { type: 'string', example: 'Test Ceza Türü' },
+                          description: { type: 'string', example: 'Test amaçlı oluşturulan ceza türü' },
+                          penaltyScore: { type: 'integer', example: 10 },
+                          amountCents: { type: 'integer', example: 50000 },
+                          discountedAmountCents: { type: 'integer', example: 37500 },
+                          isActive: { type: 'boolean', example: true },
+                          lastDate: { type: 'string', format: 'date', example: '2025-12-31' }
+                        }
+                      },
+                      timestamp: { type: 'string', example: '2025-01-25T12:00:00.000Z' }
+                    }
+                  }
+                }
+              }
+            },
+            '400': { description: 'Geçersiz veri formatı' },
+            '401': { description: 'Geçersiz API anahtarı' },
+            '409': { description: 'Aynı isimde ceza türü zaten mevcut' },
+            '429': { description: 'Rate limit aşıldı' }
+          }
+        }
+      },
+      '/api/secure/updatePenaltyType/{id}': {
+        put: {
+          summary: 'Ceza Türü Güncelle',
+          description: 'Mevcut bir trafik cezası türünü günceller. Sadece gönderilen alanlar güncellenir.',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: 'id',
+              in: 'path',
+              required: true,
+              description: 'Güncellenecek ceza türünün ID\'si',
+              schema: { type: 'integer', example: 1 }
+            }
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string', example: 'Güncellenmiş Ceza Türü' },
+                    description: { type: 'string', example: 'Güncelleme testi' },
+                    penaltyScore: { type: 'integer', example: 15 },
+                    amountCents: { type: 'integer', example: 75000 },
+                    discountedAmountCents: { type: 'integer', example: 56250 },
+                    isActive: { type: 'boolean', example: true },
+                    lastDate: { type: 'string', format: 'date', example: '2025-12-31' }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '200': {
+              description: 'Ceza türü başarıyla güncellendi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Ceza türü başarıyla güncellendi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer', example: 1 },
+                          name: { type: 'string', example: 'Güncellenmiş Ceza Türü' },
+                          description: { type: 'string', example: 'Güncelleme testi' },
+                          penaltyScore: { type: 'integer', example: 15 },
+                          amountCents: { type: 'integer', example: 75000 },
+                          discountedAmountCents: { type: 'integer', example: 56250 },
+                          isActive: { type: 'boolean', example: true },
+                          lastDate: { type: 'string', format: 'date', example: '2025-12-31' }
+                        }
+                      },
+                      timestamp: { type: 'string', example: '2025-01-25T12:00:00.000Z' }
+                    }
+                  }
+                }
+              }
+            },
+            '400': { description: 'Geçersiz veri formatı veya ID' },
+            '401': { description: 'Geçersiz API anahtarı' },
+            '404': { description: 'Ceza türü bulunamadı' },
+            '409': { description: 'Aynı isimde başka bir ceza türü zaten mevcut' },
+            '429': { description: 'Rate limit aşıldı' }
+          }
+        }
+      },
       '/api/secure/getMaintenanceTypes': {
         get: {
           summary: 'Bakım Türleri Listesi',
@@ -328,104 +515,6 @@ export function registerApiManagementRoutes(app: Express) {
             '429': { description: 'Rate limit aşıldı' }
           }
         }
-      },
-      '/api/secure/addPolicyType': {
-        post: {
-          summary: 'Yeni Poliçe Tipi Ekle',
-          description: 'Yeni bir poliçe tipi ekler. Aynı isimde poliçe tipi varsa uyarı döndürür.',
-          tags: ['Referans Veriler'],
-          security: [{ ApiKeyAuth: [] }],
-          requestBody: {
-            required: true,
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  required: ['name'],
-                  properties: {
-                    name: { 
-                      type: 'string', 
-                      maxLength: 50,
-                      example: 'Kasko Plus Sigortası',
-                      description: 'Poliçe tipi adı (maksimum 50 karakter)'
-                    },
-                    isActive: { 
-                      type: 'boolean', 
-                      default: true,
-                      example: true,
-                      description: 'Poliçe tipinin aktif olup olmadığı'
-                    }
-                  }
-                }
-              }
-            }
-          },
-          responses: {
-            '201': {
-              description: 'Poliçe tipi başarıyla eklendi',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      success: { type: 'boolean', example: true },
-                      message: { type: 'string', example: 'Poliçe tipi başarıyla eklendi.' },
-                      data: {
-                        type: 'object',
-                        properties: {
-                          id: { type: 'integer', example: 8 },
-                          name: { type: 'string', example: 'Kasko Plus Sigortası' },
-                          isActive: { type: 'boolean', example: true }
-                        }
-                      },
-                      timestamp: { type: 'string', example: '2025-01-25T10:30:00.000Z' }
-                    }
-                  }
-                }
-              }
-            },
-            '400': {
-              description: 'Geçersiz veri formatı',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      success: { type: 'boolean', example: false },
-                      error: { type: 'string', example: 'VALIDATION_ERROR' },
-                      message: { type: 'string', example: 'Geçersiz veri formatı.' },
-                      details: { type: 'array', items: { type: 'object' } }
-                    }
-                  }
-                }
-              }
-            },
-            '409': {
-              description: 'Aynı isimde poliçe tipi zaten mevcut',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      success: { type: 'boolean', example: false },
-                      error: { type: 'string', example: 'DUPLICATE_POLICY_TYPE' },
-                      message: { type: 'string', example: "'Kasko Plus Sigortası' isimli poliçe tipi zaten mevcut." },
-                      existingPolicyType: {
-                        type: 'object',
-                        properties: {
-                          id: { type: 'integer', example: 3 },
-                          name: { type: 'string', example: 'Kasko Plus Sigortası' }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            '401': { description: 'Geçersiz API anahtarı' },
-            '429': { description: 'Rate limit aşıldı' }
-          }
-        }
       }
     },
     components: {
@@ -442,6 +531,10 @@ export function registerApiManagementRoutes(app: Express) {
       {
         name: 'Referans Veriler',
         description: 'Sigorta ve filo yönetimi için temel referans veri API\'leri'
+      },
+      {
+        name: 'Veri İşlemleri',
+        description: 'Veri ekleme, güncelleme ve silme işlemleri'
       }
     ]
   };
@@ -1150,6 +1243,207 @@ export function registerApiManagementRoutes(app: Express) {
           success: false,
           error: "POLICY_TYPE_CREATE_ERROR",
           message: "Poliçe tipi eklenirken bir hata oluştu.",
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // Ceza Türü Ekleme API - Yazma izni gerekir
+  app.post(
+    "/api/secure/addPenaltyType", 
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(50),
+    authorizeEndpoint(['data:write']),
+    async (req: ApiRequest, res) => {
+      try {
+        // Request body'yi validate et
+        const validatedData = insertPenaltyTypeSchema.parse(req.body);
+        
+        // Aynı isimle ceza türü var mı kontrol et
+        const existingPenaltyType = await db.select({
+          id: penaltyTypes.id,
+          name: penaltyTypes.name
+        }).from(penaltyTypes)
+          .where(eq(penaltyTypes.name, validatedData.name))
+          .limit(1);
+        
+        if (existingPenaltyType.length > 0) {
+          return res.status(409).json({
+            success: false,
+            error: "DUPLICATE_PENALTY_TYPE",
+            message: `'${validatedData.name}' isimli ceza türü zaten mevcut.`,
+            existingPenaltyType: existingPenaltyType[0],
+            clientInfo: {
+              id: req.apiClient?.id,
+              name: req.apiClient?.name,
+              companyId: req.apiClient?.companyId
+            },
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        // Yeni ceza türünü ekle
+        const [newPenaltyType] = await db.insert(penaltyTypes).values({
+          name: validatedData.name,
+          description: validatedData.description,
+          penaltyScore: validatedData.penaltyScore,
+          amountCents: validatedData.amountCents,
+          discountedAmountCents: validatedData.discountedAmountCents,
+          isActive: validatedData.isActive ?? true,
+          lastDate: validatedData.lastDate
+        }).returning({
+          id: penaltyTypes.id,
+          name: penaltyTypes.name,
+          description: penaltyTypes.description,
+          penaltyScore: penaltyTypes.penaltyScore,
+          amountCents: penaltyTypes.amountCents,
+          discountedAmountCents: penaltyTypes.discountedAmountCents,
+          isActive: penaltyTypes.isActive,
+          lastDate: penaltyTypes.lastDate
+        });
+        
+        res.status(201).json({
+          success: true,
+          message: "Ceza türü başarıyla eklendi.",
+          data: newPenaltyType,
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+        
+      } catch (error) {
+        console.error("Ceza türü ekleme hatası:", error);
+        
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            success: false,
+            error: "VALIDATION_ERROR",
+            message: "Geçersiz veri formatı.",
+            details: error.errors,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        res.status(500).json({
+          success: false,
+          error: "SERVER_ERROR",
+          message: "Ceza türü eklenirken sunucu hatası oluştu.",
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // Ceza Türü Güncelleme API - Yazma izni gerekir
+  app.put(
+    "/api/secure/updatePenaltyType/:id", 
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(50),
+    authorizeEndpoint(['data:write']),
+    async (req: ApiRequest, res) => {
+      try {
+        const penaltyId = parseInt(req.params.id);
+        
+        if (isNaN(penaltyId)) {
+          return res.status(400).json({
+            success: false,
+            error: "INVALID_ID",
+            message: "Geçersiz ceza türü ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // Request body'yi validate et
+        const validatedData = updatePenaltyTypeSchema.parse(req.body);
+        
+        // Ceza türünün var olup olmadığını kontrol et
+        const existingPenalty = await db.select()
+          .from(penaltyTypes)
+          .where(eq(penaltyTypes.id, penaltyId))
+          .limit(1);
+
+        if (existingPenalty.length === 0) {
+          return res.status(404).json({
+            success: false,
+            error: "PENALTY_TYPE_NOT_FOUND",
+            message: "Güncellenecek ceza türü bulunamadı",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // İsim değiştiriliyorsa mükerrer kontrol yap
+        if (validatedData.name) {
+          const duplicateCheck = await db.select({
+            id: penaltyTypes.id,
+            name: penaltyTypes.name
+          }).from(penaltyTypes)
+            .where(and(
+              eq(penaltyTypes.name, validatedData.name),
+              not(eq(penaltyTypes.id, penaltyId))
+            ))
+            .limit(1);
+
+          if (duplicateCheck.length > 0) {
+            return res.status(409).json({
+              success: false,
+              error: "DUPLICATE_PENALTY_TYPE",
+              message: `'${validatedData.name}' isimli başka bir ceza türü zaten mevcut.`,
+              existingPenaltyType: duplicateCheck[0],
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+
+        // Ceza türünü güncelle
+        const [updatedPenaltyType] = await db.update(penaltyTypes)
+          .set(validatedData)
+          .where(eq(penaltyTypes.id, penaltyId))
+          .returning({
+            id: penaltyTypes.id,
+            name: penaltyTypes.name,
+            description: penaltyTypes.description,
+            penaltyScore: penaltyTypes.penaltyScore,
+            amountCents: penaltyTypes.amountCents,
+            discountedAmountCents: penaltyTypes.discountedAmountCents,
+            isActive: penaltyTypes.isActive,
+            lastDate: penaltyTypes.lastDate
+          });
+
+        res.json({
+          success: true,
+          message: "Ceza türü başarıyla güncellendi.",
+          data: updatedPenaltyType,
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error) {
+        console.error("Ceza türü güncelleme hatası:", error);
+        
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            success: false,
+            error: "VALIDATION_ERROR",
+            message: "Geçersiz veri formatı.",
+            details: error.errors,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        res.status(500).json({
+          success: false,
+          error: "SERVER_ERROR",
+          message: "Ceza türü güncellenirken sunucu hatası oluştu.",
           timestamp: new Date().toISOString()
         });
       }

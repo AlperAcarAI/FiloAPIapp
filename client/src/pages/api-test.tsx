@@ -82,6 +82,24 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     method: "POST",
     category: "Veri İşlemleri",
     dataCount: "Yeni kayıt"
+  },
+  {
+    id: "addPenaltyType",
+    name: "Ceza Türü Ekleme API",
+    description: "Yeni bir trafik cezası türü ekler. Detaylı ceza bilgileri ile",
+    endpoint: "/api/secure/addPenaltyType",
+    method: "POST",
+    category: "Veri İşlemleri",
+    dataCount: "Yeni ceza türü"
+  },
+  {
+    id: "updatePenaltyType",
+    name: "Ceza Türü Güncelleme API",
+    description: "Mevcut trafik cezası türünü günceller. ID ile belirlenen kaydı düzenler",
+    endpoint: "/api/secure/updatePenaltyType/1",
+    method: "PUT",
+    category: "Veri İşlemleri", 
+    dataCount: "Güncelleme"
   }
 ];
 
@@ -89,6 +107,36 @@ export default function ApiTest() {
   const [selectedApi, setSelectedApi] = useState<ApiEndpoint | null>(null);
   const [apiKey, setApiKey] = useState("ak_demo2025key");
   const [requestBody, setRequestBody] = useState("{\n  \"name\": \"Yeni Poliçe Tipi\",\n  \"isActive\": true\n}");
+
+  // API'ye göre default request body'yi ayarla
+  const getDefaultRequestBody = (apiId: string) => {
+    switch (apiId) {
+      case 'addPolicyType':
+        return JSON.stringify({
+          name: "Yeni Poliçe Tipi",
+          isActive: true
+        }, null, 2);
+      case 'addPenaltyType':
+        return JSON.stringify({
+          name: "Test Ceza Türü",
+          description: "Test amaçlı oluşturulan ceza türü",
+          penaltyScore: 10,
+          amountCents: 50000,
+          discountedAmountCents: 37500,
+          isActive: true
+        }, null, 2);
+      case 'updatePenaltyType':
+        return JSON.stringify({
+          name: "Güncellenmiş Ceza Türü",
+          description: "Güncelleme testi",
+          penaltyScore: 15,
+          amountCents: 75000,
+          discountedAmountCents: 56250
+        }, null, 2);
+      default:
+        return "{}";
+    }
+  };
   const [response, setResponse] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -117,8 +165,8 @@ export default function ApiTest() {
         }
       };
 
-      // POST metodunda request body ekle
-      if (endpoint.method === 'POST' && requestBody.trim()) {
+      // POST/PUT metodunda request body ekle
+      if ((endpoint.method === 'POST' || endpoint.method === 'PUT') && requestBody.trim()) {
         try {
           JSON.parse(requestBody); // JSON validasyonu
           fetchOptions.body = requestBody;
@@ -246,7 +294,15 @@ export default function ApiTest() {
                           ? "border-blue-300 bg-blue-50"
                           : "border-slate-200 hover:bg-slate-50"
                       }`}
-                      onClick={() => setSelectedApi(endpoint)}
+                      onClick={() => {
+                        setSelectedApi(endpoint);
+                        setResponse(null);
+                        setError(null);
+                        // API seçildiğinde uygun request body'yi ayarla
+                        if (endpoint.method === 'POST' || endpoint.method === 'PUT') {
+                          setRequestBody(getDefaultRequestBody(endpoint.id));
+                        }
+                      }}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -338,8 +394,8 @@ export default function ApiTest() {
                         />
                       </div>
 
-                      {/* POST Request Body */}
-                      {selectedApi?.method === 'POST' && (
+                      {/* POST/PUT Request Body */}
+                      {(selectedApi?.method === 'POST' || selectedApi?.method === 'PUT') && (
                         <div>
                           <label className="block text-sm font-medium text-slate-700 mb-2">
                             Request Body (JSON)
@@ -347,12 +403,12 @@ export default function ApiTest() {
                           <Textarea
                             value={requestBody}
                             onChange={(e) => setRequestBody(e.target.value)}
-                            placeholder='{"name": "Yeni Poliçe Tipi", "isActive": true}'
+                            placeholder='{"name": "Yeni Veri", "isActive": true}'
                             className="min-h-[120px] font-mono text-sm"
-                            rows={6}
+                            rows={8}
                           />
                           <p className="text-xs text-slate-500 mt-1">
-                            Geçerli JSON formatında veri giriniz
+                            Geçerli JSON formatında veri giriniz. {selectedApi?.method === 'PUT' && 'URL\'deki ID parametresini endpoint\'te değiştirebilirsiniz.'}
                           </p>
                         </div>
                       )}

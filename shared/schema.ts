@@ -131,6 +131,17 @@ export const penaltyTypes = pgTable("penalty_types", {
   lastDate: date("last_date"),
 });
 
+// Penalty Types Zod schemas
+export const insertPenaltyTypeSchema = createInsertSchema(penaltyTypes).omit({
+  id: true,
+});
+export const updatePenaltyTypeSchema = createInsertSchema(penaltyTypes).omit({
+  id: true,
+}).partial();
+export type InsertPenaltyType = z.infer<typeof insertPenaltyTypeSchema>;
+export type UpdatePenaltyType = z.infer<typeof updatePenaltyTypeSchema>;
+export type PenaltyType = typeof penaltyTypes.$inferSelect;
+
 // ========================
 // Auth & Authorization Tables
 // ========================
