@@ -676,28 +676,3 @@ export type InsertRole = z.infer<typeof insertRoleSchema>;
 export type Permission = typeof permissions.$inferSelect;
 export type InsertPermission = z.infer<typeof insertPermissionSchema>;
 
-// API Management Schema for frontend
-export const apis = pgTable("apis", {
-  api_id: text("api_id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  endpoint: varchar("endpoint", { length: 255 }).notNull(),
-  method: varchar("method", { length: 10 }).default("GET"),
-  status: varchar("status", { length: 20 }).default("aktif"),
-  response_time: integer("response_time"),
-  last_checked: timestamp("last_checked"),
-  created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  updated_at: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const insertApiSchema = createInsertSchema(apis).omit({
-  api_id: true,
-  created_at: true,
-  updated_at: true,
-});
-
-export const updateApiSchema = insertApiSchema.partial();
-
-export type Api = typeof apis.$inferSelect;
-export type InsertApi = z.infer<typeof insertApiSchema>;
-export type UpdateApi = z.infer<typeof updateApiSchema>;
