@@ -14,7 +14,8 @@ import {
   users,
   companies,
   cities,
-  penaltyTypes
+  penaltyTypes,
+  countries
 } from "@shared/schema";
 import { 
   insertApiClientSchema,
@@ -500,6 +501,43 @@ export function registerApiManagementRoutes(app: Express) {
           success: false,
           error: "PENALTY_TYPES_FETCH_ERROR",
           message: "Ceza türleri listesi alınırken bir hata oluştu."
+        });
+      }
+    }
+  );
+
+  // Countries API - Ülke listesi (Okuma izni gerekir)
+  app.get(
+    "/api/secure/getCountries", 
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(100),
+    authorizeEndpoint(['data:read']),
+    async (req: ApiRequest, res) => {
+      try {
+        const countriesList = await db.select({
+          id: countries.id,
+          name: countries.name,
+          phoneCode: countries.phoneCode
+        }).from(countries).orderBy(countries.name);
+        
+        res.json({
+          success: true,
+          data: countriesList,
+          count: countriesList.length,
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error("Countries getirme hatası:", error);
+        res.status(500).json({
+          success: false,
+          error: "COUNTRIES_FETCH_ERROR",
+          message: "Ülke listesi alınırken bir hata oluştu."
         });
       }
     }
