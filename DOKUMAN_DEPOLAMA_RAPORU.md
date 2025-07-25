@@ -27,34 +27,39 @@ asset_documents (
 
 ## 🗂️ Dokuman Depolama Stratejileri
 
-### 1. **Yerel Dosya Sistemi Yaklaşımı**
+### 1. **DigitalOcean Sunucu Dosya Sistemi (Önerilen Yaklaşım)**
 ```
-/documents/
+/var/www/documents/
 ├── assets/
 │   ├── {asset_id}/
 │   │   ├── {doc_type_id}/
 │   │   │   ├── {timestamp}_{filename}
 │   │   │   └── thumbnails/
 │   │   └── metadata.json
-└── temp/
-    └── processing/
+├── temp/
+│   └── processing/
+└── backups/
+    └── {date}/
 ```
 
-**Avantajları:**
-- ✅ Düşük maliyet ve basit yönetim
-- ✅ Hızlı erişim ve yerel kontrol
-- ✅ Replit file system ile entegrasyon
-- ✅ Güvenlik: Sunucu seviyesinde koruma
+**DigitalOcean Avantajları:**
+- ✅ **Maliyet Etkin**: $5-20/ay sunucu + depolama
+- ✅ **Tam Kontrol**: Root erişimi ve özel konfigürasyon
+- ✅ **Hızlı Erişim**: Aynı sunucuda uygulama + dosyalar
+- ✅ **Güvenlik**: UFW firewall + SSH key authentication
+- ✅ **Backup**: DigitalOcean Snapshots + rsync
+- ✅ **Scalable**: Block Storage ile genişletilebilir (1TB-16TB)
 
-**Dezavantajları:**
-- ❌ Sınırlı depolama kapasitesi
-- ❌ Yedekleme karmaşıklığı
-- ❌ CDN desteği yok
-- ❌ Multi-instance problemleri
+**Teknik Implementasyon:**
+- **Sunucu**: Ubuntu 22.04 LTS Droplet
+- **Web Server**: Nginx reverse proxy + Express.js
+- **File System**: `/var/www/documents/` dizini
+- **Permissions**: `www-data` user ile secure access
+- **SSL**: Let's Encrypt ile ücretsiz HTTPS
 
-### 2. **Cloud Storage Yaklaşımı (Önerilen)**
+### 2. **DigitalOcean Spaces (Object Storage) - Alternatif**
 
-#### **AWS S3 / Google Cloud Storage**
+#### **DO Spaces + CDN Entegrasyonu**
 ```
 Bucket Yapısı:
 company-documents/
@@ -67,17 +72,17 @@ company-documents/
 └── temp/
 ```
 
-**Avantajları:**
-- ✅ Sınırsız depolama kapasitesi
-- ✅ Otomatik yedekleme ve versiyonlama
-- ✅ CDN entegrasyonu (hızlı erişim)
-- ✅ Güvenlik: Encryption at rest/transit
-- ✅ Gelişmiş erişim kontrolleri (IAM)
+**DigitalOcean Spaces Avantajları:**
+- ✅ **S3 Uyumlu API**: Mevcut AWS SDK'ları kullanılabilir
+- ✅ **CDN**: Ücretsiz dahili CDN (global erişim)
+- ✅ **Maliyet**: $5/ay 250GB + transfer
+- ✅ **Entegrasyon**: Aynı platform (Droplet + Spaces)
+- ✅ **Backup**: Otomatik replication
 
 **Teknik Implementasyon:**
-- doc_link: `https://cdn.example.com/documents/asset-123/insurance/dokuman.pdf`
+- doc_link: `https://company-docs.fra1.digitaloceanspaces.com/asset-123/dokuman.pdf`
+- CDN URL: `https://company-docs.fra1.cdn.digitaloceanspaces.com/`
 - Pre-signed URLs ile güvenli erişim
-- File upload: Direct browser → S3 (API backend üzerinden)
 
 #### **Replit Storage/Database BLOB**
 ```sql
@@ -97,11 +102,17 @@ mime_type VARCHAR(100);
 - ❌ Performance sorunları (büyük dosyalar)
 - ❌ Memory kullanımı
 
-### 3. **Hibrit Yaklaşım (En Optimal)**
+### 3. **DigitalOcean Hibrit Yaklaşım (En Optimal)**
 
-**Küçük Dosyalar (< 5MB)**: Database BLOB
-**Orta Dosyalar (5-50MB)**: Yerel file system
-**Büyük Dosyalar (> 50MB)**: Cloud Storage
+**Küçük Dosyalar (< 5MB)**: Droplet `/var/www/documents/`
+**Orta Dosyalar (5-50MB)**: Droplet + Block Storage
+**Büyük Dosyalar (> 50MB)**: DigitalOcean Spaces
+**Arşiv Dosyalar**: Spaces Archive (daha ucuz)
+
+**Maliyet Optimizasyonu:**
+- Aktif dosyalar: Droplet SSD (hızlı erişim)
+- Eski dosyalar: Spaces (maliyet etkin)
+- Otomatik lifecycle policy ile transfer
 
 ---
 
@@ -301,36 +312,67 @@ const DocumentViewer = {
 
 ---
 
-## 💰 Maliyet Analizi
+## 💰 DigitalOcean Maliyet Analizi
 
-### **Cloud Storage (Aylık)**
-- AWS S3: ~$0.023/GB + transfer costs
-- Google Cloud: ~$0.020/GB + operations
-- 1000 dokuman (~10GB): $0.20-0.25/ay
+### **Sunucu Maliyetleri (Aylık)**
+- **Basic Droplet**: $5/ay (1vCPU, 1GB RAM, 25GB SSD)
+- **Production Droplet**: $20/ay (2vCPU, 4GB RAM, 80GB SSD)  
+- **Block Storage**: $0.10/GB/ay (ek depolama gerekirse)
+- **Spaces Object Storage**: $5/ay (250GB + CDN)
+
+### **Örnek Senaryo (1000 dokuman, ~10GB)**
+- **Sadece Droplet**: $20/ay (80GB SSD yeterli)
+- **Droplet + Spaces**: $25/ay (hibrit yaklaşım)
+- **Toplam**: $20-25/ay (diğer cloud'lara göre çok uygun)
 
 ### **Development Effort**
-- Temel sistem: 40-60 saat
-- Gelişmiş özellikler: 80-120 saat
-- Testing ve optimization: 20-40 saat
+- Temel dosya upload/download: 20-30 saat
+- Güvenlik ve yetkilendirme: 30-40 saat  
+- Frontend entegrasyonu: 20-30 saat
+- **Toplam**: 70-100 saat
 
-### **Operasyonel**
-- Backup: Otomatik (cloud provider)
-- Monitoring: CloudWatch/Google Monitoring
-- Maintenance: Minimal (managed services)
+### **Operasyonel (DigitalOcean)**
+- **Backup**: Droplet Snapshots ($1/snapshot) + otomatik rsync
+- **Monitoring**: DigitalOcean Monitoring (ücretsiz)
+- **SSL**: Let's Encrypt (ücretsiz)
+- **Maintenance**: Minimal (Ubuntu LTS + unattended-upgrades)
 
 ---
 
-## 🎯 Sonuç ve Öneriler
+## 🎯 DigitalOcean İçin En Optimal Çözüm
 
-**En Optimal Çözüm**: **Cloud Storage + API Gateway Yaklaşımı**
+**Önerilen Yaklaşım**: **DigitalOcean Droplet + Spaces Hibrit Sistemi**
 
-1. **AWS S3/Google Cloud** ana depolama
-2. **PostgreSQL** metadata ve indeksleme  
-3. **JWT + API Key** güvenlik katmanları
-4. **CDN** hızlı global erişim
-5. **Full-text search** gelişmiş arama
-6. **Versioning** dokuman geçmişi
+### **Aşama 1: Temel Sistem (Sadece Droplet)**
+1. **DigitalOcean Droplet** ($20/ay) - ana depolama
+2. **PostgreSQL** (aynı sunucuda) - metadata
+3. **Nginx** - reverse proxy ve static file serving
+4. **JWT + API Key** güvenlik katmanları
+5. **Let's Encrypt** - ücretsiz SSL
 
-Bu yaklaşım **ölçeklenebilir, güvenli ve maliyet-etkin** bir dokuman yönetimi sistemi sağlar.
+### **Aşama 2: Ölçeklendirme (Spaces Ekleme)**
+1. **DigitalOcean Spaces** - büyük dosyalar
+2. **CDN** - global hızlı erişim
+3. **Lifecycle policy** - otomatik arşivleme
+4. **Block Storage** - ek kapasite
 
-**Başlangıç için**: Yerel file system ile prototype, sonra cloud'a migrate stratejisi öneririm.
+### **Teknik Konfigürasyon**
+```bash
+# Droplet Kurulumu
+- Ubuntu 22.04 LTS
+- Docker + Docker Compose (container'lı deployment)
+- Nginx (reverse proxy + SSL termination)
+- PostgreSQL (containerized)
+- Node.js uygulaması (containerized)
+```
+
+### **Avantajları**
+- ✅ **Tek Platform**: Tüm altyapı DigitalOcean'da
+- ✅ **Maliyet Etkin**: $20-25/ay başlangıç
+- ✅ **Basit Yönetim**: Tek dashboard
+- ✅ **Türkiye'ye Yakın**: Frankfurt datacenter (düşük latency)
+- ✅ **Ölçeklenebilir**: Kolayca upgrade edilebilir
+
+Bu yaklaşım **maliyet-etkin, yönetilebilir ve performanslı** bir dokuman sistemi sağlar.
+
+**Başlangıç Stratejisi**: Droplet'te prototype, sonra Spaces entegrasyonu.
