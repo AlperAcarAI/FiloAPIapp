@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { authenticateToken } from "./auth";
-import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset } from "@shared/schema";
+import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset, cities, type City } from "@shared/schema";
 import { z } from "zod";
 import { db } from "./db";
 import { assets } from "@shared/schema";
@@ -195,6 +195,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Kayıt hatası:", error);
       res.status(500).json({ error: "Kullanıcı oluşturulamadı" });
+    }
+  });
+
+  // Cities API - getCities endpoint
+  app.get("/api/getCities", async (req, res) => {
+    try {
+      const citiesList = await db.select({
+        id: cities.id,
+        name: cities.name
+      }).from(cities).orderBy(cities.name);
+      
+      res.json({
+        success: true,
+        data: citiesList,
+        count: citiesList.length
+      });
+    } catch (error) {
+      console.error("Cities getirme hatası:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Cities getirilemedi",
+        message: "Şehir listesi alınırken bir hata oluştu" 
+      });
     }
   });
 

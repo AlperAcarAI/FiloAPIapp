@@ -12,7 +12,8 @@ import {
   permissions,
   roles,
   users,
-  companies
+  companies,
+  cities
 } from "@shared/schema";
 import { 
   insertApiClientSchema,
@@ -422,6 +423,42 @@ export function registerApiManagementRoutes(app: Express) {
   // ========================
   // KORUNAN API ENDPOINT'LERİ (Örnek)
   // ========================
+
+  // Cities API - Şehir listesi (Okuma izni gerekir)
+  app.get(
+    "/api/secure/getCities", 
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(100),
+    authorizeEndpoint(['data:read']),
+    async (req: ApiRequest, res) => {
+      try {
+        const citiesList = await db.select({
+          id: cities.id,
+          name: cities.name
+        }).from(cities).orderBy(cities.name);
+        
+        res.json({
+          success: true,
+          data: citiesList,
+          count: citiesList.length,
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error("Cities getirme hatası:", error);
+        res.status(500).json({
+          success: false,
+          error: "CITIES_FETCH_ERROR",
+          message: "Şehir listesi alınırken bir hata oluştu."
+        });
+      }
+    }
+  );
 
   // Veri listeleme (Okuma izni gerekir)
   app.get(

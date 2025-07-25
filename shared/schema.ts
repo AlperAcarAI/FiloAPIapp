@@ -34,6 +34,8 @@ export const cities = pgTable("cities", {
   countryId: integer("country_id").notNull().references(() => countries.id),
 });
 
+
+
 export const companies = pgTable("companies", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 100 }).notNull().unique(),
