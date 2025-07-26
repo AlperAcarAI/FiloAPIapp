@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart, Activity, TrendingUp, Clock, AlertTriangle, Database, RefreshCw } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { Header } from "@/components/Header";
 
 export default function Analytics() {
   const [selectedPeriod, setSelectedPeriod] = useState("30");
@@ -56,8 +57,10 @@ export default function Analytics() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-slate-50">
+      <Header />
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">API Analytics</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
@@ -353,6 +356,7 @@ export default function Analytics() {
           </Card>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 }

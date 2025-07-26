@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Copy, Eye, EyeOff, Key, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Header } from '@/components/Header';
 import { format } from 'date-fns';
 
 interface ApiKey {
@@ -198,8 +199,10 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-slate-50">
+      <Header />
+      <div className="container mx-auto py-8 space-y-6">
+        <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">API Key Yönetimi</h1>
           <p className="text-muted-foreground">API key'lerinizi oluşturun ve yönetin</p>
@@ -363,6 +366,7 @@ export default function Dashboard() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

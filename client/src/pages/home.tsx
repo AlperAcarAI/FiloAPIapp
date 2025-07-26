@@ -9,6 +9,7 @@ import { SearchFilters } from "@/components/search-filters";
 import { StatsCards } from "@/components/stats-cards";
 import { FileCode, Activity, BarChart3, TestTube, Upload, FileText, Key, TrendingUp } from "lucide-react";
 import { Link } from "wouter";
+import { Header } from "@/components/Header";
 
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -25,21 +26,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">
-                API Management Sistemi
-              </h1>
-              <p className="text-slate-600">
-                Güvenli API'leri yönetin ve test edin
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Header />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Search and Filters */}
