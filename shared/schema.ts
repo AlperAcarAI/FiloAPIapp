@@ -40,6 +40,7 @@ export const companies = pgTable("companies", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 100 }).notNull().unique(),
   taxNo: varchar("tax_no", { length: 50 }),
+  taxOffice: varchar("tax_office", { length: 100 }),
   address: varchar("address", { length: 255 }),
   phone: varchar("phone", { length: 50 }),
   cityId: integer("city_id").references(() => cities.id),
@@ -642,6 +643,10 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
+
+// Company update schema
+export const updateCompanySchema = insertCompanySchema.partial();
+export type UpdateCompany = z.infer<typeof updateCompanySchema>;
 
 export type Country = typeof countries.$inferSelect;
 export type InsertCountry = z.infer<typeof insertCountrySchema>;

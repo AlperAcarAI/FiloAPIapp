@@ -132,8 +132,8 @@ Kapsamlı API güvenlik sistemi başarıyla kuruldu ve test edildi:
 
 **Demo API Client:**
 - Client Name: Demo API Client
-- API Key: `ak_demo2025key`
-- İzinler: data:read, data:write, asset:read, asset:write, fleet:read
+- API Key: `ak_test123key`
+- İzinler: data:read, data:write, data:delete, asset:read, asset:write, fleet:read, document:read, document:write, document:delete, company:read, company:write, company:delete
 - Test edildi ve çalışıyor ✅
 
 **Güvenli Endpoint'ler:**
@@ -149,8 +149,13 @@ Kapsamlı API güvenlik sistemi başarıyla kuruldu ve test edildi:
 - `PUT /api/secure/updateWorkArea/{id}` - Çalışma alanı güncelleme API ✅
 - `POST /api/secure/documents/upload` - Dosya yükleme API (Asset/Personnel) ✅
 - `GET /api/secure/documents/asset/{id}` - Asset dokümanları listesi ✅
-- `GET /api/secure/documents/personnel/{id}` - Personnel dokümanları listesi ✅ YENİ
-- Tüm endpoint'ler izin kontrolü ve duplicate kontrol yapıyor ✅
+- `GET /api/secure/documents/personnel/{id}` - Personnel dokümanları listesi ✅
+- `GET /api/secure/companies` - Şirket listesi ve arama ✅
+- `POST /api/secure/companies` - Yeni şirket ekleme ✅
+- `GET /api/secure/companies/{id}` - Şirket detayı ✅
+- `PUT /api/secure/companies/{id}` - Şirket güncelleme ✅
+- `DELETE /api/secure/companies/{id}` - Şirket silme (soft delete) ✅
+- Tüm endpoint'ler izin kontrolü, duplicate kontrol ve audit trail yapıyor ✅
 
 **Yönetim Sistemi:**
 - `GET /api/admin/clients` - Client listesi
