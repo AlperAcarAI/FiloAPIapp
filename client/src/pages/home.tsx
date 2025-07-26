@@ -131,31 +131,7 @@ export default function Home() {
           </CardContent>
         </Card>
 
-        {/* API Listesi - Sadece yönlendirme */}
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-slate-800">
-              API Yönetimi
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-12">
-              <TestTube className="h-16 w-16 text-slate-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-slate-700 mb-2">
-                API Test Sayfasını Kullanın
-              </h3>
-              <p className="text-slate-500 mb-6">
-                6 güvenli API endpoint'i (Şehirler, Ceza Türleri, Ülkeler, vb.) test sayfasında mevcuttur.
-              </p>
-              <Link to="/api-test">
-                <Button className="bg-blue-600 hover:bg-blue-700">
-                  <TestTube className="h-4 w-4 mr-2" />
-                  Test Sayfasına Git
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+        
 
         {/* Quick Actions */}
         <Card className="mt-8 shadow-sm border-slate-200">
