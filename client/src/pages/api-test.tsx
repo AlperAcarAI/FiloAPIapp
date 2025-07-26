@@ -208,6 +208,42 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     method: "GET",
     category: "Dosya İşlemleri",
     dataCount: "Personnel dokümanları"
+  },
+  {
+    id: "getAssetsPersonnelAssignments",
+    name: "Araç-Personel Atamaları Listesi",
+    description: "Araç ve personel arasındaki atama ilişkilerini listeler. Filtreleme destekler.",
+    endpoint: "/api/secure/getAssetsPersonnelAssignments",
+    method: "GET",
+    category: "Asset Yönetimi",
+    dataCount: "Atama kayıtları"
+  },
+  {
+    id: "addAssetsPersonnelAssignment",
+    name: "Araç-Personel Ataması Ekleme",
+    description: "Yeni araç-personel ataması ekler. Tarih çakışması kontrolü yapar.",
+    endpoint: "/api/secure/addAssetsPersonnelAssignment",
+    method: "POST",
+    category: "Veri İşlemleri",
+    dataCount: "Yeni atama"
+  },
+  {
+    id: "updateAssetsPersonnelAssignment",
+    name: "Araç-Personel Ataması Güncelleme",
+    description: "Mevcut atama bilgilerini günceller",
+    endpoint: "/api/secure/updateAssetsPersonnelAssignment/1",
+    method: "PUT",
+    category: "Veri İşlemleri",
+    dataCount: "Güncelleme"
+  },
+  {
+    id: "deleteAssetsPersonnelAssignment",
+    name: "Araç-Personel Ataması Silme",
+    description: "Atama kaydını siler (soft delete)",
+    endpoint: "/api/secure/deleteAssetsPersonnelAssignment/1",
+    method: "DELETE",
+    category: "Veri İşlemleri",
+    dataCount: "Silme"
   }
 ];
 
@@ -282,6 +318,19 @@ export default function ApiTest() {
           name: "Araç Bakım Teknisyeni",
           description: "Araç bakım ve onarım işlemlerinden sorumlu teknik personel",
           isActive: true
+        }, null, 2);
+      case 'addAssetsPersonnelAssignment':
+        return JSON.stringify({
+          assetId: 1,
+          personnelId: 1,
+          startDate: "2025-01-01",
+          endDate: "2025-12-31",
+          isActive: true
+        }, null, 2);
+      case 'updateAssetsPersonnelAssignment':
+        return JSON.stringify({
+          endDate: "2025-06-30",
+          isActive: false
         }, null, 2);
       case 'documentsUpload':
         return `Form Data Parametreleri:

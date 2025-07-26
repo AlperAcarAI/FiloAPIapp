@@ -28,7 +28,8 @@ import {
   carTypes,
   ownershipTypes,
   personnelPositions,
-  personnelWorkAreas
+  personnelWorkAreas,
+  assetsPersonelAssignment
 } from "@shared/schema";
 import { 
   insertApiClientSchema,
@@ -50,7 +51,9 @@ import {
   insertPersonnelPositionSchema,
   updatePersonnelPositionSchema,
   insertPersonnelWorkAreaSchema,
-  updatePersonnelWorkAreaSchema
+  updatePersonnelWorkAreaSchema,
+  insertAssetsPersonelAssignmentSchema,
+  updateAssetsPersonelAssignmentSchema
 } from "@shared/schema";
 import { eq, and, desc, sql, count, avg, gte, not } from "drizzle-orm";
 import { 
@@ -66,6 +69,7 @@ import {
   getApiStats
 } from "./api-security";
 import { authenticateToken } from "./auth";
+import { auditableInsert, auditableUpdate, auditableDelete, captureAuditInfo } from "./audit-middleware";
 import swaggerUi from 'swagger-ui-express';
 
 export function registerApiManagementRoutes(app: Express) {
@@ -4269,6 +4273,274 @@ export function registerApiManagementRoutes(app: Express) {
           success: false,
           error: 'SERVER_ERROR',
           message: 'Personel pozisyonu eklenirken sunucu hatası oluştu.',
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // ========================
+  // ASSETS PERSONNEL ASSIGNMENT CRUD API
+  // ========================
+
+  // GET /api/secure/getAssetsPersonnelAssignments
+  app.get("/api/secure/getAssetsPersonnelAssignments", 
+    authenticateApiKey,
+    authorizeEndpoint(["data:read", "asset:read"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const { assetId, personnelId, active } = req.query;
+
+        const assignments = await db.select({
+          id: assetsPersonelAssignment.id,
+          assetId: assetsPersonelAssignment.assetId,
+          personnelId: assetsPersonelAssignment.personnelId,
+          startDate: assetsPersonelAssignment.startDate,
+          endDate: assetsPersonelAssignment.endDate,
+          isActive: assetsPersonelAssignment.isActive,
+        }).from(assetsPersonelAssignment)
+        .orderBy(desc(assetsPersonelAssignment.id));
+
+
+        
+        await logApiRequest(req, "/api/secure/getAssetsPersonnelAssignments", "GET", 200);
+
+        res.json({
+          success: true,
+          message: "Araç-personel atamaları başarıyla getirildi.",
+          data: {
+            assignments,
+            totalCount: assignments.length
+          },
+          clientInfo: {
+            id: req.apiClient!.id,
+            name: req.apiClient!.name,
+            companyId: req.apiClient!.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("Assets personnel assignments fetch error:", error);
+        await logApiRequest(req, "/api/secure/getAssetsPersonnelAssignments", "GET", 500, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Araç-personel atamaları getirilirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // POST /api/secure/addAssetsPersonnelAssignment
+  app.post("/api/secure/addAssetsPersonnelAssignment",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "asset:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const validatedData = insertAssetsPersonelAssignmentSchema.parse(req.body);
+
+        // Çakışma kontrolü - aynı tarih aralığında aynı personel başka araçta atanmış mı?
+        const existingAssignment = await db.select()
+          .from(assetsPersonelAssignment)
+          .where(
+            and(
+              eq(assetsPersonelAssignment.personnelId, validatedData.personnelId),
+              eq(assetsPersonelAssignment.isActive, true),
+              // Start date çakışma kontrolü
+              sql`${assetsPersonelAssignment.startDate} <= ${validatedData.endDate || new Date('2099-12-31')} AND (${assetsPersonelAssignment.endDate} IS NULL OR ${assetsPersonelAssignment.endDate} >= ${validatedData.startDate})`
+            )
+          );
+
+        if (existingAssignment.length > 0) {
+          return res.status(400).json({
+            success: false,
+            message: "Bu personel belirtilen tarih aralığında başka bir araçta görevli.",
+            error: "Date conflict",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.insert(assetsPersonelAssignment)
+          .values(validatedData)
+          .returning();
+
+        await logApiRequest(req, "/api/secure/addAssetsPersonnelAssignment", "POST", 201);
+
+        res.status(201).json({
+          success: true,
+          message: "Araç-personel ataması başarıyla eklendi.",
+          data: result,
+          clientInfo: {
+            id: req.apiClient!.id,
+            name: req.apiClient!.name,
+            companyId: req.apiClient!.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("Assets personnel assignment add error:", error);
+        await logApiRequest(req, "/api/secure/addAssetsPersonnelAssignment", "POST", 400, error?.message);
+        
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz veri formatı.",
+            error: error.errors,
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        res.status(500).json({
+          success: false,
+          message: "Araç-personel ataması eklenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // PUT /api/secure/updateAssetsPersonnelAssignment/:id
+  app.put("/api/secure/updateAssetsPersonnelAssignment/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "asset:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const validatedData = updateAssetsPersonelAssignmentSchema.parse(req.body);
+
+        // Var olan atamayı kontrol et
+        const existing = await db.select()
+          .from(assetsPersonelAssignment)
+          .where(eq(assetsPersonelAssignment.id, id))
+          .limit(1);
+
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Araç-personel ataması bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(assetsPersonelAssignment)
+          .set(validatedData)
+          .where(eq(assetsPersonelAssignment.id, id))
+          .returning();
+
+        await logApiRequest(req, "/api/secure/updateAssetsPersonnelAssignment", "PUT", 200);
+
+        res.json({
+          success: true,
+          message: "Araç-personel ataması başarıyla güncellendi.",
+          data: result,
+          clientInfo: {
+            id: req.apiClient!.id,
+            name: req.apiClient!.name,
+            companyId: req.apiClient!.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("Assets personnel assignment update error:", error);
+        await logApiRequest(req, "/api/secure/updateAssetsPersonnelAssignment", "PUT", 400, error?.message);
+        
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz veri formatı.",
+            error: error.errors,
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        res.status(500).json({
+          success: false,
+          message: "Araç-personel ataması güncellenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // DELETE /api/secure/deleteAssetsPersonnelAssignment/:id
+  app.delete("/api/secure/deleteAssetsPersonnelAssignment/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:delete", "asset:delete"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // Var olan atamayı kontrol et
+        const existing = await db.select()
+          .from(assetsPersonelAssignment)
+          .where(eq(assetsPersonelAssignment.id, id))
+          .limit(1);
+
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Araç-personel ataması bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // Soft delete (isActive = false)
+        const [result] = await db.update(assetsPersonelAssignment)
+          .set({ isActive: false })
+          .where(eq(assetsPersonelAssignment.id, id))
+          .returning();
+
+        await logApiRequest(req, "/api/secure/deleteAssetsPersonnelAssignment", "DELETE", 200);
+
+        res.json({
+          success: true,
+          message: "Araç-personel ataması başarıyla silindi.",
+          data: result,
+          clientInfo: {
+            id: req.apiClient!.id,
+            name: req.apiClient!.name,
+            companyId: req.apiClient!.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("Assets personnel assignment delete error:", error);
+        await logApiRequest(req, "/api/secure/deleteAssetsPersonnelAssignment", "DELETE", 500, error?.message);
+        
+        res.status(500).json({
+          success: false,
+          message: "Araç-personel ataması silinirken hata oluştu.",
+          error: error?.message,
           timestamp: new Date().toISOString()
         });
       }

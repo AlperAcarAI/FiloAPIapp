@@ -345,6 +345,15 @@ export const personnelWorkAreas = pgTable("personnel_work_areas", {
   isActive: boolean("is_active").notNull().default(true),
 });
 
+export const assetsPersonelAssignment = pgTable("assets_personel_assignment", {
+  id: serial("id").primaryKey(),
+  assetId: integer("asset_id").notNull().references(() => assets.id),
+  personnelId: integer("personnel_id").notNull().references(() => personnel.id),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
 export const assets = pgTable("assets", {
   id: serial("id").primaryKey(),
   modelId: integer("model_id").notNull().references(() => carModels.id),
@@ -646,6 +655,18 @@ export const insertCarModelSchema = createInsertSchema(carModels).omit({
 export const insertPersonnelSchema = createInsertSchema(personnel).omit({
   id: true,
 });
+
+export const insertAssetsPersonelAssignmentSchema = createInsertSchema(assetsPersonelAssignment).omit({
+  id: true,
+});
+
+export const updateAssetsPersonelAssignmentSchema = createInsertSchema(assetsPersonelAssignment).omit({
+  id: true,
+}).partial();
+
+export type InsertAssetsPersonelAssignment = z.infer<typeof insertAssetsPersonelAssignmentSchema>;
+export type UpdateAssetsPersonelAssignment = z.infer<typeof updateAssetsPersonelAssignmentSchema>;
+export type AssetsPersonelAssignment = typeof assetsPersonelAssignment.$inferSelect;
 
 export const insertWorkAreaSchema = createInsertSchema(workAreas).omit({
   id: true,
