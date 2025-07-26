@@ -324,3 +324,28 @@ API kullanım takip ve analiz sistemi başarıyla oluşturuldu:
 - Ana sayfa → "API Analytics" kartı → Analytics Dashboard ✅
 - Direkt URL: `/analytics` ✅
 - İlk test verileri başarıyla kaydedildi ✅
+
+## Finansal Ödeme Sistemi Tasarımı
+
+### ✅ Tip-Tabanlı Yaklaşım Önerildi (26 Ocak 2025)
+Kullanıcı önerisiyle, her ödeme türü için ayrı tablo yerine tip-tabanlı çözüm tasarlandı:
+
+**Avantajlar:**
+- Tek ana tablo (fin_current_accounts) ✅
+- JSON metadata ile esnek özel alanlar ✅
+- payment_types tablosu ile tip yönetimi ✅
+- Hasar/Poliçe/Bakım ödemeleri tek yerde ✅
+- Performans optimizasyonu (indeksler) ✅
+
+**Tasarım Özellikleri:**
+- JSONB metadata sütunu ile özel alanlar
+- payment_type enum değerleri ('hasar', 'police', 'bakim', 'genel')
+- JSON Schema validation desteği
+- Tip-bazlı onay süreçleri
+- Metadata örnekleri ve API endpoint tasarımı
+
+**Mevcut Durum:**
+- FIN_CURRENT_ACCOUNTS tablosu mevcut (boş)
+- Payment_methods tablosu hazır (7 kayıt)
+- Companies tablosu hazır (2 kayıt)
+- Tasarım dokümanı hazırlandı (ODEME_TIP_TABANLI_TASARIM.md)
