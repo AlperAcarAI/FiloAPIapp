@@ -2625,6 +2625,168 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
   }));
   
   // ========================
+  // KULLANICI API KEY YÖNETİMİ (JWT ile korunuyor)
+  // ========================
+
+  // Kullanıcının kendi API key'lerini listele
+  app.get("/api/user/api-keys", authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.user.userId;
+      
+      const userApiKeys = await db
+        .select({
+          id: apiKeys.id,
+          name: apiClients.name,
+          key: apiKeys.key,
+          permissions: apiKeys.permissions,
+          isActive: apiKeys.isActive,
+          createdAt: apiKeys.createdAt,
+          lastUsedAt: apiKeys.lastUsedAt,
+          usageCount: sql<number>`0`.as('usageCount')
+        })
+        .from(apiKeys)
+        .leftJoin(apiClients, eq(apiKeys.clientId, apiClients.id))
+        .where(eq(apiClients.userId, userId));
+
+      res.json(userApiKeys);
+    } catch (error) {
+      console.error("Error fetching user API keys:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "API key'ler alınamadı",
+        error: error instanceof Error ? error.message : 'Bilinmeyen hata'
+      });
+    }
+  });
+
+  // Yeni API key oluştur
+  app.post("/api/user/api-keys", authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.user.userId;
+      const { name, permissions } = req.body;
+
+      if (!name || !Array.isArray(permissions) || permissions.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "API key ismi ve izinler gereklidir"
+        });
+      }
+
+      // İzinleri doğrula
+      const validPermissions = [
+        'data:read', 'data:write', 'data:update', 'data:delete',
+        'asset:read', 'asset:write', 'asset:update', 'asset:delete',
+        'personnel:read', 'personnel:write', 'personnel:update', 'personnel:delete',
+        'company:read', 'company:write', 'company:update', 'company:delete',
+        'document:read', 'document:write', 'document:delete'
+      ];
+
+      const invalidPermissions = permissions.filter(p => !validPermissions.includes(p));
+      if (invalidPermissions.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Geçersiz izinler: ${invalidPermissions.join(', ')}`
+        });
+      }
+
+      // API Client oluştur
+      const [newClient] = await db
+        .insert(apiClients)
+        .values({
+          name,
+          userId,
+          isActive: true
+        })
+        .returning();
+
+      // API Key oluştur
+      const apiKey = `ak_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+      const hashedKey = await bcrypt.hash(apiKey, 10);
+
+      const [newApiKey] = await db
+        .insert(apiKeys)
+        .values({
+          clientId: newClient.id,
+          key: hashedKey,
+          permissions,
+          isActive: true
+        })
+        .returning();
+
+      res.json({
+        success: true,
+        message: "API key başarıyla oluşturuldu",
+        data: {
+          apiKey: {
+            id: newApiKey.id,
+            name: newClient.name,
+            key: apiKey, // Sadece oluşturma anında göster
+            permissions: newApiKey.permissions,
+            isActive: newApiKey.isActive,
+            createdAt: newApiKey.createdAt
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error("Error creating API key:", error);
+      res.status(500).json({
+        success: false,
+        message: "API key oluşturulamadı",
+        error: error instanceof Error ? error.message : 'Bilinmeyen hata'
+      });
+    }
+  });
+
+  // API key sil
+  app.delete("/api/user/api-keys/:keyId", authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.user.userId;
+      const keyId = parseInt(req.params.keyId);
+
+      if (!keyId) {
+        return res.status(400).json({
+          success: false,
+          message: "Geçersiz API key ID"
+        });
+      }
+
+      // Kullanıcının key'ine sahip olduğunu doğrula
+      const [existingKey] = await db
+        .select()
+        .from(apiKeys)
+        .leftJoin(apiClients, eq(apiKeys.clientId, apiClients.id))
+        .where(and(eq(apiKeys.id, keyId), eq(apiClients.userId, userId)));
+
+      if (!existingKey) {
+        return res.status(404).json({
+          success: false,
+          message: "API key bulunamadı"
+        });
+      }
+
+      // API key'i sil
+      await db.delete(apiKeys).where(eq(apiKeys.id, keyId));
+      
+      // İlgili client'ı da sil
+      await db.delete(apiClients).where(eq(apiClients.id, existingKey.api_keys.clientId));
+
+      res.json({
+        success: true,
+        message: "API key başarıyla silindi"
+      });
+
+    } catch (error) {
+      console.error("Error deleting API key:", error);
+      res.status(500).json({
+        success: false,
+        message: "API key silinemedi",
+        error: error instanceof Error ? error.message : 'Bilinmeyen hata'
+      });
+    }
+  });
+
+  // ========================
   // ADMİN PANEL ROUTE'LARI (JWT ile korunuyor)
   // ========================
 

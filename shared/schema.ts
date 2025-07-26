@@ -185,7 +185,8 @@ export const userRoles = pgTable("user_roles", {
 export const apiClients = pgTable("api_clients", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 100 }).notNull(),
-  companyId: integer("company_id").notNull().references(() => companies.id),
+  companyId: integer("company_id").references(() => companies.id),
+  userId: integer("user_id").references(() => users.id),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -193,9 +194,11 @@ export const apiClients = pgTable("api_clients", {
 export const apiKeys = pgTable("api_keys", {
   id: serial("id").primaryKey(),
   clientId: integer("client_id").notNull().references(() => apiClients.id),
-  keyHash: text("key_hash").notNull(),
+  key: text("key").notNull(), // Hashed API key
+  permissions: text("permissions").array().notNull(), // Array of permissions
   description: text("description"),
   isActive: boolean("is_active").notNull().default(true),
+  lastUsedAt: timestamp("last_used_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -269,6 +272,7 @@ export const apiEndpoints = pgTable("api_endpoints", {
 export const apiRequestLogs = pgTable("api_request_logs", {
   id: serial("id").primaryKey(),
   clientId: integer("client_id").references(() => apiClients.id),
+  apiKeyId: integer("api_key_id").references(() => apiKeys.id),
   userId: integer("user_id").references(() => users.id),
   endpointId: integer("endpoint_id").references(() => apiEndpoints.id),
   method: varchar("method", { length: 10 }).notNull(),

@@ -42,7 +42,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/register", async (req, res) => {
     try {
-      const user = await storage.createUser(req.body);
+      const { email, password, name } = req.body;
+      console.log("Register request body:", req.body);
+      console.log("Password received:", password);
+      
+      if (!password) {
+        return res.status(400).json({
+          success: false,
+          error: "MISSING_PASSWORD",
+          message: "Şifre gereklidir"
+        });
+      }
+      
+      const user = await storage.createUser({
+        email,
+        passwordHash: password,
+        name: name || email.split('@')[0]
+      });
       res.status(201).json({
         success: true,
         message: "Kullanıcı başarıyla oluşturuldu",

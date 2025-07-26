@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchFilters } from "@/components/search-filters";
 import { StatsCards } from "@/components/stats-cards";
-import { FileCode, Activity, BarChart3, TestTube, Upload, FileText } from "lucide-react";
+import { FileCode, Activity, BarChart3, TestTube, Upload, FileText, Key } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Home() {
@@ -52,6 +52,29 @@ export default function Home() {
 
         <StatsCards stats={stats} />
 
+        {/* API Key Yönetimi */}
+        <Card className="shadow-sm border-green-200 bg-green-50 mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Key className="h-8 w-8 text-green-600" />
+                <div>
+                  <h3 className="text-lg font-semibold text-green-800">API Key Yönetimi</h3>
+                  <p className="text-green-600">
+                    Kendi API anahtarlarınızı oluşturun ve yönetin
+                  </p>
+                </div>
+              </div>
+              <Link to="/dashboard">
+                <Button variant="outline" className="bg-white hover:bg-green-100 text-green-700 border-green-300">
+                  <Key className="h-4 w-4 mr-2" />
+                  API Key Dashboard
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* API Test Ortamı */}
         <Card className="shadow-sm border-blue-200 bg-blue-50 mb-6">
           <CardContent className="p-6">
@@ -61,7 +84,7 @@ export default function Home() {
                 <div>
                   <h3 className="text-lg font-semibold text-blue-800">API Test Ortamı</h3>
                   <p className="text-blue-600">
-                    6 güvenli API endpoint'i test edebilirsiniz
+                    75 güvenli API endpoint'i test edebilirsiniz
                   </p>
                 </div>
               </div>
