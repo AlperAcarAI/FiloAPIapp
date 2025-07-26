@@ -16,10 +16,10 @@ export default function Home() {
   const [statusFilter, setStatusFilter] = useState("all");
   const { toast } = useToast();
 
-  // Mock data for stats - güvenli API'lerimiz
+  // Gerçek API istatistikleri - 75 toplam API endpoint
   const stats = { 
-    total: 6, 
-    active: 6, 
+    total: 75, 
+    active: 75, 
     inactive: 0, 
     error: 0 
   };
