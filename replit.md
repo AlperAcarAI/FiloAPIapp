@@ -133,7 +133,7 @@ Kapsamlı API güvenlik sistemi başarıyla kuruldu ve test edildi:
 **Demo API Client:**
 - Client Name: Demo API Client
 - API Key: `ak_test123key`
-- İzinler: data:read, data:write, data:delete, asset:read, asset:write, fleet:read, document:read, document:write, document:delete, company:read, company:write, company:delete
+- İzinler: data:read, data:write, data:delete, asset:read, asset:write, asset:delete, fleet:read, document:read, document:write, document:delete, company:read, company:write, company:delete
 - Test edildi ve çalışıyor ✅
 
 **Güvenli Endpoint'ler:**
@@ -147,6 +147,11 @@ Kapsamlı API güvenlik sistemi başarıyla kuruldu ve test edildi:
 - `POST /api/secure/addPersonnel` - Personel ekleme API ✅
 - `POST /api/secure/addWorkArea` - Çalışma alanı ekleme API ✅
 - `PUT /api/secure/updateWorkArea/{id}` - Çalışma alanı güncelleme API ✅
+- `GET /api/secure/assets` - Asset/Araç listesi (filtreleme, join'li data) ✅
+- `GET /api/secure/assets/{id}` - Asset detayı ✅
+- `POST /api/secure/assets` - Yeni asset ekleme (duplicate plaka kontrolü) ✅
+- `PUT /api/secure/assets/{id}` - Asset güncelleme ✅
+- `DELETE /api/secure/assets/{id}` - Asset silme (soft delete) ✅
 - `POST /api/secure/documents/upload` - Dosya yükleme API (Asset/Personnel) ✅
 - `GET /api/secure/documents/asset/{id}` - Asset dokümanları listesi ✅
 - `GET /api/secure/documents/personnel/{id}` - Personnel dokümanları listesi ✅

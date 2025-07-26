@@ -10,6 +10,7 @@ import { eq } from "drizzle-orm";
 import { registerApiManagementRoutes } from "./api-management-routes";
 import documentRoutes from "./document-routes.js";
 import companyRoutes from "./company-routes.js";
+import assetRoutes from "./asset-routes.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Asset API'leri - Tam CRUD operasyonları
@@ -233,6 +234,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Company Management Route'larını kaydet
   app.use('/api/secure', companyRoutes);
+
+  // Asset Management Route'larını kaydet
+  app.use('/api/secure', assetRoutes);
 
   // Audit Route'larını kaydet
   const { registerAuditRoutes } = await import("./audit-routes");

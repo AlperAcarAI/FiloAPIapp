@@ -364,6 +364,33 @@ export const assets = pgTable("assets", {
   isActive: boolean("is_active").notNull().default(true),
 });
 
+// Assets Zod schemas
+export const insertAssetSchema = createInsertSchema(assets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+}).extend({
+  modelYear: z.number().int().min(1950).max(new Date().getFullYear() + 1),
+  plateNumber: z.string().min(1).max(20),
+});
+
+export const updateAssetSchema = createInsertSchema(assets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+}).extend({
+  modelYear: z.number().int().min(1950).max(new Date().getFullYear() + 1).optional(),
+  plateNumber: z.string().min(1).max(20).optional(),
+}).partial();
+
+export type InsertAsset = z.infer<typeof insertAssetSchema>;
+export type UpdateAsset = z.infer<typeof updateAssetSchema>;
+export type Asset = typeof assets.$inferSelect;
+
 export const assetDocuments = pgTable("asset_documents", {
   id: serial("id").primaryKey(),
   assetId: integer("asset_id").notNull().references(() => assets.id),
@@ -590,13 +617,6 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 }));
 
 // Zod schemas for key tables
-export const insertAssetSchema = createInsertSchema(assets).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const updateAssetSchema = insertAssetSchema.partial();
 
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
