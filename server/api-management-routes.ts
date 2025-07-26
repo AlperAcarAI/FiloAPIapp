@@ -686,9 +686,9 @@ export function registerApiManagementRoutes(app: Express) {
       },
       '/api/secure/getDocTypes': {
         get: {
-          summary: 'Dokuman Kategorileri Listele',
-          description: 'Dokuman ekleme için hiyerarşik kategori listesi döndürür. Ana kategoriler ve alt kategorileri birlikte getirir.',
-          tags: ['Veri Okuma'],
+          summary: 'Doküman Türleri API',
+          description: 'Sistemde tanımlı doküman türlerinin listesini döndürür. Dosya yükleme işlemleri için kategori bilgisi sağlar.',
+          tags: ['Dosya İşlemleri'],
           security: [{ ApiKeyAuth: [] }],
           responses: {
             '200': {
@@ -883,6 +883,164 @@ export function registerApiManagementRoutes(app: Express) {
             '429': { description: 'Rate limit aşıldı' }
           }
         }
+      },
+      '/api/secure/documents/upload': {
+        post: {
+          summary: 'Dosya Yükleme API',
+          description: 'Dış uygulamalardan multipart/form-data ile dosya yükleme işlemi. Desteklenen formatlar: PDF, JPG, PNG, DOC, XLS, TXT. Maksimum dosya boyutu: 50MB.',
+          tags: ['Dosya İşlemleri'],
+          security: [{ ApiKeyAuth: [] }],
+          requestBody: {
+            content: {
+              'multipart/form-data': {
+                schema: {
+                  type: 'object',
+                  required: ['assetId', 'docTypeId', 'files'],
+                  properties: {
+                    assetId: {
+                      type: 'integer',
+                      description: 'Asset ID (araç, ekipman vb.)',
+                      example: 1
+                    },
+                    docTypeId: {
+                      type: 'integer', 
+                      description: 'Doküman tipi ID (15=Muayene Raporu, 16=Sigorta Poliçesi vb.)',
+                      example: 15
+                    },
+                    description: {
+                      type: 'string',
+                      description: 'Dosya açıklaması (opsiyonel)',
+                      example: 'Araç muayene raporu 2025'
+                    },
+                    files: {
+                      type: 'array',
+                      items: {
+                        type: 'string',
+                        format: 'binary'
+                      },
+                      description: 'Yüklenecek dosyalar (birden fazla dosya desteklenir)'
+                    }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '200': {
+              description: 'Dosya yükleme başarılı',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: '3 dosya başarıyla yüklendi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          uploadedDocuments: {
+                            type: 'array',
+                            items: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'integer', example: 123 },
+                                fileName: { type: 'string', example: 'muayene_raporu.pdf' },
+                                fileSize: { type: 'integer', example: 1024576 },
+                                mimeType: { type: 'string', example: 'application/pdf' },
+                                fileHash: { type: 'string', example: 'sha256:abc123...' },
+                                uploadPath: { type: 'string', example: '/uploads/assets/1/15/file.pdf' }
+                              }
+                            }
+                          },
+                          totalFiles: { type: 'integer', example: 3 },
+                          successCount: { type: 'integer', example: 3 },
+                          duplicateCount: { type: 'integer', example: 0 }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '400': {
+              description: 'Geçersiz dosya formatı veya boyut',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: false },
+                      error: { type: 'string', example: 'INVALID_FILE_TYPE' },
+                      message: { type: 'string', example: 'Desteklenmeyen dosya formatı' }
+                    }
+                  }
+                }
+              }
+            },
+            '401': { description: 'Geçersiz API anahtarı veya yetki yok' },
+            '413': { description: 'Dosya boyutu çok büyük (>50MB)' },
+            '429': { description: 'Rate limit aşıldı' }
+          }
+        }
+      },
+      '/api/secure/documents/asset/{assetId}': {
+        get: {
+          summary: 'Asset Dokümanları Listesi',
+          description: 'Belirli bir asset\'e ait tüm dokümanları listeler',
+          tags: ['Dosya İşlemleri'],
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: 'assetId',
+              in: 'path',
+              required: true,
+              description: 'Asset ID',
+              schema: {
+                type: 'integer',
+                example: 1
+              }
+            }
+          ],
+          responses: {
+            '200': {
+              description: 'Dokümanlar başarıyla getirildi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Dokümanlar başarıyla getirildi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          assetId: { type: 'integer', example: 1 },
+                          documents: {
+                            type: 'array',
+                            items: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'integer', example: 123 },
+                                fileName: { type: 'string', example: 'muayene_raporu.pdf' },
+                                docTypeName: { type: 'string', example: 'Muayene Raporu' },
+                                fileSize: { type: 'integer', example: 1024576 },
+                                uploadDate: { type: 'string', example: '2025-01-25T10:30:00.000Z' },
+                                description: { type: 'string', example: 'Yıllık muayene raporu' }
+                              }
+                            }
+                          },
+                          totalCount: { type: 'integer', example: 5 }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '401': { description: 'Geçersiz API anahtarı' },
+            '404': { description: 'Asset bulunamadı' }
+          }
+        }
       }
     },
     components: {
@@ -903,6 +1061,10 @@ export function registerApiManagementRoutes(app: Express) {
       {
         name: 'Veri İşlemleri',
         description: 'Veri ekleme, güncelleme ve silme işlemleri'
+      },
+      {
+        name: 'Dosya İşlemleri',
+        description: 'Dosya yükleme, listeleme ve doküman yönetimi API\'leri'
       }
     ]
   };

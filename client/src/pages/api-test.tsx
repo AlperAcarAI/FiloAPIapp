@@ -139,12 +139,30 @@ const API_ENDPOINTS: ApiEndpoint[] = [
   },
   {
     id: "getDocTypes",
-    name: "Dokuman Kategorileri Listeleme API",
-    description: "Dokuman ekleme için hiyerarşik kategori listesi döndürür",
+    name: "Doküman Türleri API",
+    description: "Sistemde tanımlı doküman türlerinin listesini döndürür",
     endpoint: "/api/secure/getDocTypes",
     method: "GET",
-    category: "Veri Okuma",
-    dataCount: "107 alt kategori"
+    category: "Dosya İşlemleri",
+    dataCount: "12 doküman türü"
+  },
+  {
+    id: "documentsUpload",
+    name: "Dosya Yükleme API",
+    description: "Multipart/form-data ile dosya yükleme işlemi. PDF, JPG, PNG, DOC, XLS, TXT formatları desteklenir (max 50MB)",
+    endpoint: "/api/secure/documents/upload",
+    method: "POST",
+    category: "Dosya İşlemleri",
+    dataCount: "Dosya yükleme"
+  },
+  {
+    id: "documentsAsset",
+    name: "Asset Dokümanları Listesi",
+    description: "Belirli bir asset'e ait tüm dokümanları listeler",
+    endpoint: "/api/secure/documents/asset/1",
+    method: "GET",
+    category: "Dosya İşlemleri",
+    dataCount: "Asset dokümanları"
   }
 ];
 
@@ -209,6 +227,17 @@ export default function ApiTest() {
           address: "Yeni Adres",
           isActive: false
         }, null, 2);
+      case 'documentsUpload':
+        return `Form Data Parametreleri:
+{
+  "assetId": "1",
+  "docTypeId": "15", 
+  "description": "Test dokümanı API'den",
+  "files": "Dosyalar seçilecek (PDF, JPG, PNG, DOC, XLS, TXT)"
+}
+
+NOT: Bu API multipart/form-data kullanır, normal JSON değil.
+Swagger dokümantasyonundan veya /documents sayfasından test edebilirsiniz.`;
       default:
         return "{}";
     }
@@ -233,6 +262,17 @@ export default function ApiTest() {
     setResponse(null);
 
     try {
+      // Document upload API için özel işleme
+      if (endpoint.id === 'documentsUpload') {
+        toast({
+          title: "Bilgi",
+          description: "Document upload API'si multipart/form-data kullanır. Lütfen /documents sayfasından veya Swagger dokümantasyonundan test edin.",
+          variant: "default"
+        });
+        setLoading(false);
+        return;
+      }
+
       const fetchOptions: RequestInit = {
         method: endpoint.method,
         headers: {
