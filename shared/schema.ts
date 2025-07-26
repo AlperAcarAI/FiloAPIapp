@@ -653,11 +653,6 @@ export const insertWorkAreaSchema = createInsertSchema(workAreas).omit({
 
 export const updateWorkAreaSchema = insertWorkAreaSchema.partial();
 
-// Types
-export type Asset = typeof assets.$inferSelect;
-export type InsertAsset = z.infer<typeof insertAssetSchema>;
-export type UpdateAsset = z.infer<typeof updateAssetSchema>;
-
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 

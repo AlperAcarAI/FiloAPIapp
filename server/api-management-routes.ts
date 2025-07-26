@@ -22,7 +22,10 @@ import {
   personnel,
   workAreas,
   docMainTypes,
-  docSubTypes
+  docSubTypes,
+  carBrands,
+  carModels,
+  carTypes
 } from "@shared/schema";
 import { 
   insertApiClientSchema,
@@ -36,7 +39,9 @@ import {
   insertMaintenanceTypeSchema,
   insertPersonnelSchema,
   insertWorkAreaSchema,
-  updateWorkAreaSchema
+  updateWorkAreaSchema,
+  insertCarBrandSchema,
+  insertCarModelSchema
 } from "@shared/schema";
 import { eq, and, desc, sql, count, avg, gte, not } from "drizzle-orm";
 import { 
@@ -1639,6 +1644,258 @@ export function registerApiManagementRoutes(app: Express) {
             }
           }
         }
+      },
+      '/api/secure/getCarBrands': {
+        get: {
+          summary: 'Araç Markaları Listesi',
+          description: 'Sistemdeki aktif araç markalarının listesini döndürür.',
+          tags: ['Marka/Model Yönetimi'],
+          security: [{ ApiKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Araç markaları başarıyla getirildi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Araç markaları başarıyla getirildi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          brands: {
+                            type: 'array',
+                            items: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'integer', example: 1 },
+                                name: { type: 'string', example: 'Mercedes-Benz' },
+                                isActive: { type: 'boolean', example: true }
+                              }
+                            }
+                          },
+                          totalCount: { type: 'integer', example: 25 }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '401': { description: 'Geçersiz API anahtarı' }
+          }
+        }
+      },
+      '/api/secure/addCarBrand': {
+        post: {
+          summary: 'Yeni Araç Markası Ekleme',
+          description: 'Sisteme yeni araç markası ekler. Marka adı unique olmalıdır.',
+          tags: ['Marka/Model Yönetimi'],
+          security: [{ ApiKeyAuth: [] }],
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['name'],
+                  properties: {
+                    name: { type: 'string', example: 'Tesla' },
+                    isActive: { type: 'boolean', example: true }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '201': {
+              description: 'Araç markası başarıyla eklendi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Araç markası başarıyla eklendi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer', example: 26 },
+                          name: { type: 'string', example: 'Tesla' },
+                          isActive: { type: 'boolean', example: true }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '400': { description: 'Geçersiz veri' },
+            '409': { description: 'Marka adı zaten kullanımda' }
+          }
+        }
+      },
+      '/api/secure/getCarModels': {
+        get: {
+          summary: 'Araç Modelleri Listesi',
+          description: 'Sistemdeki aktif araç modellerinin listesini döndürür. Marka ID ile filtreleme destekler.',
+          tags: ['Marka/Model Yönetimi'],
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: 'brandId',
+              in: 'query',
+              description: 'Belirli bir markaya ait modelleri filtrele',
+              schema: { type: 'integer', example: 1 }
+            }
+          ],
+          responses: {
+            '200': {
+              description: 'Araç modelleri başarıyla getirildi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Araç modelleri başarıyla getirildi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          models: {
+                            type: 'array',
+                            items: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'integer', example: 6 },
+                                brandId: { type: 'integer', example: 1 },
+                                name: { type: 'string', example: 'Actros' },
+                                typeId: { type: 'integer', example: 8 },
+                                capacity: { type: 'integer', example: 40 },
+                                detail: { type: 'string', example: 'Ağır tonajlı kamyon' },
+                                isActive: { type: 'boolean', example: true },
+                                brandName: { type: 'string', example: 'Mercedes-Benz' },
+                                typeName: { type: 'string', example: 'Kamyon' }
+                              }
+                            }
+                          },
+                          totalCount: { type: 'integer', example: 15 },
+                          filters: {
+                            type: 'object',
+                            properties: {
+                              brandId: { type: 'integer', example: 1 }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '401': { description: 'Geçersiz API anahtarı' }
+          }
+        }
+      },
+      '/api/secure/addCarModel': {
+        post: {
+          summary: 'Yeni Araç Modeli Ekleme',
+          description: 'Sisteme yeni araç modeli ekler. Aynı marka altında model adı unique olmalıdır.',
+          tags: ['Marka/Model Yönetimi'],
+          security: [{ ApiKeyAuth: [] }],
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['brandId', 'name', 'typeId', 'capacity'],
+                  properties: {
+                    brandId: { type: 'integer', example: 1, description: 'Marka ID' },
+                    name: { type: 'string', example: 'Model S' },
+                    typeId: { type: 'integer', example: 3, description: 'Araç tipi ID' },
+                    capacity: { type: 'integer', example: 5, description: 'Kapasite' },
+                    detail: { type: 'string', example: 'Elektrikli sedan araç' },
+                    isActive: { type: 'boolean', example: true }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '201': {
+              description: 'Araç modeli başarıyla eklendi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Araç modeli başarıyla eklendi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer', example: 25 },
+                          brandId: { type: 'integer', example: 1 },
+                          name: { type: 'string', example: 'Model S' },
+                          typeId: { type: 'integer', example: 3 },
+                          capacity: { type: 'integer', example: 5 },
+                          detail: { type: 'string', example: 'Elektrikli sedan araç' },
+                          isActive: { type: 'boolean', example: true },
+                          brandName: { type: 'string', example: 'Tesla' },
+                          typeName: { type: 'string', example: 'Otomobil' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '400': { description: 'Geçersiz veri veya mevcut olmayan marka/tip ID' },
+            '409': { description: 'Aynı marka altında model adı zaten kullanımda' }
+          }
+        }
+      },
+      '/api/secure/getCarTypes': {
+        get: {
+          summary: 'Araç Tipleri Listesi',
+          description: 'Sistemdeki aktif araç tiplerinin listesini döndürür. Model ekleme için gereklidir.',
+          tags: ['Marka/Model Yönetimi'],
+          security: [{ ApiKeyAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Araç tipleri başarıyla getirildi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Araç tipleri başarıyla getirildi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          types: {
+                            type: 'array',
+                            items: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'integer', example: 1 },
+                                name: { type: 'string', example: 'Otomobil' },
+                                isActive: { type: 'boolean', example: true }
+                              }
+                            }
+                          },
+                          totalCount: { type: 'integer', example: 50 }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '401': { description: 'Geçersiz API anahtarı' }
+          }
+        }
       }
     },
     components: {
@@ -1675,6 +1932,10 @@ export function registerApiManagementRoutes(app: Express) {
       {
         name: 'Genel API\'ler',
         description: 'API anahtarı gerektirmeyen genel API\'ler'
+      },
+      {
+        name: 'Marka/Model Yönetimi',
+        description: 'Araç marka ve model yönetimi - ekleme, listeleme'
       }
     ]
   };
@@ -3182,6 +3443,350 @@ export function registerApiManagementRoutes(app: Express) {
           success: false,
           error: "SERVER_ERROR",
           message: "Admin verileri alınamadı."
+        });
+      }
+    }
+  );
+
+  // ========================
+  // MARKA VE MODEL API'LERİ
+  // ========================
+
+  // GET endpoint - Car Brands listesi
+  app.get(
+    "/api/secure/getCarBrands",
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(100),
+    authorizeEndpoint(['data:read']),
+    async (req: ApiRequest, res) => {
+      try {
+        const brandsList = await db.select({
+          id: carBrands.id,
+          name: carBrands.name,
+          isActive: carBrands.isActive
+        }).from(carBrands)
+          .where(eq(carBrands.isActive, true))
+          .orderBy(carBrands.name);
+        
+        res.json({
+          success: true,
+          message: "Araç markaları başarıyla getirildi.",
+          data: {
+            brands: brandsList,
+            totalCount: brandsList.length
+          },
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error("Car brands getirme hatası:", error);
+        res.status(500).json({
+          success: false,
+          error: "CAR_BRANDS_FETCH_ERROR",
+          message: "Araç markaları alınırken bir hata oluştu."
+        });
+      }
+    }
+  );
+
+  // POST endpoint - Car Brand ekleme
+  app.post(
+    "/api/secure/addCarBrand",
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(20),
+    authorizeEndpoint(['data:write']),
+    async (req: ApiRequest, res) => {
+      try {
+        const validatedData = insertCarBrandSchema.parse(req.body);
+        
+        // Aynı isimde marka var mı kontrol et
+        const existing = await db
+          .select()
+          .from(carBrands)
+          .where(eq(carBrands.name, validatedData.name))
+          .limit(1);
+
+        if (existing.length > 0) {
+          return res.status(409).json({
+            success: false,
+            error: 'DUPLICATE_CAR_BRAND',
+            message: `'${validatedData.name}' isimli araç markası zaten mevcut.`,
+            existingBrand: {
+              id: existing[0].id,
+              name: existing[0].name,
+              isActive: existing[0].isActive
+            },
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // Yeni marka ekle
+        const [insertedBrand] = await db.insert(carBrands)
+          .values(validatedData)
+          .returning({
+            id: carBrands.id,
+            name: carBrands.name,
+            isActive: carBrands.isActive
+          });
+
+        res.status(201).json({
+          success: true,
+          message: 'Araç markası başarıyla eklendi.',
+          data: insertedBrand,
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error) {
+        console.error('Car brand ekleme hatası:', error);
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            success: false,
+            error: 'VALIDATION_ERROR',
+            message: 'Geçersiz veri formatı.',
+            details: error.errors,
+            timestamp: new Date().toISOString()
+          });
+        }
+        res.status(500).json({
+          success: false,
+          error: 'SERVER_ERROR',
+          message: 'Araç markası eklenirken sunucu hatası oluştu.',
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // GET endpoint - Car Models listesi (marka ID ile filtreleme destekler)
+  app.get(
+    "/api/secure/getCarModels",
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(100),
+    authorizeEndpoint(['data:read']),
+    async (req: ApiRequest, res) => {
+      try {
+        const { brandId } = req.query;
+        
+        let query = db.select({
+          id: carModels.id,
+          brandId: carModels.brandId,
+          name: carModels.name,
+          typeId: carModels.typeId,
+          capacity: carModels.capacity,
+          detail: carModels.detail,
+          isActive: carModels.isActive,
+          brandName: carBrands.name,
+          typeName: carTypes.name
+        }).from(carModels)
+          .leftJoin(carBrands, eq(carModels.brandId, carBrands.id))
+          .leftJoin(carTypes, eq(carModels.typeId, carTypes.id))
+          .where(eq(carModels.isActive, true));
+
+        // Brand ID ile filtreleme
+        if (brandId && !isNaN(parseInt(brandId as string))) {
+          query = query.where(eq(carModels.brandId, parseInt(brandId as string)));
+        }
+
+        const modelsList = await query.orderBy(carBrands.name, carModels.name);
+        
+        res.json({
+          success: true,
+          message: "Araç modelleri başarıyla getirildi.",
+          data: {
+            models: modelsList,
+            totalCount: modelsList.length,
+            filters: {
+              brandId: brandId ? parseInt(brandId as string) : null
+            }
+          },
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error("Car models getirme hatası:", error);
+        res.status(500).json({
+          success: false,
+          error: "CAR_MODELS_FETCH_ERROR",
+          message: "Araç modelleri alınırken bir hata oluştu."
+        });
+      }
+    }
+  );
+
+  // POST endpoint - Car Model ekleme
+  app.post(
+    "/api/secure/addCarModel",
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(20),
+    authorizeEndpoint(['data:write']),
+    async (req: ApiRequest, res) => {
+      try {
+        const validatedData = insertCarModelSchema.parse(req.body);
+        
+        // Aynı marka ve isimde model var mı kontrol et
+        const existing = await db
+          .select()
+          .from(carModels)
+          .where(and(
+            eq(carModels.brandId, validatedData.brandId),
+            eq(carModels.name, validatedData.name)
+          ))
+          .limit(1);
+
+        if (existing.length > 0) {
+          // Brand adını al
+          const [brand] = await db.select({ name: carBrands.name })
+            .from(carBrands)
+            .where(eq(carBrands.id, validatedData.brandId))
+            .limit(1);
+
+          return res.status(409).json({
+            success: false,
+            error: 'DUPLICATE_CAR_MODEL',
+            message: `'${brand?.name || 'Bilinmeyen marka'}' markasında '${validatedData.name}' isimli model zaten mevcut.`,
+            existingModel: {
+              id: existing[0].id,
+              brandId: existing[0].brandId,
+              name: existing[0].name,
+              isActive: existing[0].isActive
+            },
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // Brand ve Type kontrolü
+        const [brand] = await db.select({ name: carBrands.name })
+          .from(carBrands)
+          .where(eq(carBrands.id, validatedData.brandId))
+          .limit(1);
+
+        const [type] = await db.select({ name: carTypes.name })
+          .from(carTypes)
+          .where(eq(carTypes.id, validatedData.typeId))
+          .limit(1);
+
+        if (!brand) {
+          return res.status(400).json({
+            success: false,
+            error: 'INVALID_BRAND_ID',
+            message: 'Geçersiz marka ID.',
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        if (!type) {
+          return res.status(400).json({
+            success: false,
+            error: 'INVALID_TYPE_ID',
+            message: 'Geçersiz araç tipi ID.',
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // Yeni model ekle
+        const [insertedModel] = await db.insert(carModels)
+          .values(validatedData)
+          .returning({
+            id: carModels.id,
+            brandId: carModels.brandId,
+            name: carModels.name,
+            typeId: carModels.typeId,
+            capacity: carModels.capacity,
+            detail: carModels.detail,
+            isActive: carModels.isActive
+          });
+
+        res.status(201).json({
+          success: true,
+          message: 'Araç modeli başarıyla eklendi.',
+          data: {
+            ...insertedModel,
+            brandName: brand.name,
+            typeName: type.name
+          },
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error) {
+        console.error('Car model ekleme hatası:', error);
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            success: false,
+            error: 'VALIDATION_ERROR',
+            message: 'Geçersiz veri formatı.',
+            details: error.errors,
+            timestamp: new Date().toISOString()
+          });
+        }
+        res.status(500).json({
+          success: false,
+          error: 'SERVER_ERROR',
+          message: 'Araç modeli eklenirken sunucu hatası oluştu.',
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // GET endpoint - Car Types listesi (model ekleme için gerekli)
+  app.get(
+    "/api/secure/getCarTypes",
+    authenticateApiKey,
+    logApiRequest,
+    rateLimitMiddleware(100),
+    authorizeEndpoint(['data:read']),
+    async (req: ApiRequest, res) => {
+      try {
+        const typesList = await db.select({
+          id: carTypes.id,
+          name: carTypes.name,
+          isActive: carTypes.isActive
+        }).from(carTypes)
+          .where(eq(carTypes.isActive, true))
+          .orderBy(carTypes.name);
+        
+        res.json({
+          success: true,
+          message: "Araç tipleri başarıyla getirildi.",
+          data: {
+            types: typesList,
+            totalCount: typesList.length
+          },
+          clientInfo: {
+            id: req.apiClient?.id,
+            name: req.apiClient?.name,
+            companyId: req.apiClient?.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error("Car types getirme hatası:", error);
+        res.status(500).json({
+          success: false,
+          error: "CAR_TYPES_FETCH_ERROR",
+          message: "Araç tipleri alınırken bir hata oluştu."
         });
       }
     }
