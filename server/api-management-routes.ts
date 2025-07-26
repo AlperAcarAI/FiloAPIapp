@@ -83,7 +83,131 @@ export function registerApiManagementRoutes(app: Express) {
     info: {
       title: 'Güvenli API Management Sistemi',
       version: '2.0.0',
-      description: 'Sigorta ve filo yönetimi için güvenli referans veri API\'leri. Tüm endpoint\'ler API anahtarı ile korunmaktadır.',
+      description: `
+# 75 API Endpoint Sistemi - Özet Tablo
+
+Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bcrypt korumalı API anahtarı ile güvenlik altında.
+
+## API Endpoint'leri Özet Tablosu
+
+### 1. Referans Veriler (22 API)
+| No | Method | Endpoint | Açıklama |
+|----|--------|----------|----------|
+| 1  | GET | /api/secure/getCities | 81 Şehir listesi |
+| 2  | POST | /api/secure/addCity | Yeni şehir ekleme |
+| 3  | PUT | /api/secure/updateCity/{id} | Şehir güncelleme |
+| 4  | DELETE | /api/secure/deleteCity/{id} | Şehir silme (soft) |
+| 5  | GET | /api/secure/getCountries | Ülke listesi |
+| 6  | POST | /api/secure/addCountry | Yeni ülke ekleme |
+| 7  | PUT | /api/secure/updateCountry/{id} | Ülke güncelleme |
+| 8  | DELETE | /api/secure/deleteCountry/{id} | Ülke silme (soft) |
+| 9  | GET | /api/secure/getCarBrands | Araç markaları |
+| 10 | POST | /api/secure/addCarBrand | Yeni marka ekleme |
+| 11 | PUT | /api/secure/updateCarBrand/{id} | Marka güncelleme |
+| 12 | DELETE | /api/secure/deleteCarBrand/{id} | Marka silme (soft) |
+| 13 | GET | /api/secure/getCarModels | Araç modelleri |
+| 14 | POST | /api/secure/addCarModel | Yeni model ekleme |
+| 15 | PUT | /api/secure/updateCarModel/{id} | Model güncelleme |
+| 16 | DELETE | /api/secure/deleteCarModel/{id} | Model silme (soft) |
+| 17 | GET | /api/secure/getCarTypes | Araç tipleri |
+| 18 | POST | /api/secure/addCarType | Yeni tip ekleme |
+| 19 | PUT | /api/secure/updateCarType/{id} | Tip güncelleme |
+| 20 | DELETE | /api/secure/deleteCarType/{id} | Tip silme (soft) |
+| 21 | GET | /api/secure/getOwnershipTypes | Sahiplik türleri |
+| 22 | POST | /api/secure/addOwnershipType | Sahiplik türü ekleme |
+
+### 2. İş Verisi API'leri (18 API)
+| No | Method | Endpoint | Açıklama |
+|----|--------|----------|----------|
+| 23 | GET | /api/secure/getPolicyTypes | Poliçe türleri |
+| 24 | POST | /api/secure/addPolicyType | Poliçe türü ekleme |
+| 25 | PUT | /api/secure/updatePolicyType/{id} | Poliçe türü güncelleme |
+| 26 | DELETE | /api/secure/deletePolicyType/{id} | Poliçe türü silme |
+| 27 | GET | /api/secure/getMaintenanceTypes | Bakım türleri |
+| 28 | POST | /api/secure/addMaintenanceType | Bakım türü ekleme |
+| 29 | PUT | /api/secure/updateMaintenanceType/{id} | Bakım türü güncelleme |
+| 30 | DELETE | /api/secure/deleteMaintenanceType/{id} | Bakım türü silme |
+| 31 | GET | /api/secure/getPenaltyTypes | Ceza türleri |
+| 32 | POST | /api/secure/addPenaltyType | Ceza türü ekleme |
+| 33 | PUT | /api/secure/updatePenaltyType/{id} | Ceza türü güncelleme |
+| 34 | DELETE | /api/secure/deletePenaltyType/{id} | Ceza türü silme |
+| 35 | GET | /api/secure/getPaymentMethods | Ödeme yöntemleri |
+| 36 | POST | /api/secure/addPaymentMethod | Ödeme yöntemi ekleme |
+| 37 | PUT | /api/secure/updatePaymentMethod/{id} | Ödeme yöntemi güncelleme |
+| 38 | DELETE | /api/secure/deletePaymentMethod/{id} | Ödeme yöntemi silme |
+| 39 | GET | /api/secure/getDocTypes | Doküman türleri |
+| 40 | POST | /api/secure/addDocMainType | Ana doküman türü ekleme |
+| 41 | POST | /api/secure/addDocSubType | Alt doküman türü ekleme |
+
+### 3. Personel Yönetimi (9 API)
+| No | Method | Endpoint | Açıklama |
+|----|--------|----------|----------|
+| 42 | GET | /api/secure/getPersonnel | Personel listesi |
+| 43 | POST | /api/secure/addPersonnel | Yeni personel ekleme |
+| 44 | PUT | /api/secure/updatePersonnel/{id} | Personel güncelleme |
+| 45 | DELETE | /api/secure/deletePersonnel/{id} | Personel silme (soft) |
+| 46 | GET | /api/secure/getPersonnelPositions | Personel pozisyonları |
+| 47 | POST | /api/secure/addPersonnelPosition | Pozisyon ekleme |
+| 48 | PUT | /api/secure/updatePersonnelPosition/{id} | Pozisyon güncelleme |
+| 49 | DELETE | /api/secure/deletePersonnelPosition/{id} | Pozisyon silme |
+| 50 | GET | /api/secure/getWorkAreas | Çalışma alanları |
+
+### 4. Çalışma Alanı Yönetimi (5 API)
+| No | Method | Endpoint | Açıklama |
+|----|--------|----------|----------|
+| 51 | POST | /api/secure/addWorkArea | Çalışma alanı ekleme |
+| 52 | PUT | /api/secure/updateWorkArea/{id} | Çalışma alanı güncelleme |
+| 53 | DELETE | /api/secure/deleteWorkArea/{id} | Çalışma alanı silme |
+
+### 5. Şirket Yönetimi (5 API)
+| No | Method | Endpoint | Açıklama |
+|----|--------|----------|----------|
+| 54 | GET | /api/secure/companies | Şirket listesi |
+| 55 | POST | /api/secure/companies | Yeni şirket ekleme |
+| 56 | GET | /api/secure/companies/{id} | Şirket detayı |
+| 57 | PUT | /api/secure/companies/{id} | Şirket güncelleme |
+| 58 | DELETE | /api/secure/companies/{id} | Şirket silme (soft) |
+
+### 6. Asset/Araç Yönetimi (6 API)
+| No | Method | Endpoint | Açıklama |
+|----|--------|----------|----------|
+| 59 | GET | /api/secure/assets | Asset listesi |
+| 60 | POST | /api/secure/assets | Yeni asset ekleme |
+| 61 | GET | /api/secure/assets/{id} | Asset detayı |
+| 62 | PUT | /api/secure/assets/{id} | Asset güncelleme |
+| 63 | DELETE | /api/secure/assets/{id} | Asset silme (soft) |
+| 64 | POST | /api/secure/assignPersonnelToAsset | Personel-Asset atama |
+
+### 7. Dosya İşlemleri (5 API)
+| No | Method | Endpoint | Açıklama |
+|----|--------|----------|----------|
+| 65 | POST | /api/secure/documents/upload | Dosya yükleme (multipart) |
+| 66 | GET | /api/secure/documents/asset/{id} | Asset dokümanları |
+| 67 | GET | /api/secure/documents/personnel/{id} | Personel dokümanları |
+
+### 8. Admin İşlemleri (8 API)
+| No | Method | Endpoint | Açıklama |
+|----|--------|----------|----------|
+| 68 | GET | /api/admin/clients | API Client listesi |
+| 69 | POST | /api/admin/clients | Yeni client oluşturma |
+| 70 | GET | /api/admin/stats | Sistem istatistikleri |
+| 71 | POST | /api/auth/register | Kullanıcı kaydı |
+| 72 | POST | /api/auth/login | Kullanıcı girişi |
+| 73 | GET | /api/secure/data | Güvenli veri okuma |
+| 74 | POST | /api/secure/data | Güvenli veri yazma |
+| 75 | GET | /api/secure/admin-data | Admin veri erişimi |
+
+## Güvenlik Özellikleri
+- **API Key Koruması**: Tüm endpoint'ler bcrypt hash'li API key ile korunuyor
+- **İzin Sistemi**: 14 farklı izin tipi (data:read, data:write, admin:read, vb.)
+- **Rate Limiting**: Endpoint bazlı hız sınırlaması
+- **Audit Trail**: Tüm işlemler otomatik loglanıyor
+- **Dual Authentication**: API Key + JWT Token destegi
+
+## Demo API Key
+\`ak_test123key\` - Test amaçlı kullanıma hazır demo anahtarı.
+
+`,
       contact: {
         name: 'API Desteği',
         email: 'api-support@example.com'
@@ -2154,6 +2278,18 @@ export function registerApiManagementRoutes(app: Express) {
       {
         name: 'Asset Yönetimi',
         description: 'Araç ve asset yönetimi - ekleme, güncelleme, listeleme, silme'
+      },
+      {
+        name: 'Personel Yönetimi',
+        description: 'Personel bilgileri yönetimi - CRUD operasyonları'
+      },
+      {
+        name: 'Çalışma Alanı Yönetimi',
+        description: 'Çalışma alanları yönetimi - CRUD operasyonları'
+      },
+      {
+        name: 'Admin İşlemleri',
+        description: 'Sistem yönetimi ve admin işlemleri'
       },
       {
         name: 'Genel API\'ler',
