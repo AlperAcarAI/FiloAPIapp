@@ -2246,6 +2246,314 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
             }
           }
         }
+      },
+      
+      // ========================
+      // EKSİK API'LER - ÖZET TANIMLAR
+      // ========================
+      
+      '/api/secure/addCity': {
+        post: {
+          summary: 'Şehir Ekleme',
+          description: 'Yeni şehir ekler (81 il sistemi)',
+          tags: ['Admin İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/updateCity/{id}': {
+        put: {
+          summary: 'Şehir Güncelleme',
+          description: 'Şehir bilgilerini günceller',
+          tags: ['Admin İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/deleteCity/{id}': {
+        delete: {
+          summary: 'Şehir Silme',
+          description: 'Şehir kaydını soft delete ile siler',
+          tags: ['Admin İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/addCountry': {
+        post: {
+          summary: 'Ülke Ekleme',
+          description: 'Yeni ülke ekler',
+          tags: ['Admin İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/updateCountry/{id}': {
+        put: {
+          summary: 'Ülke Güncelleme',
+          description: 'Ülke bilgilerini günceller',
+          tags: ['Admin İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/deleteCountry/{id}': {
+        delete: {
+          summary: 'Ülke Silme',
+          description: 'Ülke kaydını soft delete ile siler',
+          tags: ['Admin İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/updateCarBrand/{id}': {
+        put: {
+          summary: 'Araç Markası Güncelleme',
+          description: 'Araç markası bilgilerini günceller',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/deleteCarBrand/{id}': {
+        delete: {
+          summary: 'Araç Markası Silme',
+          description: 'Araç markasını soft delete ile siler',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/updateCarModel/{id}': {
+        put: {
+          summary: 'Araç Modeli Güncelleme',
+          description: 'Araç modeli bilgilerini günceller',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/deleteCarModel/{id}': {
+        delete: {
+          summary: 'Araç Modeli Silme',
+          description: 'Araç modelini soft delete ile siler',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/updateCarType/{id}': {
+        put: {
+          summary: 'Araç Tipi Güncelleme',
+          description: 'Araç tipi bilgilerini günceller',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/deleteCarType/{id}': {
+        delete: {
+          summary: 'Araç Tipi Silme',
+          description: 'Araç tipini soft delete ile siler',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/updatePolicyType/{id}': {
+        put: {
+          summary: 'Poliçe Türü Güncelleme',
+          description: 'Poliçe türü bilgilerini günceller',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/deletePolicyType/{id}': {
+        delete: {
+          summary: 'Poliçe Türü Silme',
+          description: 'Poliçe türünü soft delete ile siler',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/updateMaintenanceType/{id}': {
+        put: {
+          summary: 'Bakım Türü Güncelleme',
+          description: 'Bakım türü bilgilerini günceller',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/deleteMaintenanceType/{id}': {
+        delete: {
+          summary: 'Bakım Türü Silme',
+          description: 'Bakım türünü soft delete ile siler',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/deletePenaltyType/{id}': {
+        delete: {
+          summary: 'Ceza Türü Silme',
+          description: 'Ceza türünü soft delete ile siler',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/updatePaymentMethod/{id}': {
+        put: {
+          summary: 'Ödeme Yöntemi Güncelleme',
+          description: 'Ödeme yöntemi bilgilerini günceller',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/deletePaymentMethod/{id}': {
+        delete: {
+          summary: 'Ödeme Yöntemi Silme',
+          description: 'Ödeme yöntemini soft delete ile siler',
+          tags: ['Veri İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/getPersonnel': {
+        get: {
+          summary: 'Personel Listesi',
+          description: 'Sistemdeki tüm personel kayıtlarını listeler',
+          tags: ['Personel Yönetimi'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/updatePersonnel/{id}': {
+        put: {
+          summary: 'Personel Güncelleme',
+          description: 'Personel bilgilerini günceller',
+          tags: ['Personel Yönetimi'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/deletePersonnel/{id}': {
+        delete: {
+          summary: 'Personel Silme',
+          description: 'Personel kaydını soft delete ile siler',
+          tags: ['Personel Yönetimi'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/updatePersonnelPosition/{id}': {
+        put: {
+          summary: 'Personel Pozisyonu Güncelleme',
+          description: 'Personel pozisyonu bilgilerini günceller',
+          tags: ['Personel Yönetimi'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/deletePersonnelPosition/{id}': {
+        delete: {
+          summary: 'Personel Pozisyonu Silme',
+          description: 'Personel pozisyonunu soft delete ile siler',
+          tags: ['Personel Yönetimi'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/updateWorkArea/{id}': {
+        put: {
+          summary: 'Çalışma Alanı Güncelleme',
+          description: 'Çalışma alanı bilgilerini günceller',
+          tags: ['Çalışma Alanı Yönetimi'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/deleteWorkArea/{id}': {
+        delete: {
+          summary: 'Çalışma Alanı Silme',
+          description: 'Çalışma alanını soft delete ile siler',
+          tags: ['Çalışma Alanı Yönetimi'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/companies/{id}': {
+        get: {
+          summary: 'Şirket Detayı',
+          description: 'Belirli şirketin detay bilgilerini getirir',
+          tags: ['Şirket Yönetimi'],
+          security: [{ ApiKeyAuth: [] }]
+        },
+        put: {
+          summary: 'Şirket Güncelleme',
+          description: 'Şirket bilgilerini günceller',
+          tags: ['Şirket Yönetimi'],
+          security: [{ ApiKeyAuth: [] }]
+        },
+        delete: {
+          summary: 'Şirket Silme',
+          description: 'Şirketi soft delete ile siler',
+          tags: ['Şirket Yönetimi'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/assets/{id}': {
+        get: {
+          summary: 'Asset Detayı',
+          description: 'Belirli asset/aracın detay bilgilerini getirir',
+          tags: ['Asset Yönetimi'],
+          security: [{ ApiKeyAuth: [] }]
+        },
+        put: {
+          summary: 'Asset Güncelleme',
+          description: 'Asset/araç bilgilerini günceller',
+          tags: ['Asset Yönetimi'],
+          security: [{ ApiKeyAuth: [] }]
+        },
+        delete: {
+          summary: 'Asset Silme',
+          description: 'Asset/aracı soft delete ile siler',
+          tags: ['Asset Yönetimi'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/assignPersonnelToAsset': {
+        post: {
+          summary: 'Asset-Personel Atama',
+          description: 'Personeli bir asset/araca atar',
+          tags: ['Asset Yönetimi'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/documents/asset/{id}': {
+        get: {
+          summary: 'Asset Dokümanları',
+          description: 'Asset/araçla ilgili dokümanları listeler',
+          tags: ['Dosya İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/secure/documents/personnel/{id}': {
+        get: {
+          summary: 'Personel Dokümanları',
+          description: 'Personelle ilgili dokümanları listeler',
+          tags: ['Dosya İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/admin/stats': {
+        get: {
+          summary: 'Sistem İstatistikleri',
+          description: 'API kullanım istatistikleri ve sistem durumu',
+          tags: ['Admin İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/auth/register': {
+        post: {
+          summary: 'Kullanıcı Kaydı',
+          description: 'Yeni kullanıcı kaydı oluşturur',
+          tags: ['Admin İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
+      },
+      '/api/auth/login': {
+        post: {
+          summary: 'Kullanıcı Girişi',
+          description: 'Kullanıcı girişi yapar ve JWT token döndürür',
+          tags: ['Admin İşlemleri']
+        }
+      },
+      '/api/secure/admin-data': {
+        get: {
+          summary: 'Admin Veri Erişimi',
+          description: 'Admin seviyesi veri erişimi',
+          tags: ['Admin İşlemleri'],
+          security: [{ ApiKeyAuth: [] }]
+        }
       }
     },
     components: {
