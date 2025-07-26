@@ -653,6 +653,27 @@ export const insertWorkAreaSchema = createInsertSchema(workAreas).omit({
 
 export const updateWorkAreaSchema = insertWorkAreaSchema.partial();
 
+// Ownership Types Schemas
+export const insertOwnershipTypeSchema = createInsertSchema(ownershipTypes).omit({
+  id: true,
+});
+
+export const updateOwnershipTypeSchema = insertOwnershipTypeSchema.partial();
+
+// Personnel Positions Schemas  
+export const insertPersonnelPositionSchema = createInsertSchema(personnelPositions).omit({
+  id: true,
+});
+
+export const updatePersonnelPositionSchema = insertPersonnelPositionSchema.partial();
+
+// Personnel Work Areas Schemas
+export const insertPersonnelWorkAreaSchema = createInsertSchema(personnelWorkAreas).omit({
+  id: true,
+});
+
+export const updatePersonnelWorkAreaSchema = insertPersonnelWorkAreaSchema.partial();
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
@@ -683,6 +704,17 @@ export type InsertWorkArea = z.infer<typeof insertWorkAreaSchema>;
 export type UpdateWorkArea = z.infer<typeof updateWorkAreaSchema>;
 
 export type OwnershipType = typeof ownershipTypes.$inferSelect;
+export type InsertOwnershipType = z.infer<typeof insertOwnershipTypeSchema>;
+export type UpdateOwnershipType = z.infer<typeof updateOwnershipTypeSchema>;
+
+export type PersonnelPosition = typeof personnelPositions.$inferSelect;
+export type InsertPersonnelPosition = z.infer<typeof insertPersonnelPositionSchema>;
+export type UpdatePersonnelPosition = z.infer<typeof updatePersonnelPositionSchema>;
+
+export type PersonnelWorkArea = typeof personnelWorkAreas.$inferSelect;
+export type InsertPersonnelWorkArea = z.infer<typeof insertPersonnelWorkAreaSchema>;
+export type UpdatePersonnelWorkArea = z.infer<typeof updatePersonnelWorkAreaSchema>;
+
 export type PolicyType = typeof policyTypes.$inferSelect;
 export type DamageType = typeof damageTypes.$inferSelect;
 export type MaintenanceType = typeof maintenanceTypes.$inferSelect;

@@ -147,6 +147,10 @@ Kapsamlı API güvenlik sistemi başarıyla kuruldu ve test edildi:
 - `POST /api/secure/addPersonnel` - Personel ekleme API ✅
 - `POST /api/secure/addWorkArea` - Çalışma alanı ekleme API ✅
 - `PUT /api/secure/updateWorkArea/{id}` - Çalışma alanı güncelleme API ✅
+- `GET /api/secure/getOwnershipTypes` - Sahiplik türleri listesi API ✅
+- `POST /api/secure/addOwnershipType` - Sahiplik türü ekleme API (duplicate kontrolü) ✅
+- `GET /api/secure/getPersonnelPositions` - Personel pozisyonları listesi API ✅
+- `POST /api/secure/addPersonnelPosition` - Personel pozisyonu ekleme API (description field) ✅
 - `GET /api/secure/assets` - Asset/Araç listesi (filtreleme, join'li data) ✅
 - `GET /api/secure/assets/{id}` - Asset detayı ✅
 - `POST /api/secure/assets` - Yeni asset ekleme (duplicate plaka kontrolü) ✅

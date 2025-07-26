@@ -138,6 +138,42 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     dataCount: "Güncelleme"
   },
   {
+    id: "getOwnershipTypes",
+    name: "Sahiplik Türleri API",
+    description: "Araç sahiplik türlerinin listesini döndürür (Şirket Mülkiyeti, Kiralık, Leasing vb.)",
+    endpoint: "/api/secure/getOwnershipTypes",
+    method: "GET",
+    category: "Referans Veriler",
+    dataCount: "4 sahiplik türü"
+  },
+  {
+    id: "addOwnershipType",
+    name: "Sahiplik Türü Ekleme API",
+    description: "Yeni sahiplik türü ekler. Duplicate kontrol ile aynı isimde tür engellenir",
+    endpoint: "/api/secure/addOwnershipType",
+    method: "POST",
+    category: "Veri İşlemleri",
+    dataCount: "Yeni sahiplik türü"
+  },
+  {
+    id: "getPersonnelPositions",
+    name: "Personel Pozisyonları API", 
+    description: "Personel pozisyonlarının listesini döndürür (Filo Yöneticisi, Şoför, Teknisyen vb.)",
+    endpoint: "/api/secure/getPersonnelPositions",
+    method: "GET",
+    category: "Referans Veriler",
+    dataCount: "8 pozisyon türü"
+  },
+  {
+    id: "addPersonnelPosition",
+    name: "Personel Pozisyonu Ekleme API",
+    description: "Yeni personel pozisyonu ekler. Açıklama alanı ile detaylı tanım yapılabilir",
+    endpoint: "/api/secure/addPersonnelPosition",
+    method: "POST",
+    category: "Veri İşlemleri",
+    dataCount: "Yeni pozisyon"
+  },
+  {
     id: "getDocTypes",
     name: "Doküman Türleri API",
     description: "Sistemde tanımlı doküman türlerinin listesini döndürür",
@@ -235,6 +271,17 @@ export default function ApiTest() {
           name: "Güncellenen Çalışma Alanı",
           address: "Yeni Adres",
           isActive: false
+        }, null, 2);
+      case 'addOwnershipType':
+        return JSON.stringify({
+          name: "Operasyonel Kiralama",
+          isActive: true
+        }, null, 2);
+      case 'addPersonnelPosition':
+        return JSON.stringify({
+          name: "Araç Bakım Teknisyeni",
+          description: "Araç bakım ve onarım işlemlerinden sorumlu teknik personel",
+          isActive: true
         }, null, 2);
       case 'documentsUpload':
         return `Form Data Parametreleri:
