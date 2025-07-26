@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchFilters } from "@/components/search-filters";
 import { StatsCards } from "@/components/stats-cards";
-import { FileCode, Activity, BarChart3, TestTube } from "lucide-react";
+import { FileCode, Activity, BarChart3, TestTube, Upload, FileText } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Home() {
@@ -69,6 +69,29 @@ export default function Home() {
                 <Button variant="outline" className="bg-white hover:bg-blue-100 text-blue-700 border-blue-300">
                   <TestTube className="h-4 w-4 mr-2" />
                   API Test Sayfası
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Dokuman Yönetimi */}
+        <Card className="shadow-sm border-green-200 bg-green-50 mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FileText className="h-8 w-8 text-green-600" />
+                <div>
+                  <h3 className="text-lg font-semibold text-green-800">Dokuman Yönetimi</h3>
+                  <p className="text-green-600">
+                    Varlık dokümanlarını yükleyin ve yönetin
+                  </p>
+                </div>
+              </div>
+              <Link to="/documents">
+                <Button variant="outline" className="bg-white hover:bg-green-100 text-green-700 border-green-300">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Dokuman Sayfası
                 </Button>
               </Link>
             </div>

@@ -7,6 +7,7 @@ import Home from "@/pages/home";
 import ApiDetails from "@/pages/api-details";
 import VarlikTest from "@/pages/varlik-test";
 import ApiTest from "@/pages/api-test";
+import DocumentManagement from "@/pages/document-management";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/api/:id" component={ApiDetails} />
       <Route path="/test" component={VarlikTest} />
       <Route path="/api-test" component={ApiTest} />
+      <Route path="/documents" component={DocumentManagement} />
       <Route path="/login" component={Login} />
       <Route component={NotFound} />
     </Switch>

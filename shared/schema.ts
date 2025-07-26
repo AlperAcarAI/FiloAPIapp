@@ -373,6 +373,11 @@ export const assetDocuments = pgTable("asset_documents", {
   uploadDate: timestamp("upload_date").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   createdBy: integer("created_by").references(() => personnel.id),
+  // Dosya metadata alanları
+  fileName: varchar("file_name", { length: 255 }),
+  fileSize: integer("file_size"), // bytes
+  mimeType: varchar("mime_type", { length: 100 }),
+  fileHash: varchar("file_hash", { length: 64 }), // SHA256 for duplicate detection
 });
 
 export const assetsPolicies = pgTable("assets_policies", {
@@ -710,4 +715,25 @@ export type InsertRole = z.infer<typeof insertRoleSchema>;
 
 export type Permission = typeof permissions.$inferSelect;
 export type InsertPermission = z.infer<typeof insertPermissionSchema>;
+
+// Asset Documents types
+export type InsertAssetDocument = typeof assetDocuments.$inferInsert;
+export type SelectAssetDocument = typeof assetDocuments.$inferSelect;
+
+// Zod validation schemas for asset documents
+export const insertAssetDocumentSchema = createInsertSchema(assetDocuments).omit({
+  id: true,
+  uploadDate: true,
+  createdAt: true,
+});
+
+export const assetDocumentUploadSchema = z.object({
+  assetId: z.number().int().positive(),
+  docTypeId: z.number().int().positive(),
+  personnelId: z.number().int().positive().optional(),
+  description: z.string().max(255).optional(),
+  fileName: z.string().max(255),
+  fileSize: z.number().int().positive(),
+  mimeType: z.string().max(100),
+});
 
