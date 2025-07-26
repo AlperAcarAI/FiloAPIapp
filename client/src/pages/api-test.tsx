@@ -244,6 +244,285 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     method: "DELETE",
     category: "Veri İşlemleri",
     dataCount: "Silme"
+  },
+  {
+    id: "getPersonnel",
+    name: "Personel Listesi",
+    description: "Sistemdeki tüm personel kayıtlarını listeler. Aktif/pasif filtreleme destekler.",
+    endpoint: "/api/secure/getPersonnel",
+    method: "GET",
+    category: "Personel Yönetimi",
+    dataCount: "Personel kayıtları"
+  },
+  {
+    id: "updatePersonnel",
+    name: "Personel Güncelleme",
+    description: "Mevcut personel bilgilerini günceller. TC Kimlik kontrolü yapar.",
+    endpoint: "/api/secure/updatePersonnel/1",
+    method: "PUT",
+    category: "Veri İşlemleri",
+    dataCount: "Güncelleme"
+  },
+  {
+    id: "deletePersonnel",
+    name: "Personel Silme",
+    description: "Personel kaydını siler (soft delete)",
+    endpoint: "/api/secure/deletePersonnel/1",
+    method: "DELETE",
+    category: "Veri İşlemleri",
+    dataCount: "Silme"
+  },
+  {
+    id: "getWorkAreas",
+    name: "Çalışma Alanları Listesi",
+    description: "Sistemdeki tüm çalışma alanlarını listeler",
+    endpoint: "/api/secure/getWorkAreas",
+    method: "GET",
+    category: "Çalışma Alanı Yönetimi",
+    dataCount: "Çalışma alanları"
+  },
+  {
+    id: "deleteWorkArea",
+    name: "Çalışma Alanı Silme",
+    description: "Çalışma alanı kaydını siler (soft delete)",
+    endpoint: "/api/secure/deleteWorkArea/1",
+    method: "DELETE",
+    category: "Veri İşlemleri",
+    dataCount: "Silme"
+  },
+  {
+    id: "addCarBrand",
+    name: "Araç Markası Ekleme",
+    description: "Yeni araç markası ekler. Duplicate kontrolü yapar.",
+    endpoint: "/api/secure/addCarBrand",
+    method: "POST",
+    category: "Veri İşlemleri",
+    dataCount: "Yeni marka"
+  },
+  {
+    id: "updateCarBrand",
+    name: "Araç Markası Güncelleme",
+    description: "Mevcut araç markasını günceller",
+    endpoint: "/api/secure/updateCarBrand/1",
+    method: "PUT",
+    category: "Veri İşlemleri",
+    dataCount: "Güncelleme"
+  },
+  {
+    id: "deleteCarBrand",
+    name: "Araç Markası Silme",
+    description: "Araç markasını siler (soft delete)",
+    endpoint: "/api/secure/deleteCarBrand/1",
+    method: "DELETE",
+    category: "Veri İşlemleri",
+    dataCount: "Silme"
+  },
+  {
+    id: "updateCarModel",
+    name: "Araç Modeli Güncelleme",
+    description: "Mevcut araç modelini günceller",
+    endpoint: "/api/secure/updateCarModel/1",
+    method: "PUT",
+    category: "Veri İşlemleri",
+    dataCount: "Güncelleme"
+  },
+  {
+    id: "deleteCarModel",
+    name: "Araç Modeli Silme",
+    description: "Araç modelini siler (soft delete)",
+    endpoint: "/api/secure/deleteCarModel/1",
+    method: "DELETE",
+    category: "Veri İşlemleri",
+    dataCount: "Silme"
+  },
+  {
+    id: "updateOwnershipType",
+    name: "Sahiplik Türü Güncelleme",
+    description: "Mevcut sahiplik türünü günceller",
+    endpoint: "/api/secure/updateOwnershipType/1",
+    method: "PUT",
+    category: "Veri İşlemleri",
+    dataCount: "Güncelleme"
+  },
+  {
+    id: "deleteOwnershipType",
+    name: "Sahiplik Türü Silme",
+    description: "Sahiplik türünü siler (soft delete)",
+    endpoint: "/api/secure/deleteOwnershipType/1",
+    method: "DELETE",
+    category: "Veri İşlemleri",
+    dataCount: "Silme"
+  },
+  {
+    id: "updatePersonnelPosition",
+    name: "Personel Pozisyonu Güncelleme",
+    description: "Mevcut personel pozisyonunu günceller",
+    endpoint: "/api/secure/updatePersonnelPosition/1",
+    method: "PUT",
+    category: "Veri İşlemleri",
+    dataCount: "Güncelleme"
+  },
+  {
+    id: "deletePersonnelPosition",
+    name: "Personel Pozisyonu Silme",
+    description: "Personel pozisyonunu siler (soft delete)",
+    endpoint: "/api/secure/deletePersonnelPosition/1",
+    method: "DELETE",
+    category: "Veri İşlemleri",
+    dataCount: "Silme"
+  },
+  {
+    id: "updatePolicyType",
+    name: "Poliçe Türü Güncelleme",
+    description: "Mevcut poliçe türünü günceller",
+    endpoint: "/api/secure/updatePolicyType/1",
+    method: "PUT",
+    category: "Veri İşlemleri",
+    dataCount: "Güncelleme"
+  },
+  {
+    id: "deletePolicyType",
+    name: "Poliçe Türü Silme",
+    description: "Poliçe türünü siler (soft delete)",
+    endpoint: "/api/secure/deletePolicyType/1",
+    method: "DELETE",
+    category: "Veri İşlemleri",
+    dataCount: "Silme"
+  },
+  {
+    id: "updateMaintenanceType",
+    name: "Bakım Türü Güncelleme",
+    description: "Mevcut bakım türünü günceller",
+    endpoint: "/api/secure/updateMaintenanceType/1",
+    method: "PUT",
+    category: "Veri İşlemleri",
+    dataCount: "Güncelleme"
+  },
+  {
+    id: "deleteMaintenanceType",
+    name: "Bakım Türü Silme",
+    description: "Bakım türünü siler (soft delete)",
+    endpoint: "/api/secure/deleteMaintenanceType/1",
+    method: "DELETE",
+    category: "Veri İşlemleri",
+    dataCount: "Silme"
+  },
+  {
+    id: "deletePenaltyType",
+    name: "Ceza Türü Silme",
+    description: "Ceza türünü siler (soft delete)",
+    endpoint: "/api/secure/deletePenaltyType/1",
+    method: "DELETE",
+    category: "Veri İşlemleri",
+    dataCount: "Silme"
+  },
+  {
+    id: "addCity",
+    name: "Şehir Ekleme",
+    description: "Yeni şehir ekler. Duplicate kontrolü yapar.",
+    endpoint: "/api/secure/addCity",
+    method: "POST",
+    category: "Admin İşlemleri",
+    dataCount: "Yeni şehir"
+  },
+  {
+    id: "updateCity",
+    name: "Şehir Güncelleme",
+    description: "Mevcut şehir bilgilerini günceller",
+    endpoint: "/api/secure/updateCity/1",
+    method: "PUT",
+    category: "Admin İşlemleri",
+    dataCount: "Güncelleme"
+  },
+  {
+    id: "deleteCity",
+    name: "Şehir Silme",
+    description: "Şehir kaydını siler (soft delete)",
+    endpoint: "/api/secure/deleteCity/1",
+    method: "DELETE",
+    category: "Admin İşlemleri",
+    dataCount: "Silme"
+  },
+  {
+    id: "addCountry",
+    name: "Ülke Ekleme",
+    description: "Yeni ülke ekler. Duplicate kontrolü yapar.",
+    endpoint: "/api/secure/addCountry",
+    method: "POST",
+    category: "Admin İşlemleri",
+    dataCount: "Yeni ülke"
+  },
+  {
+    id: "updateCountry",
+    name: "Ülke Güncelleme",
+    description: "Mevcut ülke bilgilerini günceller",
+    endpoint: "/api/secure/updateCountry/1",
+    method: "PUT",
+    category: "Admin İşlemleri",
+    dataCount: "Güncelleme"
+  },
+  {
+    id: "deleteCountry",
+    name: "Ülke Silme",
+    description: "Ülke kaydını siler (soft delete)",
+    endpoint: "/api/secure/deleteCountry/1",
+    method: "DELETE",
+    category: "Admin İşlemleri",
+    dataCount: "Silme"
+  },
+  {
+    id: "addCarType",
+    name: "Araç Tipi Ekleme",
+    description: "Yeni araç tipi ekler. Duplicate kontrolü yapar.",
+    endpoint: "/api/secure/addCarType",
+    method: "POST",
+    category: "Veri İşlemleri",
+    dataCount: "Yeni araç tipi"
+  },
+  {
+    id: "updateCarType",
+    name: "Araç Tipi Güncelleme",
+    description: "Mevcut araç tipini günceller",
+    endpoint: "/api/secure/updateCarType/1",
+    method: "PUT",
+    category: "Veri İşlemleri",
+    dataCount: "Güncelleme"
+  },
+  {
+    id: "deleteCarType",
+    name: "Araç Tipi Silme",
+    description: "Araç tipini siler (soft delete)",
+    endpoint: "/api/secure/deleteCarType/1",
+    method: "DELETE",
+    category: "Veri İşlemleri",
+    dataCount: "Silme"
+  },
+  {
+    id: "addPaymentMethod",
+    name: "Ödeme Yöntemi Ekleme",
+    description: "Yeni ödeme yöntemi ekler. Duplicate kontrolü yapar.",
+    endpoint: "/api/secure/addPaymentMethod",
+    method: "POST",
+    category: "Veri İşlemleri",
+    dataCount: "Yeni ödeme yöntemi"
+  },
+  {
+    id: "updatePaymentMethod",
+    name: "Ödeme Yöntemi Güncelleme",
+    description: "Mevcut ödeme yöntemini günceller",
+    endpoint: "/api/secure/updatePaymentMethod/1",
+    method: "PUT",
+    category: "Veri İşlemleri",
+    dataCount: "Güncelleme"
+  },
+  {
+    id: "deletePaymentMethod",
+    name: "Ödeme Yöntemi Silme",
+    description: "Ödeme yöntemini siler (soft delete)",
+    endpoint: "/api/secure/deletePaymentMethod/1",
+    method: "DELETE",
+    category: "Veri İşlemleri",
+    dataCount: "Silme"
   }
 ];
 
@@ -331,6 +610,92 @@ export default function ApiTest() {
         return JSON.stringify({
           endDate: "2025-06-30",
           isActive: false
+        }, null, 2);
+      case 'updatePersonnel':
+        return JSON.stringify({
+          name: "Ahmet",
+          surname: "Yılmaz",
+          phone: "+90 532 123 4567",
+          email: "ahmet.yilmaz@sirket.com",
+          isActive: true
+        }, null, 2);
+      case 'addCarBrand':
+        return JSON.stringify({
+          name: "Tesla",
+          isActive: true
+        }, null, 2);
+      case 'updateCarBrand':
+        return JSON.stringify({
+          name: "Tesla Motors",
+          isActive: true
+        }, null, 2);
+      case 'updateCarModel':
+        return JSON.stringify({
+          name: "Model S Plaid",
+          capacity: 5,
+          detail: "Yüksek performanslı elektrikli sedan"
+        }, null, 2);
+      case 'updateOwnershipType':
+        return JSON.stringify({
+          name: "Operasyonel Kiralama Plus",
+          isActive: true
+        }, null, 2);
+      case 'updatePersonnelPosition':
+        return JSON.stringify({
+          name: "Kıdemli Araç Bakım Teknisyeni",
+          description: "Araç bakım ve onarım işlemlerinde uzman teknik personel"
+        }, null, 2);
+      case 'updatePolicyType':
+        return JSON.stringify({
+          name: "Kasko Plus",
+          isActive: true
+        }, null, 2);
+      case 'updateMaintenanceType':
+        return JSON.stringify({
+          name: "Genel Kontrol Plus",
+          isActive: true
+        }, null, 2);
+      case 'addCity':
+        return JSON.stringify({
+          name: "Yalova",
+          plateNumber: "77",
+          isActive: true
+        }, null, 2);
+      case 'updateCity':
+        return JSON.stringify({
+          name: "Yalova Merkez",
+          plateNumber: "77"
+        }, null, 2);
+      case 'addCountry':
+        return JSON.stringify({
+          name: "Azerbaycan",
+          phoneCode: "+994",
+          isActive: true
+        }, null, 2);
+      case 'updateCountry':
+        return JSON.stringify({
+          name: "Azerbaycan Cumhuriyeti",
+          phoneCode: "+994"
+        }, null, 2);
+      case 'addCarType':
+        return JSON.stringify({
+          name: "Elektrikli SUV",
+          isActive: true
+        }, null, 2);
+      case 'updateCarType':
+        return JSON.stringify({
+          name: "Elektrikli SUV Plus",
+          isActive: true
+        }, null, 2);
+      case 'addPaymentMethod':
+        return JSON.stringify({
+          name: "Kripto Para",
+          isActive: true
+        }, null, 2);
+      case 'updatePaymentMethod':
+        return JSON.stringify({
+          name: "Kripto Para (Bitcoin)",
+          isActive: true
         }, null, 2);
       case 'documentsUpload':
         return `Form Data Parametreleri:

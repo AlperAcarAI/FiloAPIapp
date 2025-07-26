@@ -4546,4 +4546,1882 @@ export function registerApiManagementRoutes(app: Express) {
       }
     }
   );
+
+  // ========================
+  // PERSONNEL CRUD API (GET, PUT, DELETE)
+  // ========================
+
+  // GET /api/secure/getPersonnel
+  app.get("/api/secure/getPersonnel", 
+    authenticateApiKey,
+    authorizeEndpoint(["data:read", "company:read"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const { search, active } = req.query;
+
+        let query = db.select({
+          id: personnel.id,
+          name: personnel.name,
+          surname: personnel.surname,
+          tcno: personnel.tcno,
+          phone: personnel.phone,
+          email: personnel.email,
+          birthDate: personnel.birthDate,
+          hireDate: personnel.hireDate,
+          isActive: personnel.isActive,
+        }).from(personnel);
+
+        if (active !== undefined) {
+          query = query.where(eq(personnel.isActive, active === 'true'));
+        }
+
+        const personnelList = await query.orderBy(desc(personnel.id));
+        
+        await logApiRequest(req, "/api/secure/getPersonnel", "GET", 200);
+
+        res.json({
+          success: true,
+          message: "Personel listesi başarıyla getirildi.",
+          data: {
+            personnel: personnelList,
+            totalCount: personnelList.length
+          },
+          clientInfo: {
+            id: req.apiClient!.id,
+            name: req.apiClient!.name,
+            companyId: req.apiClient!.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("Personnel fetch error:", error);
+        await logApiRequest(req, "/api/secure/getPersonnel", "GET", 500, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Personel listesi getirilirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // PUT /api/secure/updatePersonnel/:id
+  app.put("/api/secure/updatePersonnel/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "company:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const validatedData = insertPersonnelSchema.partial().parse(req.body);
+
+        // Var olan personeli kontrol et
+        const existing = await db.select()
+          .from(personnel)
+          .where(eq(personnel.id, id))
+          .limit(1);
+
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Personel bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // TC Kimlik No. değişiyorsa mükerrer kontrol
+        if (validatedData.tcno && validatedData.tcno !== existing[0].tcno) {
+          const duplicateCheck = await db.select()
+            .from(personnel)
+            .where(and(
+              eq(personnel.tcno, validatedData.tcno),
+              not(eq(personnel.id, id))
+            ));
+
+          if (duplicateCheck.length > 0) {
+            return res.status(400).json({
+              success: false,
+              message: "Bu TC Kimlik No. zaten kayıtlı.",
+              error: "Duplicate TCNO",
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+
+        const [result] = await db.update(personnel)
+          .set(validatedData)
+          .where(eq(personnel.id, id))
+          .returning();
+
+        await logApiRequest(req, "/api/secure/updatePersonnel", "PUT", 200);
+
+        res.json({
+          success: true,
+          message: "Personel başarıyla güncellendi.",
+          data: result,
+          clientInfo: {
+            id: req.apiClient!.id,
+            name: req.apiClient!.name,
+            companyId: req.apiClient!.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("Personnel update error:", error);
+        await logApiRequest(req, "/api/secure/updatePersonnel", "PUT", 400, error?.message);
+        
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz veri formatı.",
+            error: error.errors,
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        res.status(500).json({
+          success: false,
+          message: "Personel güncellenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // DELETE /api/secure/deletePersonnel/:id
+  app.delete("/api/secure/deletePersonnel/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:delete", "company:delete"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // Var olan personeli kontrol et
+        const existing = await db.select()
+          .from(personnel)
+          .where(eq(personnel.id, id))
+          .limit(1);
+
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Personel bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // Soft delete (isActive = false)
+        const [result] = await db.update(personnel)
+          .set({ isActive: false })
+          .where(eq(personnel.id, id))
+          .returning();
+
+        await logApiRequest(req, "/api/secure/deletePersonnel", "DELETE", 200);
+
+        res.json({
+          success: true,
+          message: "Personel başarıyla silindi.",
+          data: result,
+          clientInfo: {
+            id: req.apiClient!.id,
+            name: req.apiClient!.name,
+            companyId: req.apiClient!.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("Personnel delete error:", error);
+        await logApiRequest(req, "/api/secure/deletePersonnel", "DELETE", 500, error?.message);
+        
+        res.status(500).json({
+          success: false,
+          message: "Personel silinirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // ========================
+  // WORK AREAS CRUD API (GET, DELETE)
+  // ========================
+
+  // GET /api/secure/getWorkAreas
+  app.get("/api/secure/getWorkAreas", 
+    authenticateApiKey,
+    authorizeEndpoint(["data:read", "company:read"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const { active } = req.query;
+
+        let query = db.select({
+          id: workAreas.id,
+          name: workAreas.name,
+          cityId: workAreas.cityId,
+          address: workAreas.address,
+          managerPersonnelId: workAreas.managerPersonnelId,
+          isActive: workAreas.isActive,
+        }).from(workAreas);
+
+        if (active !== undefined) {
+          query = query.where(eq(workAreas.isActive, active === 'true'));
+        }
+
+        const workAreasList = await query.orderBy(desc(workAreas.id));
+        
+        await logApiRequest(req, "/api/secure/getWorkAreas", "GET", 200);
+
+        res.json({
+          success: true,
+          message: "Çalışma alanları başarıyla getirildi.",
+          data: {
+            workAreas: workAreasList,
+            totalCount: workAreasList.length
+          },
+          clientInfo: {
+            id: req.apiClient!.id,
+            name: req.apiClient!.name,
+            companyId: req.apiClient!.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("Work areas fetch error:", error);
+        await logApiRequest(req, "/api/secure/getWorkAreas", "GET", 500, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Çalışma alanları getirilirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // DELETE /api/secure/deleteWorkArea/:id
+  app.delete("/api/secure/deleteWorkArea/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:delete", "company:delete"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // Var olan çalışma alanını kontrol et
+        const existing = await db.select()
+          .from(workAreas)
+          .where(eq(workAreas.id, id))
+          .limit(1);
+
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Çalışma alanı bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // Soft delete (isActive = false)
+        const [result] = await db.update(workAreas)
+          .set({ isActive: false })
+          .where(eq(workAreas.id, id))
+          .returning();
+
+        await logApiRequest(req, "/api/secure/deleteWorkArea", "DELETE", 200);
+
+        res.json({
+          success: true,
+          message: "Çalışma alanı başarıyla silindi.",
+          data: result,
+          clientInfo: {
+            id: req.apiClient!.id,
+            name: req.apiClient!.name,
+            companyId: req.apiClient!.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("Work area delete error:", error);
+        await logApiRequest(req, "/api/secure/deleteWorkArea", "DELETE", 500, error?.message);
+        
+        res.status(500).json({
+          success: false,
+          message: "Çalışma alanı silinirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // ========================
+  // CAR BRANDS CRUD API (CREATE, UPDATE, DELETE)
+  // ========================
+
+  // POST /api/secure/addCarBrand
+  app.post("/api/secure/addCarBrand",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "asset:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const validatedData = insertCarBrandSchema.parse(req.body);
+
+        // Duplicate check
+        const existingBrand = await db.select()
+          .from(carBrands)
+          .where(eq(carBrands.name, validatedData.name))
+          .limit(1);
+
+        if (existingBrand.length > 0) {
+          return res.status(409).json({
+            success: false,
+            message: "Bu marka adı zaten kayıtlı.",
+            error: "DUPLICATE_BRAND",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.insert(carBrands)
+          .values(validatedData)
+          .returning();
+
+        await logApiRequest(req, "/api/secure/addCarBrand", "POST", 201);
+
+        res.status(201).json({
+          success: true,
+          message: "Araç markası başarıyla eklendi.",
+          data: result,
+          clientInfo: {
+            id: req.apiClient!.id,
+            name: req.apiClient!.name,
+            companyId: req.apiClient!.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("Car brand add error:", error);
+        await logApiRequest(req, "/api/secure/addCarBrand", "POST", 400, error?.message);
+        
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz veri formatı.",
+            error: error.errors,
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        res.status(500).json({
+          success: false,
+          message: "Araç markası eklenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // PUT /api/secure/updateCarBrand/:id
+  app.put("/api/secure/updateCarBrand/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "asset:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const validatedData = insertCarBrandSchema.partial().parse(req.body);
+
+        const existing = await db.select()
+          .from(carBrands)
+          .where(eq(carBrands.id, id))
+          .limit(1);
+
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Araç markası bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(carBrands)
+          .set(validatedData)
+          .where(eq(carBrands.id, id))
+          .returning();
+
+        await logApiRequest(req, "/api/secure/updateCarBrand", "PUT", 200);
+
+        res.json({
+          success: true,
+          message: "Araç markası başarıyla güncellendi.",
+          data: result,
+          clientInfo: {
+            id: req.apiClient!.id,
+            name: req.apiClient!.name,
+            companyId: req.apiClient!.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("Car brand update error:", error);
+        await logApiRequest(req, "/api/secure/updateCarBrand", "PUT", 400, error?.message);
+        
+        res.status(500).json({
+          success: false,
+          message: "Araç markası güncellenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // DELETE /api/secure/deleteCarBrand/:id
+  app.delete("/api/secure/deleteCarBrand/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:delete", "asset:delete"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const existing = await db.select()
+          .from(carBrands)
+          .where(eq(carBrands.id, id))
+          .limit(1);
+
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Araç markası bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(carBrands)
+          .set({ isActive: false })
+          .where(eq(carBrands.id, id))
+          .returning();
+
+        await logApiRequest(req, "/api/secure/deleteCarBrand", "DELETE", 200);
+
+        res.json({
+          success: true,
+          message: "Araç markası başarıyla silindi.",
+          data: result,
+          clientInfo: {
+            id: req.apiClient!.id,
+            name: req.apiClient!.name,
+            companyId: req.apiClient!.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("Car brand delete error:", error);
+        await logApiRequest(req, "/api/secure/deleteCarBrand", "DELETE", 500, error?.message);
+        
+        res.status(500).json({
+          success: false,
+          message: "Araç markası silinirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // ========================
+  // CAR MODELS CRUD API (UPDATE, DELETE)
+  // ========================
+
+  // PUT /api/secure/updateCarModel/:id
+  app.put("/api/secure/updateCarModel/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "asset:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const validatedData = insertCarModelSchema.partial().parse(req.body);
+
+        const existing = await db.select()
+          .from(carModels)
+          .where(eq(carModels.id, id))
+          .limit(1);
+
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Araç modeli bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(carModels)
+          .set(validatedData)
+          .where(eq(carModels.id, id))
+          .returning();
+
+        await logApiRequest(req, "/api/secure/updateCarModel", "PUT", 200);
+
+        res.json({
+          success: true,
+          message: "Araç modeli başarıyla güncellendi.",
+          data: result,
+          clientInfo: {
+            id: req.apiClient!.id,
+            name: req.apiClient!.name,
+            companyId: req.apiClient!.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("Car model update error:", error);
+        await logApiRequest(req, "/api/secure/updateCarModel", "PUT", 400, error?.message);
+        
+        res.status(500).json({
+          success: false,
+          message: "Araç modeli güncellenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // DELETE /api/secure/deleteCarModel/:id
+  app.delete("/api/secure/deleteCarModel/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:delete", "asset:delete"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const existing = await db.select()
+          .from(carModels)
+          .where(eq(carModels.id, id))
+          .limit(1);
+
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Araç modeli bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(carModels)
+          .set({ isActive: false })
+          .where(eq(carModels.id, id))
+          .returning();
+
+        await logApiRequest(req, "/api/secure/deleteCarModel", "DELETE", 200);
+
+        res.json({
+          success: true,
+          message: "Araç modeli başarıyla silindi.",
+          data: result,
+          clientInfo: {
+            id: req.apiClient!.id,
+            name: req.apiClient!.name,
+            companyId: req.apiClient!.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("Car model delete error:", error);
+        await logApiRequest(req, "/api/secure/deleteCarModel", "DELETE", 500, error?.message);
+        
+        res.status(500).json({
+          success: false,
+          message: "Araç modeli silinirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // ========================
+  // OWNERSHIP TYPES CRUD API (UPDATE, DELETE)
+  // ========================
+
+  // PUT /api/secure/updateOwnershipType/:id
+  app.put("/api/secure/updateOwnershipType/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "asset:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const validatedData = updateOwnershipTypeSchema.parse(req.body);
+
+        const existing = await db.select()
+          .from(ownershipTypes)
+          .where(eq(ownershipTypes.id, id))
+          .limit(1);
+
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Sahiplik türü bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(ownershipTypes)
+          .set(validatedData)
+          .where(eq(ownershipTypes.id, id))
+          .returning();
+
+        await logApiRequest(req, "/api/secure/updateOwnershipType", "PUT", 200);
+
+        res.json({
+          success: true,
+          message: "Sahiplik türü başarıyla güncellendi.",
+          data: result,
+          clientInfo: {
+            id: req.apiClient!.id,
+            name: req.apiClient!.name,
+            companyId: req.apiClient!.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("Ownership type update error:", error);
+        await logApiRequest(req, "/api/secure/updateOwnershipType", "PUT", 400, error?.message);
+        
+        res.status(500).json({
+          success: false,
+          message: "Sahiplik türü güncellenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // DELETE /api/secure/deleteOwnershipType/:id
+  app.delete("/api/secure/deleteOwnershipType/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:delete", "asset:delete"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const existing = await db.select()
+          .from(ownershipTypes)
+          .where(eq(ownershipTypes.id, id))
+          .limit(1);
+
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Sahiplik türü bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(ownershipTypes)
+          .set({ isActive: false })
+          .where(eq(ownershipTypes.id, id))
+          .returning();
+
+        await logApiRequest(req, "/api/secure/deleteOwnershipType", "DELETE", 200);
+
+        res.json({
+          success: true,
+          message: "Sahiplik türü başarıyla silindi.",
+          data: result,
+          clientInfo: {
+            id: req.apiClient!.id,
+            name: req.apiClient!.name,
+            companyId: req.apiClient!.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("Ownership type delete error:", error);
+        await logApiRequest(req, "/api/secure/deleteOwnershipType", "DELETE", 500, error?.message);
+        
+        res.status(500).json({
+          success: false,
+          message: "Sahiplik türü silinirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // ========================
+  // PERSONNEL POSITIONS CRUD API (UPDATE, DELETE)
+  // ========================
+
+  // PUT /api/secure/updatePersonnelPosition/:id
+  app.put("/api/secure/updatePersonnelPosition/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "company:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const validatedData = updatePersonnelPositionSchema.parse(req.body);
+
+        const existing = await db.select()
+          .from(personnelPositions)
+          .where(eq(personnelPositions.id, id))
+          .limit(1);
+
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Personel pozisyonu bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(personnelPositions)
+          .set(validatedData)
+          .where(eq(personnelPositions.id, id))
+          .returning();
+
+        await logApiRequest(req, "/api/secure/updatePersonnelPosition", "PUT", 200);
+
+        res.json({
+          success: true,
+          message: "Personel pozisyonu başarıyla güncellendi.",
+          data: result,
+          clientInfo: {
+            id: req.apiClient!.id,
+            name: req.apiClient!.name,
+            companyId: req.apiClient!.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("Personnel position update error:", error);
+        await logApiRequest(req, "/api/secure/updatePersonnelPosition", "PUT", 400, error?.message);
+        
+        res.status(500).json({
+          success: false,
+          message: "Personel pozisyonu güncellenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // DELETE /api/secure/deletePersonnelPosition/:id
+  app.delete("/api/secure/deletePersonnelPosition/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:delete", "company:delete"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const existing = await db.select()
+          .from(personnelPositions)
+          .where(eq(personnelPositions.id, id))
+          .limit(1);
+
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Personel pozisyonu bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(personnelPositions)
+          .set({ isActive: false })
+          .where(eq(personnelPositions.id, id))
+          .returning();
+
+        await logApiRequest(req, "/api/secure/deletePersonnelPosition", "DELETE", 200);
+
+        res.json({
+          success: true,
+          message: "Personel pozisyonu başarıyla silindi.",
+          data: result,
+          clientInfo: {
+            id: req.apiClient!.id,
+            name: req.apiClient!.name,
+            companyId: req.apiClient!.companyId
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } catch (error: any) {
+        console.error("Personnel position delete error:", error);
+        await logApiRequest(req, "/api/secure/deletePersonnelPosition", "DELETE", 500, error?.message);
+        
+        res.status(500).json({
+          success: false,
+          message: "Personel pozisyonu silinirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // ========================
+  // POLICY TYPES CRUD API (UPDATE, DELETE)
+  // ========================
+
+  // PUT /api/secure/updatePolicyType/:id
+  app.put("/api/secure/updatePolicyType/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "company:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const validatedData = insertPolicyTypeSchema.partial().parse(req.body);
+
+        const existing = await db.select().from(policyTypes).where(eq(policyTypes.id, id)).limit(1);
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Poliçe türü bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(policyTypes).set(validatedData).where(eq(policyTypes.id, id)).returning();
+        await logApiRequest(req, "/api/secure/updatePolicyType", "PUT", 200);
+
+        res.json({
+          success: true,
+          message: "Poliçe türü başarıyla güncellendi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/updatePolicyType", "PUT", 400, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Poliçe türü güncellenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // DELETE /api/secure/deletePolicyType/:id
+  app.delete("/api/secure/deletePolicyType/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:delete", "company:delete"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const existing = await db.select().from(policyTypes).where(eq(policyTypes.id, id)).limit(1);
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Poliçe türü bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(policyTypes).set({ isActive: false }).where(eq(policyTypes.id, id)).returning();
+        await logApiRequest(req, "/api/secure/deletePolicyType", "DELETE", 200);
+
+        res.json({
+          success: true,
+          message: "Poliçe türü başarıyla silindi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/deletePolicyType", "DELETE", 500, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Poliçe türü silinirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // ========================
+  // MAINTENANCE TYPES CRUD API (UPDATE, DELETE)
+  // ========================
+
+  // PUT /api/secure/updateMaintenanceType/:id
+  app.put("/api/secure/updateMaintenanceType/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "asset:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const validatedData = insertMaintenanceTypeSchema.partial().parse(req.body);
+
+        const existing = await db.select().from(maintenanceTypes).where(eq(maintenanceTypes.id, id)).limit(1);
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Bakım türü bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(maintenanceTypes).set(validatedData).where(eq(maintenanceTypes.id, id)).returning();
+        await logApiRequest(req, "/api/secure/updateMaintenanceType", "PUT", 200);
+
+        res.json({
+          success: true,
+          message: "Bakım türü başarıyla güncellendi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/updateMaintenanceType", "PUT", 400, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Bakım türü güncellenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // DELETE /api/secure/deleteMaintenanceType/:id
+  app.delete("/api/secure/deleteMaintenanceType/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:delete", "asset:delete"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const existing = await db.select().from(maintenanceTypes).where(eq(maintenanceTypes.id, id)).limit(1);
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Bakım türü bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(maintenanceTypes).set({ isActive: false }).where(eq(maintenanceTypes.id, id)).returning();
+        await logApiRequest(req, "/api/secure/deleteMaintenanceType", "DELETE", 200);
+
+        res.json({
+          success: true,
+          message: "Bakım türü başarıyla silindi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/deleteMaintenanceType", "DELETE", 500, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Bakım türü silinirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // ========================
+  // PENALTY TYPES DELETE API
+  // ========================
+
+  // DELETE /api/secure/deletePenaltyType/:id
+  app.delete("/api/secure/deletePenaltyType/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:delete", "asset:delete"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const existing = await db.select().from(penaltyTypes).where(eq(penaltyTypes.id, id)).limit(1);
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Ceza türü bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(penaltyTypes).set({ isActive: false }).where(eq(penaltyTypes.id, id)).returning();
+        await logApiRequest(req, "/api/secure/deletePenaltyType", "DELETE", 200);
+
+        res.json({
+          success: true,
+          message: "Ceza türü başarıyla silindi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/deletePenaltyType", "DELETE", 500, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Ceza türü silinirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // ========================
+  // CITIES CRUD API (CREATE, UPDATE, DELETE)
+  // ========================
+
+  // POST /api/secure/addCity
+  app.post("/api/secure/addCity",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "admin:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const validatedData = insertCitySchema.parse(req.body);
+
+        const existing = await db.select().from(cities).where(eq(cities.name, validatedData.name)).limit(1);
+        if (existing.length > 0) {
+          return res.status(409).json({
+            success: false,
+            message: "Bu şehir adı zaten kayıtlı.",
+            error: "DUPLICATE_CITY",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.insert(cities).values(validatedData).returning();
+        await logApiRequest(req, "/api/secure/addCity", "POST", 201);
+
+        res.status(201).json({
+          success: true,
+          message: "Şehir başarıyla eklendi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/addCity", "POST", 400, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Şehir eklenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // PUT /api/secure/updateCity/:id  
+  app.put("/api/secure/updateCity/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "admin:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const validatedData = insertCitySchema.partial().parse(req.body);
+
+        const existing = await db.select().from(cities).where(eq(cities.id, id)).limit(1);
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Şehir bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(cities).set(validatedData).where(eq(cities.id, id)).returning();
+        await logApiRequest(req, "/api/secure/updateCity", "PUT", 200);
+
+        res.json({
+          success: true,
+          message: "Şehir başarıyla güncellendi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/updateCity", "PUT", 400, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Şehir güncellenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // DELETE /api/secure/deleteCity/:id
+  app.delete("/api/secure/deleteCity/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:delete", "admin:delete"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const existing = await db.select().from(cities).where(eq(cities.id, id)).limit(1);
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Şehir bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(cities).set({ isActive: false }).where(eq(cities.id, id)).returning();
+        await logApiRequest(req, "/api/secure/deleteCity", "DELETE", 200);
+
+        res.json({
+          success: true,
+          message: "Şehir başarıyla silindi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/deleteCity", "DELETE", 500, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Şehir silinirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // ========================
+  // COUNTRIES CRUD API (CREATE, UPDATE, DELETE)
+  // ========================
+
+  // POST /api/secure/addCountry
+  app.post("/api/secure/addCountry",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "admin:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const validatedData = insertCountrySchema.parse(req.body);
+
+        const existing = await db.select().from(countries).where(eq(countries.name, validatedData.name)).limit(1);
+        if (existing.length > 0) {
+          return res.status(409).json({
+            success: false,
+            message: "Bu ülke adı zaten kayıtlı.",
+            error: "DUPLICATE_COUNTRY",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.insert(countries).values(validatedData).returning();
+        await logApiRequest(req, "/api/secure/addCountry", "POST", 201);
+
+        res.status(201).json({
+          success: true,
+          message: "Ülke başarıyla eklendi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/addCountry", "POST", 400, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Ülke eklenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // PUT /api/secure/updateCountry/:id
+  app.put("/api/secure/updateCountry/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "admin:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const validatedData = insertCountrySchema.partial().parse(req.body);
+
+        const existing = await db.select().from(countries).where(eq(countries.id, id)).limit(1);
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Ülke bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(countries).set(validatedData).where(eq(countries.id, id)).returning();
+        await logApiRequest(req, "/api/secure/updateCountry", "PUT", 200);
+
+        res.json({
+          success: true,
+          message: "Ülke başarıyla güncellendi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/updateCountry", "PUT", 400, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Ülke güncellenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // DELETE /api/secure/deleteCountry/:id
+  app.delete("/api/secure/deleteCountry/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:delete", "admin:delete"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const existing = await db.select().from(countries).where(eq(countries.id, id)).limit(1);
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Ülke bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(countries).set({ isActive: false }).where(eq(countries.id, id)).returning();
+        await logApiRequest(req, "/api/secure/deleteCountry", "DELETE", 200);
+
+        res.json({
+          success: true,
+          message: "Ülke başarıyla silindi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/deleteCountry", "DELETE", 500, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Ülke silinirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // ========================
+  // CAR TYPES CRUD API (CREATE, UPDATE, DELETE)
+  // ========================
+
+  // POST /api/secure/addCarType
+  app.post("/api/secure/addCarType",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "asset:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const validatedData = insertCarTypeSchema.parse(req.body);
+
+        const existing = await db.select().from(carTypes).where(eq(carTypes.name, validatedData.name)).limit(1);
+        if (existing.length > 0) {
+          return res.status(409).json({
+            success: false,
+            message: "Bu araç tipi zaten kayıtlı.",
+            error: "DUPLICATE_CAR_TYPE",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.insert(carTypes).values(validatedData).returning();
+        await logApiRequest(req, "/api/secure/addCarType", "POST", 201);
+
+        res.status(201).json({
+          success: true,
+          message: "Araç tipi başarıyla eklendi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/addCarType", "POST", 400, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Araç tipi eklenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // PUT /api/secure/updateCarType/:id
+  app.put("/api/secure/updateCarType/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "asset:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const validatedData = insertCarTypeSchema.partial().parse(req.body);
+
+        const existing = await db.select().from(carTypes).where(eq(carTypes.id, id)).limit(1);
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Araç tipi bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(carTypes).set(validatedData).where(eq(carTypes.id, id)).returning();
+        await logApiRequest(req, "/api/secure/updateCarType", "PUT", 200);
+
+        res.json({
+          success: true,
+          message: "Araç tipi başarıyla güncellendi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/updateCarType", "PUT", 400, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Araç tipi güncellenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // DELETE /api/secure/deleteCarType/:id
+  app.delete("/api/secure/deleteCarType/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:delete", "asset:delete"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const existing = await db.select().from(carTypes).where(eq(carTypes.id, id)).limit(1);
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Araç tipi bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(carTypes).set({ isActive: false }).where(eq(carTypes.id, id)).returning();
+        await logApiRequest(req, "/api/secure/deleteCarType", "DELETE", 200);
+
+        res.json({
+          success: true,
+          message: "Araç tipi başarıyla silindi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/deleteCarType", "DELETE", 500, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Araç tipi silinirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // ========================
+  // PAYMENT METHODS CRUD API (CREATE, UPDATE, DELETE, GET)
+  // ========================
+
+  // POST /api/secure/addPaymentMethod
+  app.post("/api/secure/addPaymentMethod",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "company:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const validatedData = insertPaymentMethodSchema.parse(req.body);
+
+        const existing = await db.select().from(paymentMethods).where(eq(paymentMethods.name, validatedData.name)).limit(1);
+        if (existing.length > 0) {
+          return res.status(409).json({
+            success: false,
+            message: "Bu ödeme yöntemi zaten kayıtlı.",
+            error: "DUPLICATE_PAYMENT_METHOD",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.insert(paymentMethods).values(validatedData).returning();
+        await logApiRequest(req, "/api/secure/addPaymentMethod", "POST", 201);
+
+        res.status(201).json({
+          success: true,
+          message: "Ödeme yöntemi başarıyla eklendi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/addPaymentMethod", "POST", 400, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Ödeme yöntemi eklenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // PUT /api/secure/updatePaymentMethod/:id
+  app.put("/api/secure/updatePaymentMethod/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "company:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const validatedData = insertPaymentMethodSchema.partial().parse(req.body);
+
+        const existing = await db.select().from(paymentMethods).where(eq(paymentMethods.id, id)).limit(1);
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Ödeme yöntemi bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(paymentMethods).set(validatedData).where(eq(paymentMethods.id, id)).returning();
+        await logApiRequest(req, "/api/secure/updatePaymentMethod", "PUT", 200);
+
+        res.json({
+          success: true,
+          message: "Ödeme yöntemi başarıyla güncellendi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/updatePaymentMethod", "PUT", 400, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Ödeme yöntemi güncellenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // DELETE /api/secure/deletePaymentMethod/:id
+  app.delete("/api/secure/deletePaymentMethod/:id",
+    authenticateApiKey,
+    authorizeEndpoint(["data:delete", "company:delete"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Geçersiz ID parametresi.",
+            error: "Invalid ID",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const existing = await db.select().from(paymentMethods).where(eq(paymentMethods.id, id)).limit(1);
+        if (existing.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Ödeme yöntemi bulunamadı.",
+            error: "Not found",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.update(paymentMethods).set({ isActive: false }).where(eq(paymentMethods.id, id)).returning();
+        await logApiRequest(req, "/api/secure/deletePaymentMethod", "DELETE", 200);
+
+        res.json({
+          success: true,
+          message: "Ödeme yöntemi başarıyla silindi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/deletePaymentMethod", "DELETE", 500, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Ödeme yöntemi silinirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // ========================
+  // DOC MAIN TYPES API (POST)
+  // ========================
+
+  // POST /api/secure/addDocMainType
+  app.post("/api/secure/addDocMainType",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "document:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const validatedData = insertDocMainTypeSchema.parse(req.body);
+
+        const existing = await db.select().from(docMainTypes).where(eq(docMainTypes.name, validatedData.name)).limit(1);
+        if (existing.length > 0) {
+          return res.status(409).json({
+            success: false,
+            message: "Bu dokuman ana türü zaten kayıtlı.",
+            error: "DUPLICATE_DOC_MAIN_TYPE",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.insert(docMainTypes).values(validatedData).returning();
+        await logApiRequest(req, "/api/secure/addDocMainType", "POST", 201);
+
+        res.status(201).json({
+          success: true,
+          message: "Dokuman ana türü başarıyla eklendi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/addDocMainType", "POST", 400, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Dokuman ana türü eklenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
+
+  // ========================
+  // DOC SUB TYPES API (POST)
+  // ========================
+
+  // POST /api/secure/addDocSubType
+  app.post("/api/secure/addDocSubType",
+    authenticateApiKey,
+    authorizeEndpoint(["data:write", "document:write"]),
+    rateLimitMiddleware,
+    async (req: ApiRequest, res: any) => {
+      try {
+        const validatedData = insertDocSubTypeSchema.parse(req.body);
+
+        const existing = await db.select().from(docSubTypes).where(eq(docSubTypes.name, validatedData.name)).limit(1);
+        if (existing.length > 0) {
+          return res.status(409).json({
+            success: false,
+            message: "Bu dokuman alt türü zaten kayıtlı.",
+            error: "DUPLICATE_DOC_SUB_TYPE",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        const [result] = await db.insert(docSubTypes).values(validatedData).returning();
+        await logApiRequest(req, "/api/secure/addDocSubType", "POST", 201);
+
+        res.status(201).json({
+          success: true,
+          message: "Dokuman alt türü başarıyla eklendi.",
+          data: result,
+          clientInfo: { id: req.apiClient!.id, name: req.apiClient!.name, companyId: req.apiClient!.companyId },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error: any) {
+        await logApiRequest(req, "/api/secure/addDocSubType", "POST", 400, error?.message);
+        res.status(500).json({
+          success: false,
+          message: "Dokuman alt türü eklenirken hata oluştu.",
+          error: error?.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  );
 }
