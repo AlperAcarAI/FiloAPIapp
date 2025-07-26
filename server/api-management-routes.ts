@@ -1105,6 +1105,540 @@ export function registerApiManagementRoutes(app: Express) {
             '404': { description: 'Personnel bulunamadı' }
           }
         }
+      },
+      '/api/secure/companies': {
+        get: {
+          summary: 'Şirketler Listesi',
+          description: 'Sistemdeki tüm şirketleri listeler. Filtreleme ve arama destekler.',
+          tags: ['Şirket Yönetimi'],
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: 'search',
+              in: 'query',
+              description: 'Şirket adında arama',
+              schema: { type: 'string', example: 'Demo' }
+            },
+            {
+              name: 'active',
+              in: 'query', 
+              description: 'Aktif şirketleri filtrele',
+              schema: { type: 'boolean', example: true }
+            }
+          ],
+          responses: {
+            '200': {
+              description: 'Şirketler başarıyla getirildi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Şirketler başarıyla getirildi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          companies: {
+                            type: 'array',
+                            items: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'integer', example: 1 },
+                                name: { type: 'string', example: 'Demo Şirket A.Ş.' },
+                                taxNo: { type: 'string', example: '1234567890' },
+                                taxOffice: { type: 'string', example: 'Beşiktaş Vergi Dairesi' },
+                                address: { type: 'string', example: 'İstanbul' },
+                                phone: { type: 'string', example: '+90 212 555 0101' },
+                                isActive: { type: 'boolean', example: true },
+                                cityName: { type: 'string', example: 'İstanbul' },
+                                countryName: { type: 'string', example: 'Türkiye' }
+                              }
+                            }
+                          },
+                          totalCount: { type: 'integer', example: 5 }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '401': { description: 'Geçersiz API anahtarı' }
+          }
+        },
+        post: {
+          summary: 'Yeni Şirket Ekleme',
+          description: 'Sisteme yeni şirket ekler. Vergi numarası unique olmalıdır.',
+          tags: ['Şirket Yönetimi'],
+          security: [{ ApiKeyAuth: [] }],
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['name', 'taxNo', 'cityId'],
+                  properties: {
+                    name: { type: 'string', example: 'Yeni Şirket Ltd.' },
+                    taxNo: { type: 'string', example: '9876543210' },
+                    taxOffice: { type: 'string', example: 'Kadıköy Vergi Dairesi' },
+                    address: { type: 'string', example: 'Kadıköy/İstanbul' },
+                    phone: { type: 'string', example: '+90 216 555 0202' },
+                    cityId: { type: 'integer', example: 34 }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '201': {
+              description: 'Şirket başarıyla eklendi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Şirket başarıyla eklendi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer', example: 6 },
+                          name: { type: 'string', example: 'Yeni Şirket Ltd.' },
+                          taxNo: { type: 'string', example: '9876543210' },
+                          isActive: { type: 'boolean', example: true }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '400': { description: 'Geçersiz veri' },
+            '409': { description: 'Vergi numarası zaten kullanımda' }
+          }
+        }
+      },
+      '/api/secure/companies/{id}': {
+        get: {
+          summary: 'Şirket Detayı',
+          description: 'Belirli bir şirketin detay bilgilerini getirir',
+          tags: ['Şirket Yönetimi'],
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: 'id',
+              in: 'path',
+              required: true,
+              description: 'Şirket ID',
+              schema: { type: 'integer', example: 1 }
+            }
+          ],
+          responses: {
+            '200': {
+              description: 'Şirket detayı başarıyla getirildi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Şirket detayı başarıyla getirildi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer', example: 1 },
+                          name: { type: 'string', example: 'Demo Şirket A.Ş.' },
+                          taxNo: { type: 'string', example: '1234567890' },
+                          taxOffice: { type: 'string', example: 'Beşiktaş Vergi Dairesi' },
+                          address: { type: 'string', example: 'İstanbul' },
+                          phone: { type: 'string', example: '+90 212 555 0101' },
+                          isActive: { type: 'boolean', example: true },
+                          cityName: { type: 'string', example: 'İstanbul' },
+                          countryName: { type: 'string', example: 'Türkiye' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '404': { description: 'Şirket bulunamadı' }
+          }
+        },
+        put: {
+          summary: 'Şirket Güncelleme',
+          description: 'Mevcut şirket bilgilerini günceller',
+          tags: ['Şirket Yönetimi'],
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: 'id',
+              in: 'path',
+              required: true,
+              description: 'Şirket ID',
+              schema: { type: 'integer', example: 1 }
+            }
+          ],
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string', example: 'Güncellenmiş Şirket A.Ş.' },
+                    taxOffice: { type: 'string', example: 'Yeni Vergi Dairesi' },
+                    address: { type: 'string', example: 'Yeni Adres' },
+                    phone: { type: 'string', example: '+90 212 555 0999' },
+                    cityId: { type: 'integer', example: 6 },
+                    isActive: { type: 'boolean', example: true }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '200': {
+              description: 'Şirket başarıyla güncellendi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Şirket başarıyla güncellendi.' }
+                    }
+                  }
+                }
+              }
+            },
+            '404': { description: 'Şirket bulunamadı' }
+          }
+        },
+        delete: {
+          summary: 'Şirket Silme (Soft Delete)',
+          description: 'Şirketi soft delete ile siler (isActive=false)',
+          tags: ['Şirket Yönetimi'],
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: 'id',
+              in: 'path',
+              required: true,
+              description: 'Şirket ID',
+              schema: { type: 'integer', example: 1 }
+            }
+          ],
+          responses: {
+            '200': {
+              description: 'Şirket başarıyla silindi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Şirket başarıyla silindi.' }
+                    }
+                  }
+                }
+              }
+            },
+            '404': { description: 'Şirket bulunamadı' }
+          }
+        }
+      },
+      '/api/secure/assets': {
+        get: {
+          summary: 'Asset/Araç Listesi',
+          description: 'Sistemdeki tüm asset\'leri listeler. Filtreleme ve arama destekler.',
+          tags: ['Asset Yönetimi'],
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: 'search',
+              in: 'query',
+              description: 'Plaka veya şasi numarasında arama',
+              schema: { type: 'string', example: '34ABC123' }
+            },
+            {
+              name: 'active',
+              in: 'query',
+              description: 'Aktif asset\'leri filtrele',
+              schema: { type: 'boolean', example: true }
+            },
+            {
+              name: 'brandId',
+              in: 'query',
+              description: 'Marka ID ile filtrele',
+              schema: { type: 'integer', example: 1 }
+            }
+          ],
+          responses: {
+            '200': {
+              description: 'Asset\'ler başarıyla getirildi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Asset\'ler başarıyla getirildi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          assets: {
+                            type: 'array',
+                            items: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'integer', example: 1 },
+                                plateNumber: { type: 'string', example: '34ABC123' },
+                                chassisNo: { type: 'string', example: 'CHASSIS123' },
+                                engineNo: { type: 'string', example: 'ENGINE123' },
+                                modelYear: { type: 'integer', example: 2023 },
+                                modelName: { type: 'string', example: 'Actros' },
+                                brandName: { type: 'string', example: 'Mercedes-Benz' },
+                                typeName: { type: 'string', example: 'Kamyon' },
+                                ownershipTypeName: { type: 'string', example: 'Şirket Mülkiyeti' },
+                                ownerCompanyName: { type: 'string', example: 'Demo Şirket A.Ş.' },
+                                isActive: { type: 'boolean', example: true }
+                              }
+                            }
+                          },
+                          totalCount: { type: 'integer', example: 10 }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '401': { description: 'Geçersiz API anahtarı' }
+          }
+        },
+        post: {
+          summary: 'Yeni Asset Ekleme',
+          description: 'Sisteme yeni asset ekler. Plaka numarası unique olmalıdır.',
+          tags: ['Asset Yönetimi'],
+          security: [{ ApiKeyAuth: [] }],
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['modelId', 'modelYear', 'plateNumber', 'chassisNo', 'engineNo', 'ownershipTypeId', 'ownerCompanyId'],
+                  properties: {
+                    modelId: { type: 'integer', example: 6, description: 'Model ID (car_models tablosundan)' },
+                    modelYear: { type: 'integer', example: 2023 },
+                    plateNumber: { type: 'string', example: '34XYZ999' },
+                    chassisNo: { type: 'string', example: 'NEW_CHASSIS_999' },
+                    engineNo: { type: 'string', example: 'NEW_ENGINE_999' },
+                    ownershipTypeId: { type: 'integer', example: 1 },
+                    ownerCompanyId: { type: 'integer', example: 1 },
+                    registerNo: { type: 'string', example: 'REG2023999' },
+                    registerDate: { type: 'string', format: 'date', example: '2023-01-15' },
+                    purchaseDate: { type: 'string', format: 'date', example: '2023-01-10' }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '201': {
+              description: 'Asset başarıyla eklendi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Asset başarıyla eklendi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer', example: 15 },
+                          plateNumber: { type: 'string', example: '34XYZ999' },
+                          isActive: { type: 'boolean', example: true }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '400': { description: 'Geçersiz veri' },
+            '409': { description: 'Plaka numarası zaten kullanımda' }
+          }
+        }
+      },
+      '/api/secure/assets/{id}': {
+        get: {
+          summary: 'Asset Detayı',
+          description: 'Belirli bir asset\'in detay bilgilerini getirir',
+          tags: ['Asset Yönetimi'],
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: 'id',
+              in: 'path',
+              required: true,
+              description: 'Asset ID',
+              schema: { type: 'integer', example: 1 }
+            }
+          ],
+          responses: {
+            '200': {
+              description: 'Asset detayı başarıyla getirildi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Asset detayı başarıyla getirildi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'integer', example: 1 },
+                          plateNumber: { type: 'string', example: '34ABC123' },
+                          chassisNo: { type: 'string', example: 'CHASSIS123' },
+                          engineNo: { type: 'string', example: 'ENGINE123' },
+                          modelYear: { type: 'integer', example: 2023 },
+                          modelName: { type: 'string', example: 'Actros' },
+                          brandName: { type: 'string', example: 'Mercedes-Benz' },
+                          typeName: { type: 'string', example: 'Kamyon' },
+                          ownershipTypeName: { type: 'string', example: 'Şirket Mülkiyeti' },
+                          ownerCompanyName: { type: 'string', example: 'Demo Şirket A.Ş.' },
+                          isActive: { type: 'boolean', example: true }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '404': { description: 'Asset bulunamadı' }
+          }
+        },
+        put: {
+          summary: 'Asset Güncelleme',
+          description: 'Mevcut asset bilgilerini günceller',
+          tags: ['Asset Yönetimi'],
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: 'id',
+              in: 'path',
+              required: true,
+              description: 'Asset ID',
+              schema: { type: 'integer', example: 1 }
+            }
+          ],
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    chassisNo: { type: 'string', example: 'UPDATED_CHASSIS_123' },
+                    engineNo: { type: 'string', example: 'UPDATED_ENGINE_123' },
+                    ownerCompanyId: { type: 'integer', example: 2 },
+                    isActive: { type: 'boolean', example: true }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '200': {
+              description: 'Asset başarıyla güncellendi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Asset başarıyla güncellendi.' }
+                    }
+                  }
+                }
+              }
+            },
+            '404': { description: 'Asset bulunamadı' }
+          }
+        },
+        delete: {
+          summary: 'Asset Silme (Soft Delete)',
+          description: 'Asset\'i soft delete ile siler (isActive=false)',
+          tags: ['Asset Yönetimi'],
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: 'id',
+              in: 'path',
+              required: true,
+              description: 'Asset ID',
+              schema: { type: 'integer', example: 1 }
+            }
+          ],
+          responses: {
+            '200': {
+              description: 'Asset başarıyla silindi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Asset başarıyla silindi.' }
+                    }
+                  }
+                }
+              }
+            },
+            '404': { description: 'Asset bulunamadı' }
+          }
+        }
+      },
+      '/api/getCities': {
+        get: {
+          summary: 'Şehirler Listesi (Genel)',
+          description: 'Türkiye\'deki 81 şehrin listesi. API key gerektirmez.',
+          tags: ['Genel API\'ler'],
+          responses: {
+            '200': {
+              description: 'Şehirler başarıyla getirildi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Şehirler başarıyla getirildi' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          cities: {
+                            type: 'array',
+                            items: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'integer', example: 1 },
+                                name: { type: 'string', example: 'Adana' }
+                              }
+                            }
+                          },
+                          totalCount: { type: 'integer', example: 81 }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     components: {
@@ -1129,6 +1663,18 @@ export function registerApiManagementRoutes(app: Express) {
       {
         name: 'Dosya İşlemleri',
         description: 'Dosya yükleme, listeleme ve doküman yönetimi API\'leri'
+      },
+      {
+        name: 'Şirket Yönetimi',
+        description: 'Şirket bilgileri yönetimi - ekleme, güncelleme, listeleme, silme'
+      },
+      {
+        name: 'Asset Yönetimi',
+        description: 'Araç ve asset yönetimi - ekleme, güncelleme, listeleme, silme'
+      },
+      {
+        name: 'Genel API\'ler',
+        description: 'API anahtarı gerektirmeyen genel API\'ler'
       }
     ]
   };

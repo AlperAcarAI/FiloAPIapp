@@ -168,6 +168,15 @@ Kapsamlı API güvenlik sistemi başarıyla kuruldu ve test edildi:
 - HTTP status codes tutarlı kullanılıyor
 - Authentication ve security API'leri de standart format ✅
 
+**Swagger API Dokümantasyonu (26 Ocak 2025):**
+- Tüm API'ler Swagger dokümantasyonunda mevcut ✅
+- Company Management API'leri eklendi (GET, POST, PUT, DELETE)
+- Asset Management API'leri eklendi (GET, POST, PUT, DELETE)
+- Genel API'ler kategorisi eklendi (/api/getCities)
+- 6 ana kategori: Referans Veriler, Veri İşlemleri, Dosya İşlemleri, Şirket Yönetimi, Asset Yönetimi, Genel API'ler
+- Request/Response örnekleri ve detaylı açıklamalar ✅
+- API Key authentication rehberi mevcut ✅
+
 **Yönetim Sistemi:**
 - `GET /api/admin/clients` - Client listesi
 - `POST /api/admin/clients` - Yeni client oluşturma
