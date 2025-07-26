@@ -380,6 +380,22 @@ export const assetDocuments = pgTable("asset_documents", {
   fileHash: varchar("file_hash", { length: 64 }), // SHA256 for duplicate detection
 });
 
+export const personnelDocuments = pgTable("personnel_documents", {
+  id: serial("id").primaryKey(),
+  personnelId: integer("personnel_id").notNull().references(() => personnel.id),
+  docTypeId: integer("doc_type_id").notNull().references(() => docSubTypes.id),
+  description: varchar("description", { length: 255 }),
+  docLink: text("doc_link"),
+  uploadDate: timestamp("upload_date").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => personnel.id),
+  // Dosya metadata alanları
+  fileName: varchar("file_name", { length: 255 }),
+  fileSize: integer("file_size"), // bytes
+  mimeType: varchar("mime_type", { length: 100 }),
+  fileHash: varchar("file_hash", { length: 64 }), // SHA256 for duplicate detection
+});
+
 export const assetsPolicies = pgTable("assets_policies", {
   id: serial("id").primaryKey(),
   assetId: integer("asset_id").notNull().references(() => assets.id),
@@ -720,8 +736,18 @@ export type InsertPermission = z.infer<typeof insertPermissionSchema>;
 export type InsertAssetDocument = typeof assetDocuments.$inferInsert;
 export type SelectAssetDocument = typeof assetDocuments.$inferSelect;
 
+// Personnel Documents types
+export type InsertPersonnelDocument = typeof personnelDocuments.$inferInsert;
+export type SelectPersonnelDocument = typeof personnelDocuments.$inferSelect;
+
 // Zod validation schemas for asset documents
 export const insertAssetDocumentSchema = createInsertSchema(assetDocuments).omit({
+  id: true,
+  uploadDate: true,
+  createdAt: true,
+});
+
+export const insertPersonnelDocumentSchema = createInsertSchema(personnelDocuments).omit({
   id: true,
   uploadDate: true,
   createdAt: true,
@@ -735,5 +761,27 @@ export const assetDocumentUploadSchema = z.object({
   fileName: z.string().max(255),
   fileSize: z.number().int().positive(),
   mimeType: z.string().max(100),
+});
+
+export const personnelDocumentUploadSchema = z.object({
+  personnelId: z.number().int().positive(),
+  docTypeId: z.number().int().positive(),
+  description: z.string().max(255).optional(),
+  fileName: z.string().max(255),
+  fileSize: z.number().int().positive(),
+  mimeType: z.string().max(100),
+});
+
+// Unified document upload schema - either asset or personnel
+export const documentUploadSchema = z.object({
+  assetId: z.number().int().positive().optional(),
+  personnelId: z.number().int().positive().optional(),
+  docTypeId: z.number().int().positive(),
+  description: z.string().max(255).optional(),
+  fileName: z.string().max(255),
+  fileSize: z.number().int().positive(),
+  mimeType: z.string().max(100),
+}).refine(data => data.assetId || data.personnelId, {
+  message: "Either assetId or personnelId must be provided"
 });
 

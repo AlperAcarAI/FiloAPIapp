@@ -145,8 +145,11 @@ Kapsamlı API güvenlik sistemi başarıyla kuruldu ve test edildi:
 - `PUT /api/secure/updatePenaltyType/{id}` - Ceza türü güncelleme API
 - `POST /api/secure/addMaintenanceType` - Bakım türü ekleme API ✅ 
 - `POST /api/secure/addPersonnel` - Personel ekleme API ✅
-- `POST /api/secure/addWorkArea` - Çalışma alanı ekleme API ✅ YENİ
-- `PUT /api/secure/updateWorkArea/{id}` - Çalışma alanı güncelleme API ✅ YENİ
+- `POST /api/secure/addWorkArea` - Çalışma alanı ekleme API ✅
+- `PUT /api/secure/updateWorkArea/{id}` - Çalışma alanı güncelleme API ✅
+- `POST /api/secure/documents/upload` - Dosya yükleme API (Asset/Personnel) ✅
+- `GET /api/secure/documents/asset/{id}` - Asset dokümanları listesi ✅
+- `GET /api/secure/documents/personnel/{id}` - Personnel dokümanları listesi ✅ YENİ
 - Tüm endpoint'ler izin kontrolü ve duplicate kontrol yapıyor ✅
 
 **Yönetim Sistemi:**
@@ -218,6 +221,8 @@ Dış uygulamalardan dosya yükleme için API sistemi hazırlandı:
 - Maksimum 50MB dosya boyutu
 - Birden fazla dosya aynı anda yüklenebilir
 - Otomatik dosya hash ve metadata kayıt ✅
+- Asset ve Personnel dokümanları için ayrı tablolar ✅
+- Duplicate dosya kontrolü (hash bazlı) ✅
 
 **Frontend Entegrasyonu:**
 - DocumentUploader React component

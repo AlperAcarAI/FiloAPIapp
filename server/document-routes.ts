@@ -7,8 +7,9 @@ import mimeTypes from 'mime-types';
 import { db } from './db.js';
 import { eq, and, desc, asc } from 'drizzle-orm';
 import { 
-  assetDocuments, assets, docSubTypes, docMainTypes, personnel,
-  assetDocumentUploadSchema, SelectAssetDocument
+  assetDocuments, personnelDocuments, assets, docSubTypes, docMainTypes, personnel,
+  assetDocumentUploadSchema, personnelDocumentUploadSchema, documentUploadSchema,
+  SelectAssetDocument, SelectPersonnelDocument
 } from '../shared/schema.js';
 import { z } from 'zod';
 import { 
@@ -70,13 +71,22 @@ function generateSafeFileName(originalName: string): string {
   return `${timestamp}_${randomSuffix}_${baseName}${ext}`;
 }
 
-// Multer konfigürasyonu - dinamik destination
+// Multer konfigürasyonu - dinamik destination (asset veya personnel)
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
     try {
-      const assetId = req.body.assetId || 'temp';
+      const assetId = req.body.assetId;
+      const personnelId = req.body.personnelId;
       const docTypeId = req.body.docTypeId || 'unknown';
-      const destPath = path.join(UPLOAD_DIR, 'assets', assetId.toString(), docTypeId.toString());
+      
+      let destPath: string;
+      if (assetId) {
+        destPath = path.join(UPLOAD_DIR, 'assets', assetId.toString(), docTypeId.toString());
+      } else if (personnelId) {
+        destPath = path.join(UPLOAD_DIR, 'personnel', personnelId.toString(), docTypeId.toString());
+      } else {
+        destPath = path.join(UPLOAD_DIR, 'temp');
+      }
       
       await fs.mkdir(destPath, { recursive: true });
       cb(null, destPath);
@@ -156,17 +166,34 @@ router.post('/upload', authenticateApiKey, authorizeEndpoint(['document:write', 
     // Upload dizinini kontrol et
     await ensureUploadDir();
 
-    // Body validation
-    const validatedData = assetDocumentUploadSchema.omit({ 
-      fileName: true, 
-      fileSize: true, 
-      mimeType: true 
-    }).parse({
-      assetId: parseInt(req.body.assetId),
-      docTypeId: parseInt(req.body.docTypeId),
-      personnelId: req.body.personnelId ? parseInt(req.body.personnelId) : undefined,
+    // Body validation - asset veya personnel ID gerekli
+    const assetIdRaw = req.body.assetId;
+    const personnelIdRaw = req.body.personnelId;
+    const docTypeIdRaw = req.body.docTypeId;
+    
+    // Manuel validation
+    const rawData = {
+      assetId: (assetIdRaw && !isNaN(Number(assetIdRaw))) ? parseInt(assetIdRaw) : undefined,
+      personnelId: (personnelIdRaw && !isNaN(Number(personnelIdRaw))) ? parseInt(personnelIdRaw) : undefined,
+      docTypeId: (docTypeIdRaw && !isNaN(Number(docTypeIdRaw))) ? parseInt(docTypeIdRaw) : undefined,
       description: req.body.description || undefined,
-    });
+    };
+    
+    // docTypeId zorunlu alanı kontrol et
+    if (!rawData.docTypeId) {
+      return res.status(400).json({
+        success: false,
+        message: 'docTypeId parametresi gerekli ve geçerli bir sayı olmalıdır.'
+      });
+    }
+
+    // En az birinin olması gerekli
+    if (!rawData.assetId && !rawData.personnelId) {
+      return res.status(400).json({
+        success: false,
+        message: 'assetId veya personnelId parametrelerinden en az biri gerekli.'
+      });
+    }
 
     const files = req.files as Express.Multer.File[];
     
@@ -177,7 +204,8 @@ router.post('/upload', authenticateApiKey, authorizeEndpoint(['document:write', 
       });
     }
 
-    const uploadedDocuments: SelectAssetDocument[] = [];
+    const uploadedDocuments: (SelectAssetDocument | SelectPersonnelDocument)[] = [];
+    let duplicateCount = 0;
 
     // Her dosya için database kaydı oluştur
     for (const file of files) {
@@ -185,18 +213,30 @@ router.post('/upload', authenticateApiKey, authorizeEndpoint(['document:write', 
         // Dosya hash'i hesapla
         const fileHash = await calculateFileHash(file.path);
         
-        // Duplicate kontrolü
-        const existingDoc = await db.select()
-          .from(assetDocuments)
-          .where(and(
-            eq(assetDocuments.assetId, validatedData.assetId),
-            eq(assetDocuments.fileHash, fileHash)
-          ))
-          .limit(1);
+        // Duplicate kontrolü - asset veya personnel'e göre
+        let existingDoc: any[] = [];
+        if (rawData.assetId) {
+          existingDoc = await db.select()
+            .from(assetDocuments)
+            .where(and(
+              eq(assetDocuments.assetId, rawData.assetId),
+              eq(assetDocuments.fileHash, fileHash)
+            ))
+            .limit(1);
+        } else if (rawData.personnelId) {
+          existingDoc = await db.select()
+            .from(personnelDocuments)
+            .where(and(
+              eq(personnelDocuments.personnelId, rawData.personnelId),
+              eq(personnelDocuments.fileHash, fileHash)
+            ))
+            .limit(1);
+        }
 
         if (existingDoc.length > 0) {
           // Duplicate dosya, silip devam et
           await fs.unlink(file.path);
+          duplicateCount++;
           continue;
         }
 
@@ -204,21 +244,35 @@ router.post('/upload', authenticateApiKey, authorizeEndpoint(['document:write', 
         const relativePath = path.relative(UPLOAD_DIR, file.path).replace(/\\/g, '/');
         const publicUrl = `/documents/${relativePath}`;
 
-        // Database'e kaydet
-        const [newDocument] = await db.insert(assetDocuments).values({
-          assetId: validatedData.assetId,
-          docTypeId: validatedData.docTypeId,
-          personnelId: validatedData.personnelId,
-          description: validatedData.description,
-          docLink: publicUrl,
-          fileName: file.originalname,
-          fileSize: file.size,
-          mimeType: file.mimetype,
-          fileHash: fileHash,
-          createdBy: validatedData.personnelId
-        }).returning();
-
-        uploadedDocuments.push(newDocument);
+        // Database'e kaydet - asset veya personnel'e göre
+        if (rawData.assetId) {
+          const [newDocument] = await db.insert(assetDocuments).values({
+            assetId: rawData.assetId,
+            docTypeId: rawData.docTypeId,
+            personnelId: rawData.personnelId,
+            description: rawData.description,
+            docLink: publicUrl,
+            fileName: file.originalname,
+            fileSize: file.size,
+            mimeType: file.mimetype,
+            fileHash: fileHash,
+            createdBy: rawData.personnelId
+          }).returning();
+          uploadedDocuments.push(newDocument);
+        } else if (rawData.personnelId) {
+          const [newDocument] = await db.insert(personnelDocuments).values({
+            personnelId: rawData.personnelId,
+            docTypeId: rawData.docTypeId,
+            description: rawData.description,
+            docLink: publicUrl,
+            fileName: file.originalname,
+            fileSize: file.size,
+            mimeType: file.mimetype,
+            fileHash: fileHash,
+            createdBy: rawData.personnelId
+          }).returning();
+          uploadedDocuments.push(newDocument);
+        }
 
       } catch (fileError) {
         console.error(`File processing error for ${file.originalname}:`, fileError);
@@ -237,7 +291,9 @@ router.post('/upload', authenticateApiKey, authorizeEndpoint(['document:write', 
         uploadedDocuments,
         totalFiles: files.length,
         successCount: uploadedDocuments.length,
-        duplicateCount: files.length - uploadedDocuments.length
+        duplicateCount: duplicateCount,
+        targetType: rawData.assetId ? 'asset' : 'personnel',
+        targetId: rawData.assetId || rawData.personnelId
       }
     });
 
@@ -510,6 +566,71 @@ router.delete('/:documentId', authenticateApiKey, authorizeEndpoint(['document:d
     res.status(500).json({
       success: false,
       message: 'Dokuman silinirken hata oluştu.',
+      error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
+    });
+  }
+});
+
+// Personnel dokümanları listesi
+router.get('/personnel/:personnelId', authenticateApiKey, authorizeEndpoint(['document:read']), async (req, res) => {
+  try {
+    const personnelId = parseInt(req.params.personnelId);
+    
+    if (!personnelId || isNaN(personnelId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Geçersiz personnel ID.'
+      });
+    }
+
+    // Personnel var mı kontrol et
+    const personnelExists = await db.select({ id: personnel.id })
+      .from(personnel)
+      .where(eq(personnel.id, personnelId))
+      .limit(1);
+
+    if (personnelExists.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Personnel bulunamadı.'
+      });
+    }
+
+    // Personnel dokümanları
+    const documents = await db
+      .select({
+        id: personnelDocuments.id,
+        fileName: personnelDocuments.fileName,
+        fileSize: personnelDocuments.fileSize,
+        mimeType: personnelDocuments.mimeType,
+        description: personnelDocuments.description,
+        uploadDate: personnelDocuments.uploadDate,
+        docLink: personnelDocuments.docLink,
+        docTypeId: personnelDocuments.docTypeId,
+        docTypeName: docSubTypes.name,
+        mainTypeName: docMainTypes.name
+      })
+      .from(personnelDocuments)
+      .leftJoin(docSubTypes, eq(personnelDocuments.docTypeId, docSubTypes.id))
+      .leftJoin(docMainTypes, eq(docSubTypes.mainTypeId, docMainTypes.id))
+      .where(eq(personnelDocuments.personnelId, personnelId))
+      .orderBy(desc(personnelDocuments.uploadDate));
+
+    res.json({
+      success: true,
+      message: 'Personnel dokümanları başarıyla getirildi.',
+      data: {
+        personnelId,
+        documents,
+        totalCount: documents.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Personnel documents fetch error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Personnel dokümanları getirilirken hata oluştu.',
       error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
     });
   }

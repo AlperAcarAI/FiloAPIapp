@@ -895,11 +895,16 @@ export function registerApiManagementRoutes(app: Express) {
               'multipart/form-data': {
                 schema: {
                   type: 'object',
-                  required: ['assetId', 'docTypeId', 'files'],
+                  required: ['docTypeId', 'files'],
                   properties: {
                     assetId: {
                       type: 'integer',
-                      description: 'Asset ID (araç, ekipman vb.)',
+                      description: 'Asset ID (araç, ekipman vb.) - assetId veya personnelId gerekli',
+                      example: 1
+                    },
+                    personnelId: {
+                      type: 'integer',
+                      description: 'Personnel ID (personel) - assetId veya personnelId gerekli',
                       example: 1
                     },
                     docTypeId: {
@@ -1039,6 +1044,65 @@ export function registerApiManagementRoutes(app: Express) {
             },
             '401': { description: 'Geçersiz API anahtarı' },
             '404': { description: 'Asset bulunamadı' }
+          }
+        }
+      },
+      '/api/secure/documents/personnel/{personnelId}': {
+        get: {
+          summary: 'Personnel Dokümanları Listesi',
+          description: 'Belirli bir personele ait tüm dokümanları listeler',
+          tags: ['Dosya İşlemleri'],
+          security: [{ ApiKeyAuth: [] }],
+          parameters: [
+            {
+              name: 'personnelId',
+              in: 'path',
+              required: true,
+              description: 'Personnel ID',
+              schema: {
+                type: 'integer',
+                example: 1
+              }
+            }
+          ],
+          responses: {
+            '200': {
+              description: 'Personnel dokümanları başarıyla getirildi',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      message: { type: 'string', example: 'Personnel dokümanları başarıyla getirildi.' },
+                      data: {
+                        type: 'object',
+                        properties: {
+                          personnelId: { type: 'integer', example: 1 },
+                          documents: {
+                            type: 'array',
+                            items: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'integer', example: 123 },
+                                fileName: { type: 'string', example: 'cv_document.pdf' },
+                                docTypeName: { type: 'string', example: 'CV/Özgeçmiş' },
+                                fileSize: { type: 'integer', example: 1024576 },
+                                uploadDate: { type: 'string', example: '2025-01-25T10:30:00.000Z' },
+                                description: { type: 'string', example: 'Personel özgeçmiş dokümanı' }
+                              }
+                            }
+                          },
+                          totalCount: { type: 'integer', example: 3 }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            '401': { description: 'Geçersiz API anahtarı' },
+            '404': { description: 'Personnel bulunamadı' }
           }
         }
       }

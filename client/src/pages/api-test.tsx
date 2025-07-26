@@ -163,6 +163,15 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     method: "GET",
     category: "Dosya İşlemleri",
     dataCount: "Asset dokümanları"
+  },
+  {
+    id: "documentsPersonnel",
+    name: "Personnel Dokümanları Listesi",
+    description: "Belirli bir personele ait tüm dokümanları listeler",
+    endpoint: "/api/secure/documents/personnel/1",
+    method: "GET",
+    category: "Dosya İşlemleri",
+    dataCount: "Personnel dokümanları"
   }
 ];
 
