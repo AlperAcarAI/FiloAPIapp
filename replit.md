@@ -278,3 +278,49 @@ Dış uygulamalardan dosya yükleme için API sistemi hazırlandı:
 - JavaScript, Python, PHP, C#, cURL örnekleri hazırlandı
 - API_FILE_UPLOAD_GUIDE.md rehberi oluşturuldu
 - Replit public URL üzerinden erişilebilir ✅
+
+## API Analytics ve İzleme Sistemi
+
+### ✅ Kapsamlı Analytics Sistemi Kuruldu (26 Ocak 2025)
+API kullanım takip ve analiz sistemi başarıyla oluşturuldu:
+
+**Temel Özellikler:**
+- Otomatik API çağrı loglama - Her istek detaylı kaydediliyor ✅
+- Gerçek zamanlı performans izleme - Yanıt süreleri, status kodlar ✅
+- Günlük/haftalık/aylık kullanım istatistikleri ✅
+- Endpoint bazlı detaylı analiz - Hangi API ne kadar kullanılıyor ✅
+- Hata analizi ve troubleshooting - Error tracking ✅
+- En yavaş endpoint'ler raporu ✅
+
+**Veritabanı Tabloları:**
+- `api_usage_logs` - Detaylı istek logları (response time, IP, user agent)
+- `api_usage_stats` - Günlük özet istatistikleri (performans metrikleri)
+- Index'ler ve performance optimizasyonları ✅
+
+**Analytics API Endpoint'leri:**
+- `GET /api/analytics/stats/overview` - Genel kullanım özeti ✅
+- `GET /api/analytics/stats/endpoints` - Endpoint bazlı istatistikler ✅
+- `GET /api/analytics/stats/daily` - Günlük kullanım trendi ✅
+- `GET /api/analytics/stats/slowest` - En yavaş endpoint'ler ✅
+- `GET /api/analytics/stats/errors` - Hata analizi ✅
+- `GET /api/analytics/logs` - Detaylı log kayıtları (sayfalama) ✅
+
+**Analytics Dashboard (/analytics):**
+- Genel bakış - Toplam istek, başarı oranı, ortalama yanıt süresi ✅
+- Endpoint performans analizi ✅
+- Günlük kullanım grafikleri ✅
+- Hata raporları ve analizi ✅
+- Real-time log viewer ✅
+- Responsive tasarım ve modern UI ✅
+
+**Middleware Sistemi:**
+- Otomatik tracking - Tüm /api/secure/ endpoint'leri izleniyor ✅
+- Asenkron loglama - Performance impact yok ✅
+- Request/Response size tracking ✅
+- IP address ve User-Agent loglama ✅
+- Error message capture ✅
+
+**Erişim:**
+- Ana sayfa → "API Analytics" kartı → Analytics Dashboard ✅
+- Direkt URL: `/analytics` ✅
+- İlk test verileri başarıyla kaydedildi ✅

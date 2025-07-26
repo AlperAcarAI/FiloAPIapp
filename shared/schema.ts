@@ -311,6 +311,50 @@ export const apiRateLimit = pgTable("api_rate_limit", {
 }));
 
 // ========================
+// API Analytics & Usage Tracking
+// ========================
+
+export const apiUsageLogs = pgTable("api_usage_logs", {
+  id: serial("id").primaryKey(),
+  apiClientId: integer("api_client_id").references(() => apiClients.id),
+  endpoint: varchar("endpoint", { length: 255 }).notNull(),
+  method: varchar("method", { length: 10 }).notNull(),
+  statusCode: integer("status_code").notNull(),
+  responseTimeMs: integer("response_time_ms").notNull(),
+  requestSizeBytes: integer("request_size_bytes").default(0),
+  responseSizeBytes: integer("response_size_bytes").default(0),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  requestTimestamp: timestamp("request_timestamp").notNull().defaultNow(),
+  errorMessage: text("error_message"),
+  requestBodyHash: varchar("request_body_hash", { length: 64 }),
+}, (table) => ({
+  clientIdx: index("idx_api_usage_client_id").on(table.apiClientId),
+  endpointIdx: index("idx_api_usage_endpoint").on(table.endpoint),
+  timestampIdx: index("idx_api_usage_timestamp").on(table.requestTimestamp),
+  statusIdx: index("idx_api_usage_status").on(table.statusCode),
+}));
+
+export const apiUsageStats = pgTable("api_usage_stats", {
+  id: serial("id").primaryKey(),
+  apiClientId: integer("api_client_id").notNull().references(() => apiClients.id),
+  endpoint: varchar("endpoint", { length: 255 }).notNull(),
+  method: varchar("method", { length: 10 }).notNull(),
+  usageDate: date("usage_date").notNull(),
+  totalRequests: integer("total_requests").default(0),
+  successRequests: integer("success_requests").default(0),
+  errorRequests: integer("error_requests").default(0),
+  avgResponseTimeMs: decimal("avg_response_time_ms", { precision: 8, scale: 2 }).default("0"),
+  minResponseTimeMs: integer("min_response_time_ms").default(0),
+  maxResponseTimeMs: integer("max_response_time_ms").default(0),
+  totalDataTransferredBytes: bigint("total_data_transferred_bytes", { mode: "number" }).default(0),
+}, (table) => ({
+  uniqueStats: unique("unique_api_stats").on(table.apiClientId, table.endpoint, table.method, table.usageDate),
+  clientDateIdx: index("idx_api_stats_client_date").on(table.apiClientId, table.usageDate),
+  endpointDateIdx: index("idx_api_stats_endpoint_date").on(table.endpoint, table.usageDate),
+}));
+
+// ========================
 // Core Business Tables
 // ========================
 

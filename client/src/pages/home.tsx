@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchFilters } from "@/components/search-filters";
 import { StatsCards } from "@/components/stats-cards";
-import { FileCode, Activity, BarChart3, TestTube, Upload, FileText, Key } from "lucide-react";
+import { FileCode, Activity, BarChart3, TestTube, Upload, FileText, Key, TrendingUp } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Home() {
@@ -115,6 +115,29 @@ export default function Home() {
                 <Button variant="outline" className="bg-white hover:bg-green-100 text-green-700 border-green-300">
                   <Upload className="h-4 w-4 mr-2" />
                   Dokuman Sayfası
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* API Analytics */}
+        <Card className="shadow-sm border-purple-200 bg-purple-50 mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <BarChart3 className="h-8 w-8 text-purple-600" />
+                <div>
+                  <h3 className="text-lg font-semibold text-purple-800">API Analytics</h3>
+                  <p className="text-purple-600">
+                    API kullanım istatistiklerini takip edin
+                  </p>
+                </div>
+              </div>
+              <Link to="/analytics">
+                <Button variant="outline" className="bg-white hover:bg-purple-100 text-purple-700 border-purple-300">
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Analytics Dashboard
                 </Button>
               </Link>
             </div>

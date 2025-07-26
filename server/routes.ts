@@ -11,8 +11,13 @@ import { registerApiManagementRoutes } from "./api-management-routes";
 import documentRoutes from "./document-routes.js";
 import companyRoutes from "./company-routes.js";
 import assetRoutes from "./asset-routes.js";
+import apiAnalyticsRoutes from "./api-analytics-routes.js";
+import { apiAnalyticsMiddleware } from "./api-analytics-middleware.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // API Analytics middleware - Tüm API çağrılarını takip et
+  app.use(apiAnalyticsMiddleware);
+
   // Kullanıcı kimlik doğrulama - Standart JSON format
   app.post("/api/auth/login", async (req, res) => {
     try {
@@ -104,6 +109,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // API Güvenlik ve Yönetim Route'larını kaydet
   registerApiManagementRoutes(app);
+
+  // API Analytics routes
+  app.use('/api/analytics', apiAnalyticsRoutes);
 
   // Document Management Route'larını kaydet  
   app.use('/api/secure/documents', documentRoutes);
