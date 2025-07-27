@@ -566,6 +566,17 @@ export const penalties = pgTable("penalties", {
   updatedBy: integer("updated_by").references(() => personnel.id),
 });
 
+// Payment Types table
+export const paymentTypes = pgTable("payment_types", {
+  id: serial("id").primaryKey(),
+  code: varchar("code", { length: 20 }).unique().notNull(),
+  name: varchar("name", { length: 50 }).notNull(),
+  description: text("description"),
+  requiresApproval: boolean("requires_approval").notNull().default(false),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const finCurrentAccounts = pgTable("fin_current_accounts", {
   id: serial("id").primaryKey(),
   isDebit: boolean("is_debit").notNull(),
@@ -576,6 +587,24 @@ export const finCurrentAccounts = pgTable("fin_current_accounts", {
   transactionDate: date("transaction_date").notNull(),
   isDone: boolean("is_done").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
+  paymentMethodId: integer("payment_method_id").references(() => paymentMethods.id),
+  paymentStatus: varchar("payment_status", { length: 20 }).default("beklemede"),
+  paymentReference: varchar("payment_reference", { length: 100 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const finAccountsDetails = pgTable("fin_accounts_details", {
+  id: serial("id").primaryKey(),
+  finCurAcId: integer("fin_cur_ac_id").notNull().references(() => finCurrentAccounts.id, { onDelete: "cascade" }),
+  amount: integer("amount").notNull(), // kuruş cinsinden
+  date: date("date").notNull(),
+  paymentTypeId: integer("payment_type_id").notNull().references(() => paymentTypes.id),
+  isDone: boolean("is_done").notNull().default(false),
+  doneDate: date("done_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // ========================
@@ -844,6 +873,77 @@ export type InsertApiEndpoint = z.infer<typeof insertApiEndpointSchema>;
 
 export type ApiToken = typeof apiTokens.$inferSelect;
 export type InsertApiToken = z.infer<typeof insertApiTokenSchema>;
+
+// ========================
+// Financial Schema Types and Relations  
+// ========================
+
+export const finCurrentAccountsRelations = relations(finCurrentAccounts, ({ one, many }) => ({
+  payerCompany: one(companies, {
+    fields: [finCurrentAccounts.payerCompanyId],
+    references: [companies.id],
+    relationName: "payerCompany",
+  }),
+  payeeCompany: one(companies, {
+    fields: [finCurrentAccounts.payeeCompanyId],
+    references: [companies.id],
+    relationName: "payeeCompany",
+  }),
+  paymentMethod: one(paymentMethods, {
+    fields: [finCurrentAccounts.paymentMethodId],
+    references: [paymentMethods.id],
+  }),
+  details: many(finAccountsDetails),
+}));
+
+export const finAccountsDetailsRelations = relations(finAccountsDetails, ({ one }) => ({
+  finCurrentAccount: one(finCurrentAccounts, {
+    fields: [finAccountsDetails.finCurAcId],
+    references: [finCurrentAccounts.id],
+  }),
+  paymentType: one(paymentTypes, {
+    fields: [finAccountsDetails.paymentTypeId],
+    references: [paymentTypes.id],
+  }),
+}));
+
+export const paymentTypesRelations = relations(paymentTypes, ({ many }) => ({
+  details: many(finAccountsDetails),
+}));
+
+// Zod Schemas for Financial Tables
+export const insertFinCurrentAccountSchema = createInsertSchema(finCurrentAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateFinCurrentAccountSchema = insertFinCurrentAccountSchema.partial();
+
+export const insertFinAccountsDetailSchema = createInsertSchema(finAccountsDetails).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateFinAccountsDetailSchema = insertFinAccountsDetailSchema.partial();
+
+export const insertPaymentTypeSchema = createInsertSchema(paymentTypes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFinCurrentAccount = z.infer<typeof insertFinCurrentAccountSchema>;
+export type UpdateFinCurrentAccount = z.infer<typeof updateFinCurrentAccountSchema>;
+export type FinCurrentAccount = typeof finCurrentAccounts.$inferSelect;
+
+export type InsertFinAccountsDetail = z.infer<typeof insertFinAccountsDetailSchema>;
+export type UpdateFinAccountsDetail = z.infer<typeof updateFinAccountsDetailSchema>;
+export type FinAccountsDetail = typeof finAccountsDetails.$inferSelect;
+
+export type InsertPaymentType = z.infer<typeof insertPaymentTypeSchema>;
+export type PaymentType = z.infer<typeof insertPaymentTypeSchema>;
+export type PaymentTypeSelect = typeof paymentTypes.$inferSelect;
 
 export type ApiRequestLog = typeof apiRequestLogs.$inferSelect;
 

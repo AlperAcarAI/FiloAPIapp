@@ -349,3 +349,30 @@ Kullanıcı önerisiyle, her ödeme türü için ayrı tablo yerine tip-tabanlı
 - Payment_methods tablosu hazır (7 kayıt)
 - Companies tablosu hazır (2 kayıt)
 - Tasarım dokümanı hazırlandı (ODEME_TIP_TABANLI_TASARIM.md)
+
+### ✅ Tip-Tabanlı Finansal Sistem Kuruldu (26 Ocak 2025)
+Kullanıcı talebiyle FIN_ACCOUNTS_DETAILS tablosu eklendi ve sistem tamamlandı:
+
+**Kurulan Yapı:**
+- **PAYMENT_TYPES** tablosu oluşturuldu (6 tip: genel, hasar, poliçe, bakım, yakıt, personel) ✅
+- **FIN_CURRENT_ACCOUNTS** tablosuna payment_method_id, payment_status, notes sütunları eklendi ✅
+- **FIN_ACCOUNTS_DETAILS** tablosu oluşturuldu (ana işlem detayları için) ✅
+- TypeScript schema tanımları güncellendi (relations, zod validations) ✅
+- Performance indeksleri eklendi ✅
+
+**Test Verileri:**
+- 3 ana finansal işlem kaydı (hasar, yakıt, personel ödemeleri)
+- 8 detay kaydı ile test edildi
+- Veri bütünlüğü doğrulandı (ana tutar = detay toplamları)
+- İlişkili sorgular başarıyla çalıştırıldı ✅
+
+**Yapı:**
+```
+FIN_CURRENT_ACCOUNTS (Ana İşlemler)
+    ↓
+FIN_ACCOUNTS_DETAILS (Detay Kayıtları)
+    ↓  
+PAYMENT_TYPES (Ödeme Türü Tanımları)
+```
+
+**Sonraki Adım:** API endpoint'leri ve frontend interface kurulumu
