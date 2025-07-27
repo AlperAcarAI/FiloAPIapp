@@ -25,25 +25,9 @@ interface ApiKey {
 }
 
 const AVAILABLE_PERMISSIONS = [
-  { id: 'data:read', name: 'Veri Okuma', description: 'Genel veri okuma işlemleri' },
-  { id: 'data:write', name: 'Veri Yazma', description: 'Yeni veri ekleme işlemleri' },
-  { id: 'data:update', name: 'Veri Güncelleme', description: 'Mevcut veri güncelleme işlemleri' },
-  { id: 'data:delete', name: 'Veri Silme', description: 'Veri silme işlemleri' },
-  { id: 'asset:read', name: 'Asset Okuma', description: 'Araç/asset bilgileri okuma' },
-  { id: 'asset:write', name: 'Asset Yazma', description: 'Yeni araç/asset ekleme' },
-  { id: 'asset:update', name: 'Asset Güncelleme', description: 'Araç/asset güncelleme' },
-  { id: 'asset:delete', name: 'Asset Silme', description: 'Araç/asset silme' },
-  { id: 'personnel:read', name: 'Personel Okuma', description: 'Personel bilgileri okuma' },
-  { id: 'personnel:write', name: 'Personel Yazma', description: 'Yeni personel ekleme' },
-  { id: 'personnel:update', name: 'Personel Güncelleme', description: 'Personel güncelleme' },
-  { id: 'personnel:delete', name: 'Personel Silme', description: 'Personel silme' },
-  { id: 'company:read', name: 'Şirket Okuma', description: 'Şirket bilgileri okuma' },
-  { id: 'company:write', name: 'Şirket Yazma', description: 'Yeni şirket ekleme' },
-  { id: 'company:update', name: 'Şirket Güncelleme', description: 'Şirket güncelleme' },
-  { id: 'company:delete', name: 'Şirket Silme', description: 'Şirket silme' },
-  { id: 'document:read', name: 'Dosya Okuma', description: 'Dosya okuma işlemleri' },
-  { id: 'document:write', name: 'Dosya Yazma', description: 'Dosya yükleme işlemleri' },
-  { id: 'document:delete', name: 'Dosya Silme', description: 'Dosya silme işlemleri' }
+  { id: 'read', name: 'Okuma', description: 'Tüm verileri okuma izni (şehirler, şirketler, personel vb.)' },
+  { id: 'write', name: 'Yazma', description: 'Yeni veri ekleme ve güncelleme izni' },
+  { id: 'admin', name: 'Yönetici', description: 'Tüm işlemler (okuma, yazma, silme, güncelleme)' }
 ];
 
 export default function Dashboard() {

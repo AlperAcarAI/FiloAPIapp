@@ -2673,21 +2673,32 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
         });
       }
 
-      // İzinleri doğrula
-      const validPermissions = [
-        'data:read', 'data:write', 'data:update', 'data:delete',
-        'asset:read', 'asset:write', 'asset:update', 'asset:delete',
-        'personnel:read', 'personnel:write', 'personnel:update', 'personnel:delete',
-        'company:read', 'company:write', 'company:update', 'company:delete',
-        'document:read', 'document:write', 'document:delete'
-      ];
-
+      console.log('Received permissions:', permissions);
+      
+      // Basit izin doğrulama - sadece read, write, admin
+      const validPermissions = ['read', 'write', 'admin'];
       const invalidPermissions = permissions.filter(p => !validPermissions.includes(p));
       if (invalidPermissions.length > 0) {
         return res.status(400).json({
           success: false,
-          message: `Geçersiz izinler: ${invalidPermissions.join(', ')}`
+          message: `Geçersiz izinler: ${invalidPermissions.join(', ')}. Sadece şunlar geçerli: read, write, admin`
         });
+      }
+
+      // Basit izinleri detaylı izinlere çevir
+      let detailedPermissions = [];
+      if (permissions.includes('read')) {
+        detailedPermissions.push('data:read', 'asset:read', 'personnel:read', 'company:read', 'document:read');
+      }
+      if (permissions.includes('write')) {
+        detailedPermissions.push('data:write', 'asset:write', 'personnel:write', 'company:write', 'document:write');
+      }
+      if (permissions.includes('admin')) {
+        detailedPermissions.push('data:read', 'data:write', 'data:update', 'data:delete',
+          'asset:read', 'asset:write', 'asset:update', 'asset:delete',
+          'personnel:read', 'personnel:write', 'personnel:update', 'personnel:delete',
+          'company:read', 'company:write', 'company:update', 'company:delete',
+          'document:read', 'document:write', 'document:delete');
       }
 
       // API Client oluştur
@@ -2704,15 +2715,17 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
       const apiKey = `ak_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
       const hashedKey = await bcrypt.hash(apiKey, 10);
 
-      const [newApiKey] = await db
-        .insert(apiKeys)
-        .values({
-          clientId: newClient.id,
-          key: hashedKey,
-          permissions,
-          isActive: true
-        })
-        .returning();
+      // Raw SQL insert to bypass ORM issues
+      const permissionsString = '{' + detailedPermissions.map(p => `"${p}"`).join(',') + '}';
+      
+      const result = await db.execute(
+        `INSERT INTO api_keys (client_id, key_hash, permissions, is_active, created_at) 
+         VALUES ($1, $2, $3, $4, NOW()) 
+         RETURNING id, client_id, key_hash, permissions, is_active, created_at`,
+        [newClient.id, hashedKey, permissionsString, true]
+      );
+      
+      const newApiKey = result.rows?.[0] || result[0];
 
       res.json({
         success: true,
