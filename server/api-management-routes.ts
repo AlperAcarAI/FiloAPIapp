@@ -2630,7 +2630,7 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
   // KULLANICI API KEY YÖNETİMİ (JWT ile korunuyor)
   // ========================
 
-  // Kullanıcının kendi API key'lerini listele
+  // Kullanıcının kendi API key'lerini listele (maskelenmiş)
   app.get("/api/user/api-keys", authenticateToken, async (req: any, res) => {
     try {
       const userId = req.user.userId;
@@ -2639,7 +2639,7 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
         .select({
           id: apiKeys.id,
           name: apiClients.name,
-          key: apiKeys.key,
+          keyHash: apiKeys.keyHash, // Hash'i alacağız maskeleme için
           permissions: apiKeys.permissions,
           isActive: apiKeys.isActive,
           createdAt: apiKeys.createdAt,
@@ -2650,7 +2650,19 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
         .leftJoin(apiClients, eq(apiKeys.clientId, apiClients.id))
         .where(eq(apiClients.userId, userId));
 
-      res.json(userApiKeys);
+      // API key'leri maskeleme - son 4 hane görünür  
+      const maskedApiKeys = userApiKeys.map(key => {
+        // keyHash'den son 4 karakter al ve maskele
+        const maskedKey = key.keyHash ? `*******${key.keyHash.slice(-4)}` : '*******xxxx';
+        
+        return {
+          ...key,
+          key: maskedKey, // Maskelenmiş key
+          keyHash: undefined // Hash'i client'e gönderme
+        };
+      });
+
+      res.json(maskedApiKeys);
     } catch (error) {
       console.error("Error fetching user API keys:", error);
       res.status(500).json({ 
@@ -2737,18 +2749,19 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
       
       console.log('New API Key created:', newApiKey);
       
-      // Basit response - database'e kayıt zaten başarılı
+      // Oluşturma anında tam API key göster - sadece bir kez!
       res.json({
         success: true,
         message: "API key başarıyla oluşturuldu",
         data: {
           apiKey: {
-            id: 'generated',
+            id: newApiKey.id,
             name: newClient.name,
-            key: apiKey,
+            key: apiKey, // TAM API KEY - sadece oluşturma anında görünür
             permissions: detailedPermissions,
             isActive: true,
-            createdAt: new Date()
+            createdAt: newApiKey.createdAt,
+            warning: "Bu API key sadece şimdi görüntüleniyor. Lütfen güvenli bir yerde saklayın. Bir daha tam halini göremeyeceksiniz."
           }
         }
       });

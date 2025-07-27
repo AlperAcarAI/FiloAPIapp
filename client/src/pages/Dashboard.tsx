@@ -16,12 +16,28 @@ import { format } from 'date-fns';
 interface ApiKey {
   id: number;
   name: string;
-  key: string;
+  key: string; // Maskelenmiş format: *******abcd
   permissions: string[];
   isActive: boolean;
   createdAt: string;
   lastUsedAt: string | null;
   usageCount: number;
+}
+
+interface NewApiKeyResponse {
+  success: boolean;
+  message: string;
+  data: {
+    apiKey: {
+      id: number;
+      name: string;
+      key: string; // Tam API key - sadece oluşturma anında
+      permissions: string[];
+      isActive: boolean;
+      createdAt: string;
+      warning?: string;
+    };
+  };
 }
 
 const AVAILABLE_PERMISSIONS = [
@@ -35,6 +51,7 @@ export default function Dashboard() {
   const [newKeyName, setNewKeyName] = useState('');
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [visibleKeys, setVisibleKeys] = useState<Set<number>>(new Set());
+  const [newlyCreatedKeys, setNewlyCreatedKeys] = useState<Map<number, string>>(new Map());
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -75,20 +92,33 @@ export default function Dashboard() {
       
       return response.json();
     },
-    onSuccess: (response) => {
-      toast({
-        title: 'API Key Oluşturuldu!',
-        description: `${newKeyName} başarıyla oluşturuldu.`,
-      });
+    onSuccess: (response: NewApiKeyResponse) => {
+      // Güvenlik uyarısı ile API key göster
+      if (response?.data?.apiKey?.key) {
+        toast({
+          title: '🔑 API Key Oluşturuldu!',
+          description: `Bu tam API key sadece şimdi görüntüleniyor! Güvenli bir yerde saklayın.`,
+          duration: 10000, // 10 saniye göster
+        });
+        
+        // Tam API key'i geçici olarak sakla (oluşturma anında gösterilmek için)
+        setNewlyCreatedKeys(prev => new Map(prev.set(response.data.apiKey.id, response.data.apiKey.key)));
+        setVisibleKeys(prev => new Set([...Array.from(prev), response.data.apiKey.id]));
+        
+        // 30 saniye sonra tam key'i bellekten temizle
+        setTimeout(() => {
+          setNewlyCreatedKeys(prev => {
+            const newMap = new Map(prev);
+            newMap.delete(response.data.apiKey.id);
+            return newMap;
+          });
+        }, 30000);
+      }
+      
       setShowCreateDialog(false);
       setNewKeyName('');
       setSelectedPermissions([]);
       queryClient.invalidateQueries({ queryKey: ['/api/user/api-keys'] });
-      
-      // Yeni oluşturulan key'i göster
-      if (response?.data?.apiKey?.id) {
-        setVisibleKeys(prev => new Set([...Array.from(prev), response.data.apiKey.id]));
-      }
     },
     onError: (error: any) => {
       toast({
@@ -311,7 +341,7 @@ export default function Dashboard() {
                   <div className="flex items-center space-x-2">
                     <Input
                       type={visibleKeys.has(apiKey.id) ? "text" : "password"}
-                      value={apiKey.key}
+                      value={newlyCreatedKeys.has(apiKey.id) ? newlyCreatedKeys.get(apiKey.id) : apiKey.key}
                       readOnly
                       className="font-mono text-sm"
                     />
@@ -328,11 +358,19 @@ export default function Dashboard() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => copyToClipboard(apiKey.key, apiKey.name)}
+                      onClick={() => copyToClipboard(
+                        newlyCreatedKeys.has(apiKey.id) ? newlyCreatedKeys.get(apiKey.id)! : apiKey.key, 
+                        apiKey.name
+                      )}
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>
+                  {newlyCreatedKeys.has(apiKey.id) && (
+                    <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border">
+                      ⚠️ Bu tam API key sadece şimdi görüntüleniyor. 30 saniye sonra maskelenecek.
+                    </p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">

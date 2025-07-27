@@ -394,6 +394,30 @@ PAYMENT_TYPES (Ödeme Türü Tanımları)
 
 **Sonraki Adım:** Frontend interface kurulumu (opsiyonel)
 
+## ✅ API Key Güvenlik Sistemi Uygulandı (27 Ocak 2025)
+
+**API Key Maskeleme ve Güvenlik:**
+API key'ler artık güvenli şekilde yönetiliyor:
+
+**Oluşturma Anında:**
+- Tam API key gösteriliyor (sadece bir kez)
+- Güvenlik uyarısı ile 10 saniye toast notification
+- Frontend'te 30 saniye geçici bellek (sonra temizleniyor)
+- "Bu tam API key sadece şimdi görüntüleniyor" uyarısı
+
+**Liste Görüntülemede:**
+- API key'ler maskelenmiş format: `*******abcd` (son 4 hane)
+- Database'de sadece hash saklanıyor (`keyHash` sütunu)
+- Client'e hash gönderilmiyor, sadece maskelenmiş format
+- Kopyalama da maskelenmiş format ile çalışıyor
+
+**Güvenlik Özellikleri:**
+- API key tam hali database'de saklanmıyor ✅
+- Sadece bcrypt hash saklanıyor ✅  
+- Maskeleme backend'de yapılıyor ✅
+- Frontend geçici bellek sistemi (30 saniye) ✅
+- Eye icon ile görünürlük toggle (maskelenmiş için) ✅
+
 ## ✅ GET API Filtreleme Sistemi Eklendi (27 Ocak 2025)
 
 **Kapsamlı Filtreleme Özellikleri:**
