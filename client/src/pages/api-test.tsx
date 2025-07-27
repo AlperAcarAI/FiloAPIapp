@@ -569,6 +569,19 @@ export default function ApiTest() {
   const [selectedApi, setSelectedApi] = useState<ApiEndpoint | null>(null);
   const [apiKey, setApiKey] = useState("ak_demo2025key");
   const [requestBody, setRequestBody] = useState("{\n  \"name\": \"Yeni Poliçe Tipi\",\n  \"isActive\": true\n}");
+  
+  // Filtreleme parametreleri için state'ler
+  const [filterParams, setFilterParams] = useState({
+    search: "",
+    limit: "",
+    offset: "",
+    sortBy: "",
+    sortOrder: "asc",
+    activeOnly: "",
+    minAmount: "",
+    maxAmount: "",
+    phoneCode: ""
+  });
 
   // API'ye göre default request body'yi ayarla
   const getDefaultRequestBody = (apiId: string) => {
@@ -756,6 +769,44 @@ Swagger dokümantasyonundan veya /documents sayfasından test edebilirsiniz.`;
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Filtreleme parametrelerini URL query string'e çevir
+  const buildFilteredUrl = (endpoint: ApiEndpoint) => {
+    if (endpoint.method !== 'GET') return `${window.location.origin}${endpoint.endpoint}`;
+    
+    const params = new URLSearchParams();
+    
+    if (filterParams.search && filterParams.search.trim()) {
+      params.append('search', filterParams.search.trim());
+    }
+    if (filterParams.limit && filterParams.limit.trim()) {
+      params.append('limit', filterParams.limit.trim());
+    }
+    if (filterParams.offset && filterParams.offset.trim()) {
+      params.append('offset', filterParams.offset.trim());
+    }
+    if (filterParams.sortBy && filterParams.sortBy.trim()) {
+      params.append('sortBy', filterParams.sortBy.trim());
+    }
+    if (filterParams.sortOrder !== 'asc') {
+      params.append('sortOrder', filterParams.sortOrder);
+    }
+    if (filterParams.activeOnly && filterParams.activeOnly !== '') {
+      params.append('activeOnly', filterParams.activeOnly);
+    }
+    if (filterParams.minAmount && filterParams.minAmount.trim()) {
+      params.append('minAmount', filterParams.minAmount.trim());
+    }
+    if (filterParams.maxAmount && filterParams.maxAmount.trim()) {
+      params.append('maxAmount', filterParams.maxAmount.trim());
+    }
+    if (filterParams.phoneCode && filterParams.phoneCode.trim()) {
+      params.append('phoneCode', filterParams.phoneCode.trim());
+    }
+    
+    const queryString = params.toString();
+    return `${window.location.origin}${endpoint.endpoint}${queryString ? '?' + queryString : ''}`;
+  };
+
   const testApi = async (endpoint: ApiEndpoint) => {
     if (!apiKey.trim()) {
       toast({
@@ -800,7 +851,7 @@ Swagger dokümantasyonundan veya /documents sayfasından test edebilirsiniz.`;
         }
       }
 
-      const response = await fetch(`${window.location.origin}${endpoint.endpoint}`, fetchOptions);
+      const response = await fetch(buildFilteredUrl(endpoint), fetchOptions);
 
       const data = await response.json();
       
@@ -1001,14 +1052,14 @@ Swagger dokümantasyonundan veya /documents sayfasından test edebilirsiniz.`;
                         </label>
                         <div className="flex items-center space-x-2">
                           <Input
-                            value={`${window.location.origin}${selectedApi.endpoint}`}
+                            value={buildFilteredUrl(selectedApi)}
                             readOnly
                             className="font-mono text-sm"
                           />
                           <Button
                             variant="outline" 
                             size="sm"
-                            onClick={() => copyToClipboard(`${window.location.origin}${selectedApi.endpoint}`)}
+                            onClick={() => copyToClipboard(buildFilteredUrl(selectedApi))}
                           >
                             <Copy className="w-4 h-4" />
                           </Button>
@@ -1072,6 +1123,181 @@ Swagger dokümantasyonundan veya /documents sayfasından test edebilirsiniz.`;
                               </div>
                             </div>
                           )}
+                        </div>
+                      )}
+
+                      {/* Interaktif Filtreleme Formu - GET API'leri için */}
+                      {selectedApi.method === 'GET' && selectedApi.filterParams && selectedApi.filterParams.length > 0 && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                          <h4 className="font-medium text-green-900 mb-3 flex items-center">
+                            ⚙️ Filtreleme Parametreleri
+                          </h4>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Search */}
+                            {selectedApi.filterParams.includes('search') && (
+                              <div>
+                                <label className="block text-sm font-medium text-green-800 mb-1">
+                                  Arama Metni
+                                </label>
+                                <Input
+                                  value={filterParams.search}
+                                  onChange={(e) => setFilterParams(prev => ({...prev, search: e.target.value}))}
+                                  placeholder="Aranacak metin..."
+                                  className="text-sm"
+                                />
+                              </div>
+                            )}
+
+                            {/* Limit */}
+                            {selectedApi.filterParams.includes('limit') && (
+                              <div>
+                                <label className="block text-sm font-medium text-green-800 mb-1">
+                                  Kayıt Sayısı (Limit)
+                                </label>
+                                <Input
+                                  type="number"
+                                  value={filterParams.limit}
+                                  onChange={(e) => setFilterParams(prev => ({...prev, limit: e.target.value}))}
+                                  placeholder="10"
+                                  className="text-sm"
+                                />
+                              </div>
+                            )}
+
+                            {/* Offset */}
+                            {selectedApi.filterParams.includes('offset') && (
+                              <div>
+                                <label className="block text-sm font-medium text-green-800 mb-1">
+                                  Başlangıç Noktası (Offset)
+                                </label>
+                                <Input
+                                  type="number"
+                                  value={filterParams.offset}
+                                  onChange={(e) => setFilterParams(prev => ({...prev, offset: e.target.value}))}
+                                  placeholder="0"
+                                  className="text-sm"
+                                />
+                              </div>
+                            )}
+
+                            {/* Sort By */}
+                            {selectedApi.filterParams.includes('sortBy') && (
+                              <div>
+                                <label className="block text-sm font-medium text-green-800 mb-1">
+                                  Sıralama Alanı
+                                </label>
+                                <Input
+                                  value={filterParams.sortBy}
+                                  onChange={(e) => setFilterParams(prev => ({...prev, sortBy: e.target.value}))}
+                                  placeholder="name, id, amountCents..."
+                                  className="text-sm"
+                                />
+                              </div>
+                            )}
+
+                            {/* Sort Order */}
+                            {selectedApi.filterParams.includes('sortOrder') && (
+                              <div>
+                                <label className="block text-sm font-medium text-green-800 mb-1">
+                                  Sıralama Yönü
+                                </label>
+                                <select
+                                  value={filterParams.sortOrder}
+                                  onChange={(e) => setFilterParams(prev => ({...prev, sortOrder: e.target.value}))}
+                                  className="w-full p-2 border border-green-300 rounded text-sm"
+                                >
+                                  <option value="asc">Artan (A-Z)</option>
+                                  <option value="desc">Azalan (Z-A)</option>
+                                </select>
+                              </div>
+                            )}
+
+                            {/* Active Only */}
+                            {selectedApi.filterParams.includes('activeOnly') && (
+                              <div>
+                                <label className="block text-sm font-medium text-green-800 mb-1">
+                                  Sadece Aktif Kayıtlar
+                                </label>
+                                <select
+                                  value={filterParams.activeOnly}
+                                  onChange={(e) => setFilterParams(prev => ({...prev, activeOnly: e.target.value}))}
+                                  className="w-full p-2 border border-green-300 rounded text-sm"
+                                >
+                                  <option value="">Hepsi</option>
+                                  <option value="true">Sadece Aktif</option>
+                                  <option value="false">Sadece Pasif</option>
+                                </select>
+                              </div>
+                            )}
+
+                            {/* Min Amount */}
+                            {selectedApi.filterParams.includes('minAmount') && (
+                              <div>
+                                <label className="block text-sm font-medium text-green-800 mb-1">
+                                  Minimum Tutar (Kuruş)
+                                </label>
+                                <Input
+                                  type="number"
+                                  value={filterParams.minAmount}
+                                  onChange={(e) => setFilterParams(prev => ({...prev, minAmount: e.target.value}))}
+                                  placeholder="50000"
+                                  className="text-sm"
+                                />
+                              </div>
+                            )}
+
+                            {/* Max Amount */}
+                            {selectedApi.filterParams.includes('maxAmount') && (
+                              <div>
+                                <label className="block text-sm font-medium text-green-800 mb-1">
+                                  Maksimum Tutar (Kuruş)
+                                </label>
+                                <Input
+                                  type="number"
+                                  value={filterParams.maxAmount}
+                                  onChange={(e) => setFilterParams(prev => ({...prev, maxAmount: e.target.value}))}
+                                  placeholder="100000"
+                                  className="text-sm"
+                                />
+                              </div>
+                            )}
+
+                            {/* Phone Code */}
+                            {selectedApi.filterParams.includes('phoneCode') && (
+                              <div>
+                                <label className="block text-sm font-medium text-green-800 mb-1">
+                                  Telefon Kodu
+                                </label>
+                                <Input
+                                  value={filterParams.phoneCode}
+                                  onChange={(e) => setFilterParams(prev => ({...prev, phoneCode: e.target.value}))}
+                                  placeholder="+90"
+                                  className="text-sm"
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="mt-4 flex items-center justify-between">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setFilterParams({
+                                search: "", limit: "", offset: "", sortBy: "", sortOrder: "asc",
+                                activeOnly: "", minAmount: "", maxAmount: "", phoneCode: ""
+                              })}
+                              className="text-green-700 border-green-300 hover:bg-green-100"
+                            >
+                              Filtreleri Temizle
+                            </Button>
+                            
+                            <div className="bg-white border border-green-300 rounded px-3 py-2">
+                              <code className="text-green-700 text-xs">
+                                {buildFilteredUrl(selectedApi).replace(window.location.origin, '')}
+                              </code>
+                            </div>
+                          </div>
                         </div>
                       )}
 
