@@ -17,6 +17,8 @@ interface ApiEndpoint {
   method: string;
   category: string;
   dataCount?: string;
+  filterParams?: string[];
+  filterExamples?: string[];
 }
 
 const API_ENDPOINTS: ApiEndpoint[] = [
@@ -27,7 +29,13 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     endpoint: "/api/secure/getCities",
     method: "GET",
     category: "Referans Veriler",
-    dataCount: "81 şehir"
+    dataCount: "81 şehir",
+    filterParams: ["search", "limit", "offset", "sortBy", "sortOrder"],
+    filterExamples: [
+      "?search=ist&limit=5",
+      "?sortBy=name&sortOrder=desc&limit=10",
+      "?offset=20&limit=5"
+    ]
   },
   {
     id: "getPenaltyTypes", 
@@ -36,7 +44,14 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     endpoint: "/api/secure/getPenaltyTypes",
     method: "GET",
     category: "Referans Veriler",
-    dataCount: "301 ceza türü"
+    dataCount: "301 ceza türü",
+    filterParams: ["search", "minAmount", "maxAmount", "activeOnly", "limit", "offset", "sortBy", "sortOrder"],
+    filterExamples: [
+      "?search=hız&limit=5",
+      "?minAmount=500&maxAmount=1000",
+      "?sortBy=amountCents&sortOrder=desc&limit=10",
+      "?activeOnly=true&limit=20"
+    ]
   },
   {
     id: "getCountries",
@@ -45,7 +60,13 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     endpoint: "/api/secure/getCountries",
     method: "GET",
     category: "Referans Veriler",
-    dataCount: "195 ülke"
+    dataCount: "195 ülke",
+    filterParams: ["search", "phoneCode", "limit", "offset", "sortBy", "sortOrder"],
+    filterExamples: [
+      "?search=Türk&limit=5",
+      "?phoneCode=+90",
+      "?sortBy=phoneCode&sortOrder=asc&limit=10"
+    ]
   },
   {
     id: "getPolicyTypes",
@@ -54,7 +75,13 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     endpoint: "/api/secure/getPolicyTypes",
     method: "GET",
     category: "Referans Veriler",
-    dataCount: "7 poliçe türü"
+    dataCount: "7 poliçe türü",
+    filterParams: ["search", "activeOnly", "limit", "offset", "sortBy", "sortOrder"],
+    filterExamples: [
+      "?search=Kasko&limit=3",
+      "?activeOnly=true&sortBy=name",
+      "?limit=5&sortOrder=desc"
+    ]
   },
   {
     id: "getPaymentMethods",
@@ -63,7 +90,13 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     endpoint: "/api/secure/getPaymentMethods", 
     method: "GET",
     category: "Referans Veriler",
-    dataCount: "7 ödeme yöntemi"
+    dataCount: "7 ödeme yöntemi",
+    filterParams: ["search", "activeOnly", "limit", "offset", "sortBy", "sortOrder"],
+    filterExamples: [
+      "?search=Kredi&limit=2",
+      "?activeOnly=true&sortBy=name",
+      "?limit=3&sortOrder=asc"
+    ]
   },
   {
     id: "getMaintenanceTypes",
@@ -72,7 +105,13 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     endpoint: "/api/secure/getMaintenanceTypes",
     method: "GET", 
     category: "Referans Veriler",
-    dataCount: "7 bakım türü"
+    dataCount: "7 bakım türü",
+    filterParams: ["search", "activeOnly", "limit", "offset", "sortBy", "sortOrder"],
+    filterExamples: [
+      "?search=motor&limit=3",
+      "?activeOnly=true&sortBy=name",
+      "?limit=5&sortOrder=desc"
+    ]
   },
   {
     id: "addPolicyType",
@@ -903,6 +942,23 @@ Swagger dokümantasyonundan veya /documents sayfasından test edebilirsiniz.`;
                               {endpoint.dataCount}
                             </p>
                           )}
+                          
+                          {/* Filtreleme Parametreleri GET API'leri için */}
+                          {endpoint.method === 'GET' && endpoint.filterParams && endpoint.filterParams.length > 0 && (
+                            <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
+                              <div className="font-medium text-green-800 mb-1">🔍 Filtreleme:</div>
+                              <div className="flex flex-wrap gap-1">
+                                {endpoint.filterParams.slice(0, 4).map((param, index) => (
+                                  <span key={index} className="bg-green-100 text-green-700 px-1 py-0.5 rounded text-xs">
+                                    {param}
+                                  </span>
+                                ))}
+                                {endpoint.filterParams.length > 4 && (
+                                  <span className="text-green-600">+{endpoint.filterParams.length - 4} daha</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <Badge variant="secondary" className="text-xs ml-2">
                           {endpoint.method}
@@ -979,6 +1035,45 @@ Swagger dokümantasyonundan veya /documents sayfasından test edebilirsiniz.`;
                           className="font-mono text-sm"
                         />
                       </div>
+
+                      {/* Filtreleme Parametreleri Detay - GET API'leri için */}
+                      {selectedApi.method === 'GET' && selectedApi.filterParams && selectedApi.filterParams.length > 0 && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <h4 className="font-medium text-blue-900 mb-3 flex items-center">
+                            🔍 Filtreleme Parametreleri
+                          </h4>
+                          
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
+                            {selectedApi.filterParams.map((param, index) => (
+                              <div key={index} className="bg-white border border-blue-200 rounded px-2 py-1">
+                                <code className="text-blue-700 text-xs font-medium">{param}</code>
+                              </div>
+                            ))}
+                          </div>
+
+                          {selectedApi.filterExamples && (
+                            <div>
+                              <h5 className="font-medium text-blue-900 mb-2 text-sm">Örnek Kullanım:</h5>
+                              <div className="space-y-2">
+                                {selectedApi.filterExamples.map((example, index) => (
+                                  <div key={index} className="bg-white border border-blue-200 rounded p-2">
+                                    <code className="text-blue-700 text-xs block break-all">
+                                      {window.location.origin}{selectedApi.endpoint}{example}
+                                    </code>
+                                  </div>
+                                ))}
+                              </div>
+                              
+                              <div className="mt-3 p-3 bg-blue-100 rounded text-xs">
+                                <p className="text-blue-800">
+                                  <strong>💡 Kullanım İpucu:</strong> Bu parametreleri endpoint URL'ine ekleyerek 
+                                  veri filtreleme, sıralama ve sayfalama işlemleri yapabilirsiniz.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* POST/PUT Request Body */}
                       {(selectedApi?.method === 'POST' || selectedApi?.method === 'PUT') && (
