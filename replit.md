@@ -402,7 +402,8 @@ API key'ler artık güvenli şekilde yönetiliyor:
 **Oluşturma Anında:**
 - Tam API key gösteriliyor (sadece bir kez)
 - Güvenlik uyarısı ile 10 saniye toast notification
-- Frontend'te 30 saniye geçici bellek (sonra temizleniyor)
+- Manuel "API Key'i Gizle" butonu (kullanıcı kontrolünde)
+- Amber renk uyarı kutusu ile güzel tasarım
 - "Bu tam API key sadece şimdi görüntüleniyor" uyarısı
 
 **Liste Görüntülemede:**
@@ -415,8 +416,9 @@ API key'ler artık güvenli şekilde yönetiliyor:
 - API key tam hali database'de saklanmıyor ✅
 - Sadece bcrypt hash saklanıyor ✅  
 - Maskeleme backend'de yapılıyor ✅
-- Frontend geçici bellek sistemi (30 saniye) ✅
+- Manuel gizleme butonu (kullanıcı kontrolü) ✅
 - Eye icon ile görünürlük toggle (maskelenmiş için) ✅
+- Toast feedback ile kullanıcı bildirimi ✅
 
 ## ✅ GET API Filtreleme Sistemi Eklendi (27 Ocak 2025)
 

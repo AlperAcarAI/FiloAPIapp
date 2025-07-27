@@ -104,15 +104,6 @@ export default function Dashboard() {
         // Tam API key'i geçici olarak sakla (oluşturma anında gösterilmek için)
         setNewlyCreatedKeys(prev => new Map(prev.set(response.data.apiKey.id, response.data.apiKey.key)));
         setVisibleKeys(prev => new Set([...Array.from(prev), response.data.apiKey.id]));
-        
-        // 30 saniye sonra tam key'i bellekten temizle
-        setTimeout(() => {
-          setNewlyCreatedKeys(prev => {
-            const newMap = new Map(prev);
-            newMap.delete(response.data.apiKey.id);
-            return newMap;
-          });
-        }, 30000);
       }
       
       setShowCreateDialog(false);
@@ -186,6 +177,18 @@ export default function Dashboard() {
         newSet.add(keyId);
       }
       return newSet;
+    });
+  };
+
+  const hideFullKey = (keyId: number) => {
+    setNewlyCreatedKeys(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(keyId);
+      return newMap;
+    });
+    toast({
+      title: 'API Key Gizlendi',
+      description: 'Tam API key artık maskelenmiş formatta gösterilecek.',
     });
   };
 
@@ -367,9 +370,19 @@ export default function Dashboard() {
                     </Button>
                   </div>
                   {newlyCreatedKeys.has(apiKey.id) && (
-                    <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border">
-                      ⚠️ Bu tam API key sadece şimdi görüntüleniyor. 30 saniye sonra maskelenecek.
-                    </p>
+                    <div className="bg-amber-50 border border-amber-200 rounded p-3 space-y-2">
+                      <p className="text-xs text-amber-800 flex items-center gap-1">
+                        ⚠️ Bu tam API key sadece şimdi görüntüleniyor. Güvenli bir yerde saklayın.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => hideFullKey(apiKey.id)}
+                        className="text-xs h-7"
+                      >
+                        API Key'i Gizle
+                      </Button>
+                    </div>
                   )}
                 </div>
                 
