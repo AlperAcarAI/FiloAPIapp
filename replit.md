@@ -393,3 +393,57 @@ PAYMENT_TYPES (Ödeme Türü Tanımları)
 **Test Edildi:** Tüm endpoint'ler HTTP 200 dönüyor, JSON formatında doğru yanıtlar veriyor.
 
 **Sonraki Adım:** Frontend interface kurulumu (opsiyonel)
+
+## ✅ GET API Filtreleme Sistemi Eklendi (27 Ocak 2025)
+
+**Kapsamlı Filtreleme Özellikleri:**
+Tüm GET endpoint'lere gelişmiş filtreleme metodu eklendi:
+
+**Temel Filtreleme Parametreleri:**
+- `search` - Metin araması (LIKE %search% şeklinde)
+- `limit` - Sayfa başına kayıt sayısı
+- `offset` - Başlangıç noktası (sayfalama için)
+- `sortBy` - Sıralama alanı (name, id, amountCents vb.)
+- `sortOrder` - Sıralama yönü (asc, desc)
+- `activeOnly` - Sadece aktif kayıtları getir (true/false)
+
+**Özel Filtreleme Parametreleri:**
+- **Cities**: `search`, `limit`, `offset`, `sortBy`, `sortOrder`
+- **Countries**: `search`, `phoneCode`, `limit`, `offset`, `sortBy`, `sortOrder`
+- **Penalty Types**: `search`, `minAmount`, `maxAmount`, `activeOnly`, sayfalama
+- **Policy Types**: `search`, `activeOnly`, sayfalama
+- **Payment Methods**: `search`, `activeOnly`, sayfalama
+- **Maintenance Types**: `search`, `activeOnly`, sayfalama
+
+**JSON Yanıt Formatı:**
+```json
+{
+  "success": true,
+  "data": [...],
+  "count": 5,
+  "totalCount": 150,
+  "pagination": {
+    "limit": 5,
+    "offset": 0,
+    "hasMore": true
+  },
+  "filters": {
+    "search": "Kredi",
+    "sortBy": "name",
+    "sortOrder": "asc",
+    "activeOnly": "true"
+  }
+}
+```
+
+**Test Edildi:**
+- Şehir arama: `?search=ist&limit=3` ✅
+- Ödeme metodu filtreleme: `?search=Kredi&limit=2` ✅
+- Ceza türü tutarına göre filtreleme: `?minAmount=500&maxAmount=1000` ✅
+- Finansal işlemler sayfalama: `?page=1&limit=5` ✅
+
+**Performans Optimizasyonları:**
+- Drizzle ORM ile efficient SQL sorguları
+- Toplam sayı (totalCount) ayrı sorgu ile hesaplanıyor
+- Conditions array ile dinamik WHERE clause'lar
+- Index kullanımı ile hızlı arama

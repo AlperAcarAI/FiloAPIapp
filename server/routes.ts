@@ -6,7 +6,7 @@ import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, typ
 import { z } from "zod";
 import { db } from "./db";
 import { assets } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc, asc, sql, like } from "drizzle-orm";
 import { registerApiManagementRoutes } from "./api-management-routes";
 import documentRoutes from "./document-routes.js";
 import companyRoutes from "./company-routes.js";
@@ -97,20 +97,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Cities API - getCities endpoint - Standart JSON format
+  // Cities API - getCities endpoint - Filtreleme desteği ile
   app.get("/api/getCities", async (req, res) => {
     try {
-      const citiesList = await db.select({
+      const { search, limit, offset, sortBy = 'name', sortOrder = 'asc' } = req.query;
+      
+      let query = db.select({
         id: cities.id,
         name: cities.name
-      }).from(cities).orderBy(cities.name);
+      }).from(cities);
+
+      // Search filtrelemesi
+      if (search) {
+        query = query.where(like(cities.name, `%${search}%`));
+      }
+
+      // Sıralama
+      const orderColumn = sortBy === 'id' ? cities.id : cities.name;
+      const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
+      query = query.orderBy(orderDirection);
+
+      // Sayfalama
+      if (limit) {
+        query = query.limit(Number(limit));
+        if (offset) {
+          query = query.offset(Number(offset));
+        }
+      }
+
+      const citiesList = await query;
+      
+      // Toplam sayı (filtreleme dahil)
+      let totalQuery = db.select({ count: sql`count(*)` }).from(cities);
+      if (search) {
+        totalQuery = totalQuery.where(like(cities.name, `%${search}%`));
+      }
+      const totalResult = await totalQuery;
+      const totalCount = Number(totalResult[0].count);
       
       res.json({
         success: true,
         message: "Şehirler başarıyla getirildi",
         data: {
           cities: citiesList,
-          totalCount: citiesList.length
+          totalCount,
+          pagination: {
+            limit: limit ? Number(limit) : null,
+            offset: offset ? Number(offset) : null,
+            hasMore: limit ? citiesList.length === Number(limit) : false
+          },
+          filters: {
+            search: search || null,
+            sortBy,
+            sortOrder
+          }
         }
       });
     } catch (error) {

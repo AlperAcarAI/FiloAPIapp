@@ -55,7 +55,7 @@ import {
   insertAssetsPersonelAssignmentSchema,
   updateAssetsPersonelAssignmentSchema
 } from "@shared/schema";
-import { eq, and, desc, sql, count, avg, gte, not } from "drizzle-orm";
+import { eq, and, desc, asc, sql, count, avg, gte, lte, not, like } from "drizzle-orm";
 import { 
   authenticateApiKey,
   authenticateApiToken,
@@ -3171,7 +3171,7 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
   // KORUNAN API ENDPOINT'LERİ (Örnek)
   // ========================
 
-  // Cities API - Şehir listesi (Okuma izni gerekir)
+  // Cities API - Şehir listesi (Filtreleme desteği ile)
   app.get(
     "/api/secure/getCities", 
     authenticateApiKey,
@@ -3180,15 +3180,56 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
     authorizeEndpoint(['data:read']),
     async (req: ApiRequest, res) => {
       try {
-        const citiesList = await db.select({
+        const { search, limit, offset, sortBy = 'name', sortOrder = 'asc' } = req.query;
+        
+        let query = db.select({
           id: cities.id,
           name: cities.name
-        }).from(cities).orderBy(cities.name);
+        }).from(cities);
+
+        // Search filtrelemesi
+        if (search) {
+          query = query.where(like(cities.name, `%${search}%`));
+        }
+
+        // Sıralama
+        const orderColumn = sortBy === 'id' ? cities.id : cities.name;
+        const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
+        query = query.orderBy(orderDirection);
+
+        // Sayfalama
+        if (limit) {
+          query = query.limit(Number(limit));
+          if (offset) {
+            query = query.offset(Number(offset));
+          }
+        }
+
+        const citiesList = await query;
+        
+        // Toplam sayı (filtreleme dahil)
+        let totalQuery = db.select({ count: sql`count(*)` }).from(cities);
+        if (search) {
+          totalQuery = totalQuery.where(like(cities.name, `%${search}%`));
+        }
+        const totalResult = await totalQuery;
+        const totalCount = Number(totalResult[0].count);
         
         res.json({
           success: true,
           data: citiesList,
           count: citiesList.length,
+          totalCount,
+          pagination: {
+            limit: limit ? Number(limit) : null,
+            offset: offset ? Number(offset) : null,
+            hasMore: limit ? citiesList.length === Number(limit) : false
+          },
+          filters: {
+            search: search || null,
+            sortBy,
+            sortOrder
+          },
           clientInfo: {
             id: req.apiClient?.id,
             name: req.apiClient?.name,
@@ -3207,7 +3248,7 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
     }
   );
 
-  // Penalty Types API - Ceza türleri listesi (Okuma izni gerekir)
+  // Penalty Types API - Ceza türleri listesi (Filtreleme desteği ile)
   app.get(
     "/api/secure/getPenaltyTypes", 
     authenticateApiKey,
@@ -3216,7 +3257,9 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
     authorizeEndpoint(['data:read']),
     async (req: ApiRequest, res) => {
       try {
-        const penaltyTypesList = await db.select({
+        const { search, limit, offset, sortBy = 'penaltyScore', sortOrder = 'asc', minAmount, maxAmount, activeOnly = 'true' } = req.query;
+        
+        let query = db.select({
           id: penaltyTypes.id,
           name: penaltyTypes.name,
           description: penaltyTypes.description,
@@ -3225,14 +3268,75 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
           discountedAmountCents: penaltyTypes.discountedAmountCents,
           isActive: penaltyTypes.isActive,
           lastDate: penaltyTypes.lastDate
-        }).from(penaltyTypes)
-          .where(eq(penaltyTypes.isActive, true))
-          .orderBy(penaltyTypes.penaltyScore, penaltyTypes.name);
+        }).from(penaltyTypes);
+
+        // Filtreleme conditions
+        const conditions = [];
+        
+        if (activeOnly === 'true') {
+          conditions.push(eq(penaltyTypes.isActive, true));
+        }
+        
+        if (search) {
+          conditions.push(like(penaltyTypes.name, `%${search}%`));
+        }
+        
+        if (minAmount) {
+          conditions.push(gte(penaltyTypes.amountCents, Number(minAmount) * 100));
+        }
+        
+        if (maxAmount) {
+          conditions.push(lte(penaltyTypes.amountCents, Number(maxAmount) * 100));
+        }
+
+        if (conditions.length > 0) {
+          query = query.where(and(...conditions));
+        }
+
+        // Sıralama
+        let orderColumn = penaltyTypes.penaltyScore;
+        if (sortBy === 'name') orderColumn = penaltyTypes.name;
+        else if (sortBy === 'amountCents') orderColumn = penaltyTypes.amountCents;
+        
+        const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
+        query = query.orderBy(orderDirection, penaltyTypes.name);
+
+        // Sayfalama
+        if (limit) {
+          query = query.limit(Number(limit));
+          if (offset) {
+            query = query.offset(Number(offset));
+          }
+        }
+
+        const penaltyTypesList = await query;
+        
+        // Toplam sayı (filtreleme dahil)
+        let totalQuery = db.select({ count: sql`count(*)` }).from(penaltyTypes);
+        if (conditions.length > 0) {
+          totalQuery = totalQuery.where(and(...conditions));
+        }
+        const totalResult = await totalQuery;
+        const totalCount = Number(totalResult[0].count);
         
         res.json({
           success: true,
           data: penaltyTypesList,
           count: penaltyTypesList.length,
+          totalCount,
+          pagination: {
+            limit: limit ? Number(limit) : null,
+            offset: offset ? Number(offset) : null,
+            hasMore: limit ? penaltyTypesList.length === Number(limit) : false
+          },
+          filters: {
+            search: search || null,
+            sortBy,
+            sortOrder,
+            minAmount: minAmount || null,
+            maxAmount: maxAmount || null,
+            activeOnly
+          },
           clientInfo: {
             id: req.apiClient?.id,
             name: req.apiClient?.name,
@@ -3251,7 +3355,7 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
     }
   );
 
-  // Countries API - Ülke listesi (Okuma izni gerekir)
+  // Countries API - Ülke listesi (Filtreleme desteği ile)
   app.get(
     "/api/secure/getCountries", 
     authenticateApiKey,
@@ -3260,16 +3364,68 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
     authorizeEndpoint(['data:read']),
     async (req: ApiRequest, res) => {
       try {
-        const countriesList = await db.select({
+        const { search, limit, offset, sortBy = 'name', sortOrder = 'asc', phoneCode } = req.query;
+        
+        let query = db.select({
           id: countries.id,
           name: countries.name,
           phoneCode: countries.phoneCode
-        }).from(countries).orderBy(countries.name);
+        }).from(countries);
+
+        // Filtreleme conditions
+        const conditions = [];
+        
+        if (search) {
+          conditions.push(like(countries.name, `%${search}%`));
+        }
+        
+        if (phoneCode) {
+          conditions.push(eq(countries.phoneCode, phoneCode as string));
+        }
+
+        if (conditions.length > 0) {
+          query = query.where(and(...conditions));
+        }
+
+        // Sıralama
+        const orderColumn = sortBy === 'phoneCode' ? countries.phoneCode : countries.name;
+        const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
+        query = query.orderBy(orderDirection);
+
+        // Sayfalama
+        if (limit) {
+          query = query.limit(Number(limit));
+          if (offset) {
+            query = query.offset(Number(offset));
+          }
+        }
+
+        const countriesList = await query;
+        
+        // Toplam sayı (filtreleme dahil)
+        let totalQuery = db.select({ count: sql`count(*)` }).from(countries);
+        if (conditions.length > 0) {
+          totalQuery = totalQuery.where(and(...conditions));
+        }
+        const totalResult = await totalQuery;
+        const totalCount = Number(totalResult[0].count);
         
         res.json({
           success: true,
           data: countriesList,
           count: countriesList.length,
+          totalCount,
+          pagination: {
+            limit: limit ? Number(limit) : null,
+            offset: offset ? Number(offset) : null,
+            hasMore: limit ? countriesList.length === Number(limit) : false
+          },
+          filters: {
+            search: search || null,
+            sortBy,
+            sortOrder,
+            phoneCode: phoneCode || null
+          },
           clientInfo: {
             id: req.apiClient?.id,
             name: req.apiClient?.name,
@@ -3288,7 +3444,7 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
     }
   );
 
-  // Policy Types API - Poliçe türleri listesi (Okuma izni gerekir)
+  // Policy Types API - Poliçe türleri listesi (Filtreleme desteği ile)
   app.get(
     "/api/secure/getPolicyTypes", 
     authenticateApiKey,
@@ -3297,17 +3453,67 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
     authorizeEndpoint(['data:read']),
     async (req: ApiRequest, res) => {
       try {
-        const policyTypesList = await db.select({
+        const { search, limit, offset, sortBy = 'name', sortOrder = 'asc', activeOnly = 'true' } = req.query;
+        
+        let query = db.select({
           id: policyTypes.id,
           name: policyTypes.name
-        }).from(policyTypes)
-          .where(eq(policyTypes.isActive, true))
-          .orderBy(policyTypes.name);
+        }).from(policyTypes);
+
+        // Filtreleme conditions
+        const conditions = [];
+        
+        if (activeOnly === 'true') {
+          conditions.push(eq(policyTypes.isActive, true));
+        }
+        
+        if (search) {
+          conditions.push(like(policyTypes.name, `%${search}%`));
+        }
+
+        if (conditions.length > 0) {
+          query = query.where(and(...conditions));
+        }
+
+        // Sıralama
+        const orderColumn = sortBy === 'id' ? policyTypes.id : policyTypes.name;
+        const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
+        query = query.orderBy(orderDirection);
+
+        // Sayfalama
+        if (limit) {
+          query = query.limit(Number(limit));
+          if (offset) {
+            query = query.offset(Number(offset));
+          }
+        }
+
+        const policyTypesList = await query;
+        
+        // Toplam sayı (filtreleme dahil)
+        let totalQuery = db.select({ count: sql`count(*)` }).from(policyTypes);
+        if (conditions.length > 0) {
+          totalQuery = totalQuery.where(and(...conditions));
+        }
+        const totalResult = await totalQuery;
+        const totalCount = Number(totalResult[0].count);
         
         res.json({
           success: true,
           data: policyTypesList,
           count: policyTypesList.length,
+          totalCount,
+          pagination: {
+            limit: limit ? Number(limit) : null,
+            offset: offset ? Number(offset) : null,
+            hasMore: limit ? policyTypesList.length === Number(limit) : false
+          },
+          filters: {
+            search: search || null,
+            sortBy,
+            sortOrder,
+            activeOnly
+          },
           clientInfo: {
             id: req.apiClient?.id,
             name: req.apiClient?.name,
@@ -3326,7 +3532,7 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
     }
   );
 
-  // Payment Methods API - Ödeme yöntemleri listesi (Okuma izni gerekir)
+  // Payment Methods API - Ödeme yöntemleri listesi (Filtreleme desteği ile)
   app.get(
     "/api/secure/getPaymentMethods", 
     authenticateApiKey,
@@ -3335,17 +3541,67 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
     authorizeEndpoint(['data:read']),
     async (req: ApiRequest, res) => {
       try {
-        const paymentMethodsList = await db.select({
+        const { search, limit, offset, sortBy = 'name', sortOrder = 'asc', activeOnly = 'true' } = req.query;
+        
+        let query = db.select({
           id: paymentMethods.id,
           name: paymentMethods.name
-        }).from(paymentMethods)
-          .where(eq(paymentMethods.isActive, true))
-          .orderBy(paymentMethods.name);
+        }).from(paymentMethods);
+
+        // Filtreleme conditions
+        const conditions = [];
+        
+        if (activeOnly === 'true') {
+          conditions.push(eq(paymentMethods.isActive, true));
+        }
+        
+        if (search) {
+          conditions.push(like(paymentMethods.name, `%${search}%`));
+        }
+
+        if (conditions.length > 0) {
+          query = query.where(and(...conditions));
+        }
+
+        // Sıralama
+        const orderColumn = sortBy === 'id' ? paymentMethods.id : paymentMethods.name;
+        const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
+        query = query.orderBy(orderDirection);
+
+        // Sayfalama
+        if (limit) {
+          query = query.limit(Number(limit));
+          if (offset) {
+            query = query.offset(Number(offset));
+          }
+        }
+
+        const paymentMethodsList = await query;
+        
+        // Toplam sayı (filtreleme dahil)
+        let totalQuery = db.select({ count: sql`count(*)` }).from(paymentMethods);
+        if (conditions.length > 0) {
+          totalQuery = totalQuery.where(and(...conditions));
+        }
+        const totalResult = await totalQuery;
+        const totalCount = Number(totalResult[0].count);
         
         res.json({
           success: true,
           data: paymentMethodsList,
           count: paymentMethodsList.length,
+          totalCount,
+          pagination: {
+            limit: limit ? Number(limit) : null,
+            offset: offset ? Number(offset) : null,
+            hasMore: limit ? paymentMethodsList.length === Number(limit) : false
+          },
+          filters: {
+            search: search || null,
+            sortBy,
+            sortOrder,
+            activeOnly
+          },
           clientInfo: {
             id: req.apiClient?.id,
             name: req.apiClient?.name,
@@ -3364,7 +3620,7 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
     }
   );
 
-  // Maintenance Types API - Bakım türleri listesi (Okuma izni gerekir)
+  // Maintenance Types API - Bakım türleri listesi (Filtreleme desteği ile)
   app.get(
     "/api/secure/getMaintenanceTypes", 
     authenticateApiKey,
@@ -3373,17 +3629,67 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
     authorizeEndpoint(['data:read']),
     async (req: ApiRequest, res) => {
       try {
-        const maintenanceTypesList = await db.select({
+        const { search, limit, offset, sortBy = 'name', sortOrder = 'asc', activeOnly = 'true' } = req.query;
+        
+        let query = db.select({
           id: maintenanceTypes.id,
           name: maintenanceTypes.name
-        }).from(maintenanceTypes)
-          .where(eq(maintenanceTypes.isActive, true))
-          .orderBy(maintenanceTypes.name);
+        }).from(maintenanceTypes);
+
+        // Filtreleme conditions
+        const conditions = [];
+        
+        if (activeOnly === 'true') {
+          conditions.push(eq(maintenanceTypes.isActive, true));
+        }
+        
+        if (search) {
+          conditions.push(like(maintenanceTypes.name, `%${search}%`));
+        }
+
+        if (conditions.length > 0) {
+          query = query.where(and(...conditions));
+        }
+
+        // Sıralama
+        const orderColumn = sortBy === 'id' ? maintenanceTypes.id : maintenanceTypes.name;
+        const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
+        query = query.orderBy(orderDirection);
+
+        // Sayfalama
+        if (limit) {
+          query = query.limit(Number(limit));
+          if (offset) {
+            query = query.offset(Number(offset));
+          }
+        }
+
+        const maintenanceTypesList = await query;
+        
+        // Toplam sayı (filtreleme dahil)
+        let totalQuery = db.select({ count: sql`count(*)` }).from(maintenanceTypes);
+        if (conditions.length > 0) {
+          totalQuery = totalQuery.where(and(...conditions));
+        }
+        const totalResult = await totalQuery;
+        const totalCount = Number(totalResult[0].count);
         
         res.json({
           success: true,
           data: maintenanceTypesList,
           count: maintenanceTypesList.length,
+          totalCount,
+          pagination: {
+            limit: limit ? Number(limit) : null,
+            offset: offset ? Number(offset) : null,
+            hasMore: limit ? maintenanceTypesList.length === Number(limit) : false
+          },
+          filters: {
+            search: search || null,
+            sortBy,
+            sortOrder,
+            activeOnly
+          },
           clientInfo: {
             id: req.apiClient?.id,
             name: req.apiClient?.name,
