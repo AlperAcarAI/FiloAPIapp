@@ -105,22 +105,52 @@ export const authenticateApiKey = async (
       });
     }
 
-    // Geçici çözüm - Demo API key'i hardcode kontrolü
-    if (apiKey === 'ak_test123key') {
-      req.apiClient = {
-        id: 2,
-        name: 'Demo API Client',
-        companyId: 1
-      };
-      req.startTime = Date.now();
-      return next();
+    // Aktif API keys'leri al
+    const activeApiKeys = await db
+      .select()
+      .from(apiKeys)
+      .where(eq(apiKeys.isActive, true));
+
+    // API anahtarını doğrula
+    let matchedKey = null;
+    for (const keyRecord of activeApiKeys) {
+      if (keyRecord.key && await verifyApiKey(apiKey, keyRecord.key)) {
+        // Client bilgilerini al
+        const [clientInfo] = await db
+          .select()
+          .from(apiClients)
+          .where(and(
+            eq(apiClients.id, keyRecord.clientId),
+            eq(apiClients.isActive, true)
+          ));
+        
+        if (clientInfo) {
+          matchedKey = {
+            clientId: keyRecord.clientId,
+            clientName: clientInfo.name,
+            companyId: clientInfo.companyId
+          };
+          break;
+        }
+      }
     }
 
-    return res.status(401).json({
-      success: false,
-      error: 'INVALID_API_KEY',
-      message: 'Geçersiz API anahtarı. Lütfen ak_test123key kullanın.'
-    });
+    if (!matchedKey) {
+      return res.status(401).json({
+        success: false,
+        error: 'INVALID_API_KEY',
+        message: 'Geçersiz API anahtarı.'
+      });
+    }
+
+    req.apiClient = {
+      id: matchedKey.clientId,
+      name: matchedKey.clientName,
+      companyId: matchedKey.companyId
+    };
+
+    req.startTime = Date.now();
+    next();
   } catch (error) {
     console.error('Authentication error details:', error);
     return res.status(500).json({

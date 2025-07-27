@@ -143,7 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAuditRoutes(app);
 
   // Financial Route'larını kaydet
-  const financialRoutes = await import("./financial-routes.js");
+  const financialRoutes = await import("./financial-routes-fixed.js");
   app.use("/api/secure/financial", financialRoutes.default);
 
   const httpServer = createServer(app);
