@@ -32,7 +32,6 @@ import {
   personnelWorkAreas,
   assetsPersonelAssignment
 } from "@shared/schema";
-import { sql } from "drizzle-orm";
 import { 
   insertApiClientSchema,
   insertApiKeySchema,
@@ -2803,11 +2802,17 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
         });
       }
 
-      // API key'i sil
+      // İlgili referansları temizle (cascade delete için)
+      const clientId = existingKey.api_keys.clientId;
+      
+      // Önce api_request_logs referanslarını temizle
+      await db.delete(apiUsageLogs).where(eq(apiUsageLogs.clientId, clientId));
+      
+      // Sonra API key'i sil
       await db.delete(apiKeys).where(eq(apiKeys.id, keyId));
       
-      // İlgili client'ı da sil
-      await db.delete(apiClients).where(eq(apiClients.id, existingKey.api_keys.clientId));
+      // Son olarak client'ı sil
+      await db.delete(apiClients).where(eq(apiClients.id, clientId));
 
       res.json({
         success: true,
@@ -2819,6 +2824,46 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
       res.status(500).json({
         success: false,
         message: "API key silinemedi",
+        error: error instanceof Error ? error.message : 'Bilinmeyen hata'
+      });
+    }
+  });
+
+  // ========================
+  // API ENDPOINT'LERİ YÖNETİMİ 
+  // ========================
+
+  // Tüm API endpoint'leri listele (Dashboard için)
+  app.get("/api/endpoints", authenticateToken, async (req, res) => {
+    try {
+      const endpoints = await db
+        .select()
+        .from(apiEndpoints)
+        .orderBy(desc(apiEndpoints.createdAt));
+
+      // Frontend için uygun format
+      const formattedEndpoints = endpoints.map(endpoint => ({
+        id: endpoint.id,
+        name: endpoint.name,
+        method: endpoint.method,
+        path: endpoint.endpoint,  // endpoint -> path olarak map et
+        description: endpoint.description,
+        status: endpoint.isActive ? 'active' : 'inactive',  // boolean -> string
+        createdAt: endpoint.createdAt?.toISOString() || new Date().toISOString(),
+        updatedAt: endpoint.updatedAt?.toISOString() || new Date().toISOString()
+      }));
+
+      res.json({
+        success: true,
+        data: formattedEndpoints,
+        count: formattedEndpoints.length
+      });
+
+    } catch (error) {
+      console.error("Error fetching API endpoints:", error);
+      res.status(500).json({
+        success: false,
+        message: "API endpoint'leri alınamadı",
         error: error instanceof Error ? error.message : 'Bilinmeyen hata'
       });
     }

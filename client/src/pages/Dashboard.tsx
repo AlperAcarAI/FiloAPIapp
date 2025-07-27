@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Eye, EyeOff, Key, Plus, Trash2 } from 'lucide-react';
+import { Copy, Eye, EyeOff, Key, Plus, Trash2, Activity, Database } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Header } from '@/components/Header';
 import { format } from 'date-fns';
@@ -38,6 +38,17 @@ interface NewApiKeyResponse {
       warning?: string;
     };
   };
+}
+
+interface ApiEndpoint {
+  id: number;
+  name: string;
+  method: string;
+  path: string;
+  description: string;
+  status: 'active' | 'inactive' | 'maintenance';
+  createdAt: string;
+  updatedAt: string;
 }
 
 const AVAILABLE_PERMISSIONS = [
@@ -70,6 +81,26 @@ export default function Dashboard() {
       }
       
       return response.json();
+    },
+    retry: false,
+  });
+
+  // API endpoint'lerini getir (veritabanından)
+  const { data: apiEndpoints = [], isLoading: isLoadingEndpoints } = useQuery({
+    queryKey: ['/api/endpoints'],
+    queryFn: async () => {
+      const response = await fetch('/api/endpoints', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return result.data || [];
     },
     retry: false,
   });
@@ -295,6 +326,67 @@ export default function Dashboard() {
         </Dialog>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              API Key'leriniz
+            </CardTitle>
+            <Key className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{apiKeys.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Aktif API anahtarlarınız
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Toplam API
+            </CardTitle>
+            <Database className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{isLoadingEndpoints ? '...' : apiEndpoints.length}</div>
+            <p className="text-xs text-muted-foreground">
+              Mevcut API endpoint'leri
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Aktif API'ler
+            </CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {isLoadingEndpoints ? '...' : apiEndpoints.filter(api => api.status === 'active').length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Çalışan endpoint'ler
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              API Durumu
+            </CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">Çalışıyor</div>
+            <p className="text-xs text-muted-foreground">
+              Sistem sağlıklı
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
       {apiKeys.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
@@ -401,6 +493,81 @@ export default function Dashboard() {
           ))}
         </div>
       )}
+
+      {/* API Endpoint'leri Listesi */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold tracking-tight">Mevcut API Endpoint'leri</h2>
+          <Badge variant="outline" className="text-sm">
+            {isLoadingEndpoints ? 'Yükleniyor...' : `${apiEndpoints.length} API`}
+          </Badge>
+        </div>
+
+        {isLoadingEndpoints ? (
+          <div className="grid gap-4">
+            {[1, 2, 3].map(i => (
+              <Card key={i}>
+                <CardContent className="p-4">
+                  <div className="animate-pulse space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                    <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : apiEndpoints.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <Database className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Henüz API endpoint'i yok</h3>
+              <p className="text-muted-foreground text-center">
+                API endpoint'leri veritabanında tanımlandıkça burada görüntülenecek.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4">
+            {apiEndpoints.map((endpoint: ApiEndpoint) => (
+              <Card key={endpoint.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <Badge 
+                          variant={endpoint.method === 'GET' ? 'default' : 
+                                  endpoint.method === 'POST' ? 'secondary' : 
+                                  endpoint.method === 'PUT' ? 'outline' : 'destructive'}
+                          className="text-xs"
+                        >
+                          {endpoint.method}
+                        </Badge>
+                        <code className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
+                          {endpoint.path}
+                        </code>
+                      </div>
+                      <h3 className="font-semibold">{endpoint.name}</h3>
+                      <p className="text-sm text-muted-foreground">{endpoint.description}</p>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <Badge 
+                        variant={endpoint.status === 'active' ? 'default' : 
+                                endpoint.status === 'inactive' ? 'secondary' : 'outline'}
+                      >
+                        {endpoint.status === 'active' ? 'Aktif' : 
+                         endpoint.status === 'inactive' ? 'Pasif' : 'Bakım'}
+                      </Badge>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(endpoint.createdAt), 'dd.MM.yyyy')}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
       </div>
     </div>
   );
