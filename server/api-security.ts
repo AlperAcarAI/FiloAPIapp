@@ -114,7 +114,8 @@ export const authenticateApiKey = async (
     // API anahtarını doğrula
     let matchedKey = null;
     for (const keyRecord of activeApiKeys) {
-      if (keyRecord.key && await verifyApiKey(apiKey, keyRecord.key)) {
+      // keyHash alanını kullan (key alanı artık null)
+      if (keyRecord.keyHash && await verifyApiKey(apiKey, keyRecord.keyHash)) {
         // Client bilgilerini al
         const [clientInfo] = await db
           .select()
@@ -128,8 +129,18 @@ export const authenticateApiKey = async (
           matchedKey = {
             clientId: keyRecord.clientId,
             clientName: clientInfo.name,
-            companyId: clientInfo.companyId
+            companyId: clientInfo.companyId,
+            permissions: keyRecord.permissions
           };
+          
+          // API key kullanım bilgisini güncelle
+          await db
+            .update(apiKeys)
+            .set({ 
+              lastUsedAt: new Date()
+            })
+            .where(eq(apiKeys.id, keyRecord.id));
+          
           break;
         }
       }
@@ -148,6 +159,9 @@ export const authenticateApiKey = async (
       name: matchedKey.clientName,
       companyId: matchedKey.companyId
     };
+
+    // İzinleri request'e ekle
+    req.apiClient.permissions = matchedKey.permissions;
 
     req.startTime = Date.now();
     next();
@@ -243,16 +257,32 @@ export const authorizeEndpoint = (requiredPermissions: string[] = []) => {
         return next();
       }
 
-      // Client'ın izinlerini kontrol et
-      const clientPermissions = await db
-        .select({
-          permissionName: permissions.name
-        })
-        .from(apiClientPermissions)
-        .innerJoin(permissions, eq(apiClientPermissions.permissionId, permissions.id))
-        .where(eq(apiClientPermissions.clientId, req.apiClient.id));
+      // API key'in direkt izinlerini kontrol et (yeni sistem)
+      const apiKeyRecord = await db
+        .select()
+        .from(apiKeys)
+        .where(and(
+          eq(apiKeys.clientId, req.apiClient.id),
+          eq(apiKeys.isActive, true)
+        ));
 
-      const clientPermissionNames = clientPermissions.map(p => p.permissionName);
+      let clientPermissionNames: string[] = [];
+      
+      if (apiKeyRecord.length > 0 && apiKeyRecord[0].permissions) {
+        // Yeni sistem: API key'in permissions array'ini kullan
+        clientPermissionNames = apiKeyRecord[0].permissions;
+      } else {
+        // Eski sistem: Database permissions tablosunu kullan (fallback)
+        const clientPermissions = await db
+          .select({
+            permissionName: permissions.name
+          })
+          .from(apiClientPermissions)
+          .innerJoin(permissions, eq(apiClientPermissions.permissionId, permissions.id))
+          .where(eq(apiClientPermissions.clientId, req.apiClient.id));
+
+        clientPermissionNames = clientPermissions.map(p => p.permissionName);
+      }
 
       // Gerekli izinlerin kontrolü
       const hasRequiredPermissions = requiredPermissions.every(permission => 

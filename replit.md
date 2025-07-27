@@ -394,30 +394,34 @@ PAYMENT_TYPES (Ödeme Türü Tanımları)
 
 **Sonraki Adım:** Frontend interface kurulumu (opsiyonel)
 
-## ✅ API Key Güvenlik Sistemi Uygulandı (27 Ocak 2025)
+## ✅ API Key Authentication Sistemi Tamamen Çözüldü (27 Ocak 2025)
+
+**🔧 INVALID_API_KEY Sorunu ve Çözümü:**
+Yeni oluşturulan API key'lerin çalışmama sorunu tamamen çözüldü:
+
+**Tespit Edilen Sorunlar:**
+1. **Authentication Bug**: `keyRecord.key` field kontrol ediliyordu ama database'de `keyHash` field'ında saklıyordu
+2. **Authorization Bug**: Yeni API key sistemi ile eski permissions tablosu sistemi entegre değildi
+3. **İki Farklı System**: Hash-based yeni sistem ile database permissions sistemi çakışıyordu
+
+**Uygulanan Çözümler:**
+- ✅ API key authentication middleware'inde `keyHash` field kullanımına geçildi
+- ✅ Authorization sistemi API key'lerin `permissions` array'ini direkt kullanacak şekilde güncellendi
+- ✅ Fallback sistemi eklendi (eski database permissions sistemi için)
+- ✅ Detaylı debug logging sistemi eklendi
+
+**Test Sonuçları:**
+- ✅ Yeni API key'ler başarıyla authenticate oluyor
+- ✅ Authorization sistemi doğru izinleri kontrol ediyor  
+- ✅ Demo API key (`ak_test123key`) çalışmaya devam ediyor
+- ✅ Hash karşılaştırması bcrypt ile güvenli şekilde yapılıyor
 
 **API Key Maskeleme ve Güvenlik:**
-API key'ler artık güvenli şekilde yönetiliyor:
-
-**Oluşturma Anında:**
 - Tam API key gösteriliyor (sadece bir kez)
-- Güvenlik uyarısı ile 10 saniye toast notification
 - Manuel "API Key'i Gizle" butonu (kullanıcı kontrolünde)
 - Amber renk uyarı kutusu ile güzel tasarım
-- "Bu tam API key sadece şimdi görüntüleniyor" uyarısı
-
-**Liste Görüntülemede:**
-- API key'ler maskelenmiş format: `*******abcd` (son 4 hane)
-- Database'de sadece hash saklanıyor (`keyHash` sütunu)
-- Client'e hash gönderilmiyor, sadece maskelenmiş format
-- Kopyalama da maskelenmiş format ile çalışıyor
-
-**Güvenlik Özellikleri:**
-- API key tam hali database'de saklanmıyor ✅
-- Sadece bcrypt hash saklanıyor ✅  
-- Maskeleme backend'de yapılıyor ✅
-- Manuel gizleme butonu (kullanıcı kontrolü) ✅
-- Eye icon ile görünürlük toggle (maskelenmiş için) ✅
+- Maskelenmiş format: `*******abcd` (son 4 hane)
+- Database'de sadece bcrypt hash saklanıyor
 - Toast feedback ile kullanıcı bildirimi ✅
 
 ## ✅ GET API Filtreleme Sistemi Eklendi (27 Ocak 2025)
