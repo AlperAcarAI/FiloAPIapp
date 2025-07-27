@@ -10,6 +10,10 @@ import {
   apiRequestLogs, 
   apiEndpoints,
   apiClientPermissions,
+  apiRateLimit,
+  auditLogs,
+  apiUsageLogs,
+  apiUsageStats,
   permissions,
   roles,
   users,
@@ -2805,8 +2809,13 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
       // İlgili referansları temizle (cascade delete için)
       const clientId = existingKey.api_keys.clientId;
       
-      // Önce api_request_logs referanslarını temizle
-      await db.delete(apiUsageLogs).where(eq(apiUsageLogs.clientId, clientId));
+      // Tüm foreign key referanslarını temizle
+      await db.delete(apiRequestLogs).where(eq(apiRequestLogs.clientId, clientId));
+      await db.delete(apiClientPermissions).where(eq(apiClientPermissions.clientId, clientId));
+      await db.delete(apiRateLimit).where(eq(apiRateLimit.clientId, clientId));
+      await db.delete(auditLogs).where(eq(auditLogs.apiClientId, clientId));
+      await db.delete(apiUsageLogs).where(eq(apiUsageLogs.apiClientId, clientId));
+      await db.delete(apiUsageStats).where(eq(apiUsageStats.apiClientId, clientId));
       
       // Sonra API key'i sil
       await db.delete(apiKeys).where(eq(apiKeys.id, keyId));
