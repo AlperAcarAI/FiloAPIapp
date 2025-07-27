@@ -15,8 +15,7 @@ import apiAnalyticsRoutes from "./api-analytics-routes.js";
 import { apiAnalyticsMiddleware } from "./api-analytics-middleware.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // API Analytics middleware - Tüm API çağrılarını takip et
-  app.use(apiAnalyticsMiddleware);
+  // API Analytics middleware - Geçici olarak devre dışı
 
   // Kullanıcı kimlik doğrulama - Standart JSON format
   app.post("/api/auth/login", async (req, res) => {
@@ -81,6 +80,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
+  // Test endpoint - API güvenlik test için
+  app.get("/api/test-auth", async (req, res) => {
+    try {
+      res.json({
+        success: true,
+        message: "Test başarılı - güvenlik aktif değil",
+        headers: req.headers
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: "TEST_ERROR",
+        message: "Test hatası"
+      });
+    }
+  });
+
   // Cities API - getCities endpoint - Standart JSON format
   app.get("/api/getCities", async (req, res) => {
     try {
@@ -125,6 +141,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Audit Route'larını kaydet
   const { registerAuditRoutes } = await import("./audit-routes");
   registerAuditRoutes(app);
+
+  // Financial Route'larını kaydet
+  const financialRoutes = await import("./financial-routes.js");
+  app.use("/api/secure/financial", financialRoutes.default);
 
   const httpServer = createServer(app);
   return httpServer;

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { db } from './db';
-import { apiUsageLogs, apiUsageStats, apiClients } from '@shared/schema';
+import { apiUsageLogs, apiUsageStats, apiClients, apiKeys } from '@shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
 
 interface RequestWithApiTracking extends Request {
@@ -63,11 +63,31 @@ export const apiAnalyticsMiddleware = (req: RequestWithApiTracking, res: Respons
 // API Client ID'yi bul
 async function findApiClientId(apiKey: string): Promise<number | undefined> {
   try {
-    const result = await db.query.apiClients.findFirst({
-      where: eq(apiClients.keyHash, apiKey),
-      columns: { id: true }
-    });
-    return result?.id;
+    // API Key hash'ini hesapla
+    const bcrypt = (await import('bcryptjs')).default;
+    
+    // Tüm aktif API key'leri al
+    const activeApiKeys = await db.select({
+      id: apiKeys.id,
+      clientId: apiKeys.clientId,
+      keyHash: apiKeys.keyHash
+    })
+    .from(apiKeys)
+    .innerJoin(apiClients, eq(apiKeys.clientId, apiClients.id))
+    .where(and(
+      eq(apiKeys.isActive, true),
+      eq(apiClients.isActive, true)
+    ));
+
+    // API anahtarını doğrula
+    for (const keyRecord of activeApiKeys) {
+      const isMatch = await bcrypt.compare(apiKey, keyRecord.keyHash);
+      if (isMatch) {
+        return keyRecord.clientId;
+      }
+    }
+    
+    return undefined;
   } catch (error) {
     console.error('API client lookup error:', error);
     return undefined;
