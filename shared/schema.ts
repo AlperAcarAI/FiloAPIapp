@@ -194,8 +194,9 @@ export const apiClients = pgTable("api_clients", {
 export const apiKeys = pgTable("api_keys", {
   id: serial("id").primaryKey(),
   clientId: integer("client_id").notNull().references(() => apiClients.id),
-  key: text("key").notNull(), // Hashed API key
-  permissions: text("permissions").array().notNull(), // Array of permissions
+  keyHash: text("key_hash").notNull(), // Hashed API key
+  key: text("key"), // Plain text key (can be null)
+  permissions: text("permissions").array(), // Array of permissions
   description: text("description"),
   isActive: boolean("is_active").notNull().default(true),
   lastUsedAt: timestamp("last_used_at"),

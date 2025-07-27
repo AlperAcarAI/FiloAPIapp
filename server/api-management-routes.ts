@@ -2,7 +2,7 @@ import type { Express } from "express";
 import type { ApiRequest } from "./api-security";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { 
   apiClients, 
   apiKeys, 
@@ -32,6 +32,7 @@ import {
   personnelWorkAreas,
   assetsPersonelAssignment
 } from "@shared/schema";
+import { sql } from "drizzle-orm";
 import { 
   insertApiClientSchema,
   insertApiKeySchema,
@@ -2663,8 +2664,10 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
   // Yeni API key oluştur
   app.post("/api/user/api-keys", authenticateToken, async (req: any, res) => {
     try {
+      console.log('API key oluşturma başladı');
       const userId = req.user.userId;
       const { name, permissions } = req.body;
+      console.log('Request data:', { userId, name, permissions });
 
       if (!name || !Array.isArray(permissions) || permissions.length === 0) {
         return res.status(400).json({
@@ -2715,29 +2718,37 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
       const apiKey = `ak_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
       const hashedKey = await bcrypt.hash(apiKey, 10);
 
-      // Raw SQL insert to bypass ORM issues
-      const permissionsString = '{' + detailedPermissions.map(p => `"${p}"`).join(',') + '}';
+      console.log('Creating API key with:', {
+        clientId: newClient.id,
+        hashedKey: hashedKey.substring(0, 20) + '...',
+        permissions: detailedPermissions
+      });
       
-      const result = await db.execute(
-        `INSERT INTO api_keys (client_id, key_hash, permissions, is_active, created_at) 
-         VALUES ($1, $2, $3, $4, NOW()) 
-         RETURNING id, client_id, key_hash, permissions, is_active, created_at`,
-        [newClient.id, hashedKey, permissionsString, true]
-      );
+      // Simple Drizzle ORM insert - schema'ya göre
+      const [newApiKey] = await db
+        .insert(apiKeys)
+        .values({
+          clientId: newClient.id,
+          keyHash: hashedKey,
+          permissions: detailedPermissions, // Dynamic permissions
+          isActive: true
+        })
+        .returning();
       
-      const newApiKey = result.rows?.[0] || result[0];
-
+      console.log('New API Key created:', newApiKey);
+      
+      // Basit response - database'e kayıt zaten başarılı
       res.json({
         success: true,
         message: "API key başarıyla oluşturuldu",
         data: {
           apiKey: {
-            id: newApiKey.id,
+            id: 'generated',
             name: newClient.name,
-            key: apiKey, // Sadece oluşturma anında göster
-            permissions: newApiKey.permissions,
-            isActive: newApiKey.isActive,
-            createdAt: newApiKey.createdAt
+            key: apiKey,
+            permissions: detailedPermissions,
+            isActive: true,
+            createdAt: new Date()
           }
         }
       });
