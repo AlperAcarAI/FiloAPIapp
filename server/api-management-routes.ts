@@ -2651,7 +2651,11 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
         })
         .from(apiKeys)
         .leftJoin(apiClients, eq(apiKeys.clientId, apiClients.id))
-        .where(eq(apiClients.userId, userId));
+        .where(and(
+          eq(apiClients.userId, userId),
+          eq(apiKeys.isActive, true), // Sadece aktif API key'ler
+          eq(apiClients.isActive, true) // Sadece aktif client'lar
+        ));
 
       // API key'leri maskeleme - son 4 hane görünür  
       const maskedApiKeys = userApiKeys.map(key => {
@@ -2806,22 +2810,20 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
         });
       }
 
-      // İlgili referansları temizle (cascade delete için)
-      const clientId = existingKey.api_keys.clientId;
-      
-      // Tüm foreign key referanslarını temizle
-      await db.delete(apiRequestLogs).where(eq(apiRequestLogs.clientId, clientId));
-      await db.delete(apiClientPermissions).where(eq(apiClientPermissions.clientId, clientId));
-      await db.delete(apiRateLimit).where(eq(apiRateLimit.clientId, clientId));
-      await db.delete(auditLogs).where(eq(auditLogs.apiClientId, clientId));
-      await db.delete(apiUsageLogs).where(eq(apiUsageLogs.apiClientId, clientId));
-      await db.delete(apiUsageStats).where(eq(apiUsageStats.apiClientId, clientId));
-      
-      // Sonra API key'i sil
-      await db.delete(apiKeys).where(eq(apiKeys.id, keyId));
-      
-      // Son olarak client'ı sil
-      await db.delete(apiClients).where(eq(apiClients.id, clientId));
+      // Soft delete - API key'i pasif yap
+      await db
+        .update(apiKeys)
+        .set({ 
+          isActive: false,
+          lastUsedAt: new Date() // Son işlem zamanını güncelle
+        })
+        .where(eq(apiKeys.id, keyId));
+
+      // API client'ı da pasif yap
+      await db
+        .update(apiClients)
+        .set({ isActive: false })
+        .where(eq(apiClients.id, existingKey.api_keys.clientId));
 
       res.json({
         success: true,

@@ -392,7 +392,23 @@ PAYMENT_TYPES (Ödeme Türü Tanımları)
 
 **Test Edildi:** Tüm endpoint'ler HTTP 200 dönüyor, JSON formatında doğru yanıtlar veriyor.
 
-**Sonraki Adım:** Frontend interface kurulumu (opsiyonel)
+## ✅ Soft Delete Sistemi Eklendi (27 Ocak 2025)
+
+**API Key Silme İşlemi Soft Delete Olarak Değiştirildi:**
+- Hard delete yerine soft delete implementasyonu ✅
+- API key'ler artık veritabanından silinmiyor ✅
+- `isActive = false` yapılarak pasif duruma getiriliyor ✅
+- API client'lar da aynı şekilde pasif yapılıyor ✅
+- Sadece aktif API key'ler Dashboard'da görüntüleniyor ✅
+
+**Teknik Detaylar:**
+- `DELETE /api/user/api-keys/{id}` endpoint'i soft delete yapıyor
+- `lastUsedAt` alanı silme zamanıyla güncelleniyor
+- API listesi endpoint'i sadece `isActive = true` olanları döndürüyor
+- Foreign key referansları korunuyor (audit trail için önemli)
+- Veritabanı bütünlüğü korunuyor ✅
+
+**Test Edildi:** API key silme ve listeleme işlemleri başarıyla çalışıyor.
 
 ## ✅ API Key Authentication Sistemi Tamamen Çözüldü (27 Ocak 2025)
 
