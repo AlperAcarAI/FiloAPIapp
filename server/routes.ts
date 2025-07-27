@@ -6,7 +6,7 @@ import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, typ
 import { z } from "zod";
 import { db } from "./db";
 import { assets } from "@shared/schema";
-import { eq, desc, asc, sql, like } from "drizzle-orm";
+import { eq, desc, asc, sql, like, ilike } from "drizzle-orm";
 import { registerApiManagementRoutes } from "./api-management-routes";
 import documentRoutes from "./document-routes.js";
 import companyRoutes from "./company-routes.js";
@@ -109,7 +109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Search filtrelemesi
       if (search) {
-        query = query.where(like(cities.name, `%${search}%`));
+        query = query.where(ilike(cities.name, `%${search}%`));
       }
 
       // Sıralama
@@ -130,7 +130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Toplam sayı (filtreleme dahil)
       let totalQuery = db.select({ count: sql`count(*)` }).from(cities);
       if (search) {
-        totalQuery = totalQuery.where(like(cities.name, `%${search}%`));
+        totalQuery = totalQuery.where(ilike(cities.name, `%${search}%`));
       }
       const totalResult = await totalQuery;
       const totalCount = Number(totalResult[0].count);

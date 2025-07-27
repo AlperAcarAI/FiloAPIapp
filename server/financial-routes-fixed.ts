@@ -11,7 +11,7 @@ import {
   type PaymentType
 } from "@shared/schema";
 import { authenticateApiKey, authorizeEndpoint } from "./api-security";
-import { eq, and, desc, asc, like, sql } from "drizzle-orm";
+import { eq, and, desc, asc, like, ilike, sql } from "drizzle-orm";
 import { auditableInsert, auditableUpdate, auditableDelete, captureAuditInfo } from "./audit-middleware";
 import type { Request, Response } from "express";
 
@@ -76,7 +76,7 @@ router.get("/current-accounts", authenticateApiKey, authorizeEndpoint(['data:rea
       conditions.push(eq(finCurrentAccounts.paymentStatus, status as string));
     }
     if (search) {
-      conditions.push(like(finCurrentAccounts.description, `%${search}%`));
+      conditions.push(ilike(finCurrentAccounts.description, `%${search}%`));
     }
 
     query = query.where(and(...conditions));

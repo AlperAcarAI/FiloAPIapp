@@ -55,7 +55,7 @@ import {
   insertAssetsPersonelAssignmentSchema,
   updateAssetsPersonelAssignmentSchema
 } from "@shared/schema";
-import { eq, and, desc, asc, sql, count, avg, gte, lte, not, like } from "drizzle-orm";
+import { eq, and, desc, asc, sql, count, avg, gte, lte, not, like, ilike } from "drizzle-orm";
 import { 
   authenticateApiKey,
   authenticateApiToken,
@@ -3189,7 +3189,7 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
 
         // Search filtrelemesi
         if (search) {
-          query = query.where(like(cities.name, `%${search}%`));
+          query = query.where(ilike(cities.name, `%${search}%`));
         }
 
         // Sıralama
@@ -3210,7 +3210,7 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
         // Toplam sayı (filtreleme dahil)
         let totalQuery = db.select({ count: sql`count(*)` }).from(cities);
         if (search) {
-          totalQuery = totalQuery.where(like(cities.name, `%${search}%`));
+          totalQuery = totalQuery.where(ilike(cities.name, `%${search}%`));
         }
         const totalResult = await totalQuery;
         const totalCount = Number(totalResult[0].count);
@@ -3278,7 +3278,7 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
         }
         
         if (search) {
-          conditions.push(like(penaltyTypes.name, `%${search}%`));
+          conditions.push(ilike(penaltyTypes.name, `%${search}%`));
         }
         
         if (minAmount) {
@@ -3376,7 +3376,7 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
         const conditions = [];
         
         if (search) {
-          conditions.push(like(countries.name, `%${search}%`));
+          conditions.push(ilike(countries.name, `%${search}%`));
         }
         
         if (phoneCode) {
@@ -3468,7 +3468,7 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
         }
         
         if (search) {
-          conditions.push(like(policyTypes.name, `%${search}%`));
+          conditions.push(ilike(policyTypes.name, `%${search}%`));
         }
 
         if (conditions.length > 0) {
@@ -3556,7 +3556,7 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
         }
         
         if (search) {
-          conditions.push(like(paymentMethods.name, `%${search}%`));
+          conditions.push(ilike(paymentMethods.name, `%${search}%`));
         }
 
         if (conditions.length > 0) {
@@ -3644,7 +3644,7 @@ Sigorta ve filo yönetimi için 75 adet güvenli API endpoint'i. Tüm API'ler bc
         }
         
         if (search) {
-          conditions.push(like(maintenanceTypes.name, `%${search}%`));
+          conditions.push(ilike(maintenanceTypes.name, `%${search}%`));
         }
 
         if (conditions.length > 0) {
