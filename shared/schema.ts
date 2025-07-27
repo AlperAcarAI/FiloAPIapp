@@ -707,6 +707,8 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
+}).extend({
+  companyId: z.number().optional().default(1)
 });
 
 export const insertCompanySchema = createInsertSchema(companies).omit({

@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import type { ApiRequest } from "./api-security";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 import { db } from "./db";
 import { 
   apiClients, 

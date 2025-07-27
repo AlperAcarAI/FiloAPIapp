@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { authenticateToken } from "./auth";
 import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset, cities, type City } from "@shared/schema";
+import { generateToken } from "./auth";
 import { z } from "zod";
 import { db } from "./db";
 import { assets } from "@shared/schema";
@@ -29,10 +30,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "Geçersiz email veya şifre"
         });
       }
+      const token = generateToken({ id: user.id, username: user.email });
       res.json({
         success: true,
         message: "Giriş başarılı",
-        data: { user }
+        data: { user, token }
       });
     } catch (error) {
       console.error("Giriş hatası:", error);
@@ -61,7 +63,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.createUser({
         email,
         passwordHash: password,
-        name: name || email.split('@')[0]
+        name: name || email.split('@')[0],
+        companyId: 1 // Varsayılan şirket ID
       });
       res.status(201).json({
         success: true,

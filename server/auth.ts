@@ -11,6 +11,7 @@ const JWT_EXPIRES_IN = '24h';
 export interface AuthRequest extends Request {
   user?: {
     id: number;
+    userId: number;
     username: string;
   };
 }
@@ -53,7 +54,7 @@ export const authenticateToken = async (
       });
     }
 
-    req.user = { id: user.id, username: user.email };
+    req.user = { id: user.id, userId: user.id, username: user.email };
     next();
   } catch (error) {
     return res.status(403).json({
