@@ -551,6 +551,25 @@ Tüm GET endpoint'lere gelişmiş filtreleme metodu eklendi:
 - Risk seviyesi: Düşük (mevcut altyapı kullanımı)
 - SANTIYE_TABANLI_ERISIM_RAPORU.md dosyasında detaylı analiz hazırlandı ✅
 
+## ✅ Hiyerarşik Yetkilendirme Sistemi Tasarımı (29 Ocak 2025)
+
+**Kullanıcı Geri Bildirimi:** Şantiye üstü yöneticiler için erişim kontrolü gerekiyor (bölge müdürü, genel müdür)
+
+**Tasarlanan Sistem:**
+- 4 Seviye Hiyerarşi: Şantiye (1) → Bölge (2) → Genel Müdürlük (3) → Departman (4) ✅
+- Oturum tabanlı erişim kontrolü (personnel_id, workAreaId, positionId session'da) ✅
+- Esnek erişim kapsamı: JSON tabanlı access_scope sistemi ✅
+- Otomatik API filtreleme: Kullanıcı seviyesine göre otomatik veri kısıtlama ✅
+
+**Örnek Senaryolar:**
+- Şantiye şefi: Sadece kendi şantiyesi (allowedWorkAreaIds: [2])
+- Bölge müdürü: Bölgesindeki tüm şantiyeler (allowedWorkAreaIds: [1,2,3,4])
+- Genel müdür: Tüm şirket (allowedWorkAreaIds: null = all access)
+- Muhasebe uzmanı: Tüm şantiyelerin finansal verileri (department: 'muhasebe')
+
+**Dokümantasyon:** HIYERARSIK_YETKI_SISTEMI.md ve OTURUM_TABANLI_ERISIM_TASARIMI.md hazırlandı ✅
+**Geliştirme Süresi:** ~8 saat (Database: 2h, Backend: 3h, Frontend: 3h)
+
 **Aktif Import Dashboard Sistemi (29 Ocak 2025):**
 - Gerçek zamanlı aktif import takip sistemi ✅
 - Progress bar ile detaylı ilerleme gösterimi ✅ 
