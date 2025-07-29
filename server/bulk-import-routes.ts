@@ -38,13 +38,26 @@ const upload = multer({
 // Bulk Import Status Store (production'da Redis kullanılmalı)
 const importStatus = new Map<string, {
   id: string;
-  status: 'processing' | 'completed' | 'failed';
+  status: 'processing' | 'completed' | 'failed' | 'cancelled';
   totalRows: number;
   processedRows: number;
   errors: string[];
   startTime: Date;
   endTime?: Date;
 }>();
+
+// Tüm aktif import işlemlerini durdur
+function stopAllImports() {
+  console.log('Tüm bulk import işlemleri durduruluyor...');
+  for (const [importId, status] of importStatus.entries()) {
+    if (status.status === 'processing') {
+      status.status = 'cancelled';
+      status.endTime = new Date();
+      console.log(`Import işlemi durduruldu: ${importId}`);
+    }
+  }
+  console.log('Tüm import işlemleri durduruldu.');
+}
 
 /**
  * @swagger
@@ -402,6 +415,55 @@ router.get('/bulk-import/template/:tableName',
         success: false,
         error: 'TEMPLATE_ERROR',
         message: 'Template indirilemedi'
+      });
+    }
+  }
+);
+
+// Emergency stop endpoint - tüm import işlemlerini durdur (izin gevşetildi)
+router.post('/bulk-import/stop-all',
+  authenticateApiKey,
+  authorizeEndpoint(['data:write']), // Admin izni yerine data:write yeterli
+  async (req, res) => {
+    try {
+      stopAllImports();
+      
+      res.json({
+        success: true,
+        message: 'Tüm bulk import işlemleri durduruldu',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Import durdurma hatası:', error);
+      res.status(500).json({
+        success: false,
+        error: 'STOP_ERROR',
+        message: 'Import işlemleri durdurulamadı'
+      });
+    }
+  }
+);
+
+// Manuel import status temizleme endpoint (izin gevşetildi)
+router.delete('/bulk-import/clear-status',
+  authenticateApiKey,
+  authorizeEndpoint(['data:write']), // Admin izni yerine data:write yeterli
+  async (req, res) => {
+    try {
+      const clearedCount = importStatus.size;
+      importStatus.clear();
+      
+      res.json({
+        success: true,
+        message: `${clearedCount} import status kaydı temizlendi`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Status temizleme hatası:', error);
+      res.status(500).json({
+        success: false,
+        error: 'CLEAR_ERROR',
+        message: 'Status kayıtları temizlenemedi'
       });
     }
   }
