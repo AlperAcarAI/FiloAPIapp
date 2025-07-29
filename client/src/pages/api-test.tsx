@@ -562,6 +562,91 @@ const API_ENDPOINTS: ApiEndpoint[] = [
     method: "DELETE",
     category: "Veri İşlemleri",
     dataCount: "Silme"
+  },
+  // Backend API Endpoints
+  {
+    id: "backendAssets",
+    name: "Backend Assets API",
+    description: "Hiyerarşik yetki ile asset listesi (JWT authentication)",
+    endpoint: "/api/backend/assets",
+    method: "GET",
+    category: "Backend API",
+    dataCount: "15 asset"
+  },
+  {
+    id: "backendPersonnel",
+    name: "Backend Personnel API", 
+    description: "Hiyerarşik yetki ile personel listesi (JWT authentication)",
+    endpoint: "/api/backend/personnel",
+    method: "GET",
+    category: "Backend API",
+    dataCount: "12 personel"
+  },
+  {
+    id: "backendFuelRecords",
+    name: "Backend Fuel Records API",
+    description: "Hiyerarşik yetki ile yakıt kayıtları (JWT authentication)",
+    endpoint: "/api/backend/fuel-records",
+    method: "GET", 
+    category: "Backend API",
+    dataCount: "45 yakıt kaydı"
+  },
+  // Analytics API Endpoints
+  {
+    id: "analyticsOverview",
+    name: "Analytics Overview API",
+    description: "API kullanım istatistikleri genel bakış",
+    endpoint: "/api/analytics/stats/overview",
+    method: "GET",
+    category: "Analytics",
+    dataCount: "Özet istatistikler"
+  },
+  {
+    id: "analyticsEndpoints", 
+    name: "Analytics Endpoints API",
+    description: "Endpoint bazlı performans istatistikleri",
+    endpoint: "/api/analytics/stats/endpoints",
+    method: "GET",
+    category: "Analytics", 
+    dataCount: "Endpoint metrikleri"
+  },
+  // Bulk Import API Endpoints
+  {
+    id: "bulkImportCsv",
+    name: "Bulk Import CSV API",
+    description: "CSV dosyası ile toplu veri aktarımı (28.000+ satır)",
+    endpoint: "/api/secure/bulk-import/csv",
+    method: "POST",
+    category: "Bulk Import",
+    dataCount: "Toplu import"
+  },
+  {
+    id: "bulkImportStatus",
+    name: "Bulk Import Status API",
+    description: "Import işleminin durumunu takip et",
+    endpoint: "/api/secure/bulk-import/status/1",
+    method: "GET",
+    category: "Bulk Import",
+    dataCount: "Import durumu"
+  },
+  // Financial API Endpoints
+  {
+    id: "financialCurrentAccounts",
+    name: "Financial Current Accounts API",
+    description: "Finansal cari hesap işlemleri listesi",
+    endpoint: "/api/secure/financial/current-accounts",
+    method: "GET",
+    category: "Financial",
+    dataCount: "Mali işlemler"
+  },
+  {
+    id: "addFinancialAccount",
+    name: "Add Financial Account API",
+    description: "Yeni finansal işlem kaydı oluştur",
+    endpoint: "/api/secure/financial/current-accounts",
+    method: "POST",
+    category: "Financial",
+    dataCount: "Yeni mali işlem"
   }
 ];
 
@@ -913,7 +998,7 @@ Swagger dokümantasyonundan veya /documents sayfasından test edebilirsiniz.`;
                   API Test Ortamı
                 </h1>
                 <p className="text-slate-600">
-                  Güvenli API endpoint'lerini test edin
+                  138+ güvenli API endpoint'ini test edin
                 </p>
               </div>
             </div>
@@ -959,10 +1044,25 @@ Swagger dokümantasyonundan veya /documents sayfasından test edebilirsiniz.`;
                   </p>
                 </div>
 
-                {/* API Endpoints */}
+                {/* API Categories */}
                 <div className="space-y-2">
-                  <h3 className="font-medium text-slate-800 text-sm">Referans Veriler</h3>
-                  {API_ENDPOINTS.map((endpoint) => (
+                  <div className="bg-slate-100 p-2 rounded-lg mb-3">
+                    <p className="text-xs text-slate-600 text-center">
+                      Toplam <strong>{API_ENDPOINTS.length} API Endpoint</strong>
+                    </p>
+                  </div>
+                  
+                  {["Referans Veriler", "Backend API", "Analytics", "Bulk Import", "Financial", "Veri İşlemleri", "Dosya İşlemleri", "Asset Yönetimi"].map(category => {
+                    const categoryEndpoints = API_ENDPOINTS.filter(ep => ep.category === category);
+                    if (categoryEndpoints.length === 0) return null;
+                    
+                    return (
+                      <div key={category} className="mb-4">
+                        <h3 className="font-medium text-slate-800 text-sm mb-2 flex items-center justify-between">
+                          {category}
+                          <Badge variant="secondary" className="text-xs">{categoryEndpoints.length}</Badge>
+                        </h3>
+                        {categoryEndpoints.map((endpoint) => (
                     <div
                       key={endpoint.id}
                       className={`p-3 rounded-lg border cursor-pointer transition-colors ${
@@ -1016,7 +1116,10 @@ Swagger dokümantasyonundan veya /documents sayfasından test edebilirsiniz.`;
                         </Badge>
                       </div>
                     </div>
-                  ))}
+                        ))}
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

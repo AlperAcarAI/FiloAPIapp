@@ -16,10 +16,10 @@ export default function Home() {
   const [statusFilter, setStatusFilter] = useState("all");
   const { toast } = useToast();
 
-  // Gerçek API istatistikleri - 75 toplam API endpoint
+  // Gerçek API istatistikleri - 138+ toplam API endpoint
   const stats = { 
-    total: 75, 
-    active: 75, 
+    total: 138, 
+    active: 138, 
     inactive: 0, 
     error: 0 
   };
@@ -71,7 +71,7 @@ export default function Home() {
                 <div>
                   <h3 className="text-lg font-semibold text-blue-800">API Test Ortamı</h3>
                   <p className="text-blue-600">
-                    75 güvenli API endpoint'i test edebilirsiniz
+                    138+ güvenli API endpoint'i test edebilirsiniz
                   </p>
                 </div>
               </div>
@@ -127,6 +127,31 @@ export default function Home() {
                   Analytics Dashboard
                 </Button>
               </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Swagger API Dokümantasyonu */}
+        <Card className="shadow-sm border-indigo-200 bg-indigo-50 mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FileCode className="h-8 w-8 text-indigo-600" />
+                <div>
+                  <h3 className="text-lg font-semibold text-indigo-800">API Dokümantasyonu</h3>
+                  <p className="text-indigo-600">
+                    138+ API endpoint'inin detaylı Swagger dokümantasyonu
+                  </p>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                className="bg-white hover:bg-indigo-100 text-indigo-700 border-indigo-300"
+                onClick={() => window.open("/api/docs", "_blank")}
+              >
+                <FileCode className="h-4 w-4 mr-2" />
+                Swagger UI
+              </Button>
             </div>
           </CardContent>
         </Card>
