@@ -197,6 +197,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bulk Import Route'larını kaydet
   app.use('/api/secure', bulkImportRoutes);
 
+  // Backend API Route'larını kaydet (Hiyerarşik sistem)
+  const backendApiRoutes = await import("./backend-api-fixed.js");
+  app.use("/api/backend", backendApiRoutes.default);
+
   const httpServer = createServer(app);
   return httpServer;
 }

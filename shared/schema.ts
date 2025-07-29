@@ -171,8 +171,35 @@ export const users = pgTable("users", {
   email: varchar("email", { length: 150 }).notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   companyId: integer("company_id").notNull().references(() => companies.id),
+  personnelId: integer("personnel_id").references(() => personnel.id),
+  department: varchar("department", { length: 50 }),
+  positionLevel: integer("position_level").default(1),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  usersPersonnelUnique: unique().on(table.personnelId),
+}));
+
+// Hiyerarşik Erişim Seviyeleri Tablosu
+export const accessLevels = pgTable("access_levels", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+  code: varchar("code", { length: 20 }).notNull().unique(),
+  hierarchyLevel: integer("hierarchy_level").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Kullanıcı Erişim Hakları Tablosu
+export const userAccessRights = pgTable("user_access_rights", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  accessLevelId: integer("access_level_id").notNull().references(() => accessLevels.id),
+  accessScope: text("access_scope"), // JSON format for flexible access scope
+  grantedBy: integer("granted_by").references(() => users.id),
+  grantedAt: timestamp("granted_at").notNull().defaultNow(),
+  isActive: boolean("is_active").notNull().default(true),
 });
 
 export const userRoles = pgTable("user_roles", {
@@ -755,8 +782,33 @@ export const usersRelations = relations(users, ({ one, many }) => ({
     fields: [users.companyId],
     references: [companies.id],
   }),
+  personnel: one(personnel, {
+    fields: [users.personnelId],
+    references: [personnel.id],
+  }),
   userRoles: many(userRoles),
   apiTokens: many(apiTokens),
+  userAccessRights: many(userAccessRights),
+}));
+
+export const accessLevelsRelations = relations(accessLevels, ({ many }) => ({
+  userAccessRights: many(userAccessRights),
+}));
+
+export const userAccessRightsRelations = relations(userAccessRights, ({ one }) => ({
+  user: one(users, {
+    fields: [userAccessRights.userId],
+    references: [users.id],
+  }),
+  accessLevel: one(accessLevels, {
+    fields: [userAccessRights.accessLevelId],
+    references: [accessLevels.id],
+  }),
+  grantedByUser: one(users, {
+    fields: [userAccessRights.grantedBy],
+    references: [users.id],
+    relationName: "grantedBy",
+  }),
 }));
 
 // Zod schemas for key tables
