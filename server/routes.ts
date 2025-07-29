@@ -14,7 +14,7 @@ import companyRoutes from "./company-routes.js";
 import assetRoutes from "./asset-routes.js";
 import apiAnalyticsRoutes from "./api-analytics-routes.js";
 import { apiAnalyticsMiddleware } from "./api-analytics-middleware.js";
-import fuelRoutes from "./fuel-routes-simple.js";
+import fuelRoutes from "./fuel-routes.js";
 import bulkImportRoutes from "./bulk-import-routes.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -188,7 +188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAuditRoutes(app);
 
   // Financial Route'larını kaydet
-  const financialRoutes = await import("./financial-routes-fixed.js");
+  const financialRoutes = await import("./financial-routes.js");
   app.use("/api/secure/financial", financialRoutes.default);
 
   // Fuel Management Route'larını kaydet
@@ -198,7 +198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/secure', bulkImportRoutes);
 
   // Backend API Route'larını kaydet (Hiyerarşik sistem)
-  const backendApiRoutes = await import("./backend-api-fixed.js");
+  const backendApiRoutes = await import("./backend-api.js");
   app.use("/api/backend", backendApiRoutes.default);
 
   // Permission Management Route'larını kaydet (Admin yetkisi gerekli)
