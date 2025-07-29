@@ -229,7 +229,17 @@ async function processCSVImport(
 async function processBatch(batch: any[], targetTable: string) {
   switch (targetTable) {
     case 'car_brands_models':
-      await processCarBrandsModels(batch);
+      // Performans optimizasyonu için batch size küçült
+      const smallerBatches = [];
+      for (let i = 0; i < batch.length; i += 10) {
+        smallerBatches.push(batch.slice(i, i + 10));
+      }
+      
+      for (const smallBatch of smallerBatches) {
+        await processCarBrandsModels(smallBatch);
+        // Her küçük batch'ten sonra kısa bekle
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
       break;
       
     case 'assets':
