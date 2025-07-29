@@ -544,6 +544,14 @@ Tüm GET endpoint'lere gelişmiş filtreleme metodu eklendi:
 - Tamamlanan import bilgisi gösterimi ✅
 - Test sonucu: 1.470 araç modeli başarıyla aktarıldı ✅
 
+**Gelişmiş Duplicate Kontrolü (29 Ocak 2025):**
+- Marka ve model kombinasyonu duplicate kontrolü ✅
+- Aynı marka+model varsa satırı atlar (processing yapmaz) ✅
+- Real-time skippedRows ve addedRows takibi ✅
+- Dashboard'da eklenen/atlanan sayıları gösterir ✅
+- Console'da detaylı duplicate/ekleme logları ✅
+- Performance optimizasyonu: Sadece yeni veriler işlenir ✅
+
 **Bulk Import API'leri:**
 - `POST /api/secure/bulk-import/csv` - CSV toplu aktarım
 - `GET /api/secure/bulk-import/status/{id}` - Import durumu takibi

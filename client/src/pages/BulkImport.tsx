@@ -16,6 +16,8 @@ interface ImportStatus {
   status: 'processing' | 'completed' | 'failed';
   totalRows: number;
   processedRows: number;
+  skippedRows?: number; // Duplicate atlayanlar
+  addedRows?: number;   // Gerçek eklenenler
   progress: number;
   elapsedTime: number;
   estimatedTimeRemaining: number;
@@ -363,17 +365,25 @@ export default function BulkImport() {
                       <Progress value={imp.progress} className="h-2" />
                     </div>
                     
-                    <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Eklenen:</span>
+                        <div className="font-medium text-green-600">{imp.addedRows || 0}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Atlanan:</span>
+                        <div className="font-medium text-orange-600">{imp.skippedRows || 0}</div>
+                      </div>
                       <div>
                         <span className="text-muted-foreground">Hız:</span>
                         <div className="font-medium">{imp.speed} satır/sn</div>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Geçen Süre:</span>
+                        <span className="text-muted-foreground">Geçen:</span>
                         <div className="font-medium">{Math.floor(imp.elapsedTime / 1000)}s</div>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Kalan Süre:</span>
+                        <span className="text-muted-foreground">Kalan:</span>
                         <div className="font-medium">
                           {imp.estimatedTimeRemaining > 0 
                             ? `${Math.floor(imp.estimatedTimeRemaining / 1000)}s`

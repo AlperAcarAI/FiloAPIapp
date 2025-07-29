@@ -36,15 +36,19 @@ const upload = multer({
 });
 
 // Bulk Import Status Store (production'da Redis kullanılmalı)
-const importStatus = new Map<string, {
+interface ImportStatusData {
   id: string;
   status: 'processing' | 'completed' | 'failed' | 'cancelled';
   totalRows: number;
   processedRows: number;
+  skippedRows: number; // Duplicate atlayanlar
+  addedRows: number;   // Gerçek eklenenler
   errors: string[];
   startTime: Date;
   endTime?: Date;
-}>();
+}
+
+const importStatus = new Map<string, ImportStatusData>();
 
 // Tüm aktif import işlemlerini durdur
 function stopAllImports() {
@@ -124,6 +128,8 @@ router.post('/bulk-import/csv',
         status: 'processing',
         totalRows: csvData.length,
         processedRows: 0,
+        skippedRows: 0,
+        addedRows: 0,
         errors: [],
         startTime: new Date()
       });
@@ -219,7 +225,7 @@ async function processCSVImport(
       const batch = csvData.slice(i, i + batchSize);
       
       // Batch işleme (tablo tipine göre)
-      await processBatch(batch, targetTable);
+      await processBatch(batch, targetTable, importId);
       
       // Status güncelle
       status.processedRows = Math.min(i + batchSize, csvData.length);
@@ -240,7 +246,8 @@ async function processCSVImport(
 }
 
 // Batch Processing Function
-async function processBatch(batch: any[], targetTable: string) {
+async function processBatch(batch: any[], targetTable: string, importId?: string) {
+  console.log(`Processing batch for table: ${targetTable}, importId: ${importId}`);
   switch (targetTable) {
     case 'car_brands_models':
       // Performans optimizasyonu için batch size küçült
@@ -250,7 +257,7 @@ async function processBatch(batch: any[], targetTable: string) {
       }
       
       for (const smallBatch of smallerBatches) {
-        await processCarBrandsModels(smallBatch);
+        await processCarBrandsModels(smallBatch, importId || '');
         // Her küçük batch'ten sonra kısa bekle
         await new Promise(resolve => setTimeout(resolve, 50));
       }
@@ -276,10 +283,12 @@ async function processBatch(batch: any[], targetTable: string) {
   }
 }
 
-// Car Brands & Models Processing Function
-async function processCarBrandsModels(batch: any[]) {
+// Car Brands & Models Processing Function  
+async function processCarBrandsModels(batch: any[], importId?: string) {
   const { carBrands, carModels, carTypes } = await import('../shared/schema.js');
   const { eq, and } = await import('drizzle-orm');
+  
+  const status = importId ? importStatus.get(importId) : null;
   
   for (const row of batch) {
     try {
@@ -307,7 +316,7 @@ async function processCarBrandsModels(batch: any[]) {
         continue;
       }
 
-      // 1. Marka kontrolü ve ekleme (duplicate check)
+      // 1. Marka kontrolü ve ekleme (gelişmiş duplicate check)
       let existingBrand = await db.select()
         .from(carBrands)
         .where(eq(carBrands.id, markaKoduInt))
@@ -326,9 +335,12 @@ async function processCarBrandsModels(batch: any[]) {
             isActive: true
           }
         });
+        console.log(`Yeni marka eklendi: ${markaAdi} (${markaKoduInt})`);
+      } else {
+        console.log(`Marka mevcut: ${markaAdi} (${markaKoduInt})`);
       }
 
-      // 2. Model duplicate kontrolü ve ekleme
+      // 2. Model duplicate kontrolü (aynı marka + model varsa atla)
       let existingModel = await db.select()
         .from(carModels)
         .where(and(
@@ -338,7 +350,7 @@ async function processCarBrandsModels(batch: any[]) {
         .limit(1);
 
       if (existingModel.length === 0) {
-        // Yeni model ekle
+        // Sadece yeni model ise ekle
         await db.insert(carModels).values({
           name: tipAdi,
           brandId: markaKoduInt,
@@ -346,18 +358,13 @@ async function processCarBrandsModels(batch: any[]) {
           capacity: kapasiteInt,
           isActive: true
         });
+        console.log(`Yeni model eklendi: ${markaAdi} - ${tipAdi}`);
+        if (status) status.addedRows++;
       } else {
-        // Mevcut modeli güncelle
-        await db.update(carModels)
-          .set({
-            typeId: tipIdInt,
-            capacity: kapasiteInt,
-            isActive: true
-          })
-          .where(and(
-            eq(carModels.name, tipAdi),
-            eq(carModels.brandId, markaKoduInt)
-          ));
+        // Aynı marka ve model mevcut, işleme (konsol log)
+        console.log(`Duplicate atlandı: ${markaAdi} - ${tipAdi} (mevcut)`);
+        if (status) status.skippedRows++;
+        continue; // Satırı atla, işleme
       }
 
     } catch (error) {
