@@ -15,6 +15,7 @@ import assetRoutes from "./asset-routes.js";
 import apiAnalyticsRoutes from "./api-analytics-routes.js";
 import { apiAnalyticsMiddleware } from "./api-analytics-middleware.js";
 import fuelRoutes from "./fuel-routes-simple.js";
+import bulkImportRoutes from "./bulk-import-routes.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // API Analytics middleware - Geçici olarak devre dışı
@@ -192,6 +193,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Fuel Management Route'larını kaydet
   app.use('/api/secure', fuelRoutes);
+
+  // Bulk Import Route'larını kaydet
+  app.use('/api/secure', bulkImportRoutes);
 
   const httpServer = createServer(app);
   return httpServer;

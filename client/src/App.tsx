@@ -10,6 +10,7 @@ import ApiTest from "@/pages/api-test";
 import DocumentManagement from "@/pages/document-management";
 import Dashboard from "@/pages/Dashboard";
 import Analytics from "@/pages/Analytics";
+import BulkImport from "@/pages/BulkImport";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/documents" component={DocumentManagement} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/analytics" component={Analytics} />
+      <Route path="/bulk-import" component={BulkImport} />
       <Route path="/login" component={Login} />
       <Route component={NotFound} />
     </Switch>

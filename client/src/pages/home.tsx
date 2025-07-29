@@ -131,6 +131,29 @@ export default function Home() {
           </CardContent>
         </Card>
 
+        {/* Bulk Import */}
+        <Card className="shadow-sm border-orange-200 bg-orange-50 mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Upload className="h-8 w-8 text-orange-600" />
+                <div>
+                  <h3 className="text-lg font-semibold text-orange-800">Toplu Veri İçe Aktarma</h3>
+                  <p className="text-orange-600">
+                    28.000+ satırlık Google Sheets verilerinizi sisteme aktarın
+                  </p>
+                </div>
+              </div>
+              <Link to="/bulk-import">
+                <Button variant="outline" className="bg-white hover:bg-orange-100 text-orange-700 border-orange-300">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Bulk Import
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
         
 
         {/* Quick Actions */}
