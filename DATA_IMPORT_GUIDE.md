@@ -81,3 +81,34 @@ Lütfen şu bilgileri paylaşın:
 4. **Veri Kalitesi:** Temizleme gerekiyor mu?
 
 Bu bilgilere göre en uygun import yöntemini geliştiririz.
+
+## ✅ Marka & Model Bulk Import Sistemi Tamamlandı!
+
+### 28.000 Satırlık Google Sheets Veriniz İçin Hazır Sistem:
+
+**CSV Format:**
+```
+Marka Kodu,Tip Kodu,Marka Adı,Tip Adı,Tip,Kapasite,Tip ID
+100,10001,Renault,Megane,Sedan,1600,77
+100,10002,Renault,Clio,Sedan,1400,77
+```
+
+**Özellikler:**
+✅ **Akıllı Duplicate Prevention:** Aynı marka birden fazla eklenmez
+✅ **Batch Processing:** 1000'er satır gruplarında işleme  
+✅ **Progress Tracking:** Real-time ilerleme takibi
+✅ **Error Handling:** Hatalı satırlar atlanır, işlem devam eder
+✅ **Data Validation:** Eksik/geçersiz veriler kontrol edilir
+
+**Kullanım Adımları:**
+1. Web arayüzden `/bulk-import` sayfasına gidin
+2. "Marka & Model Template" indirin
+3. Google Sheets verinizi template formatına uyarlayın
+4. CSV olarak export edin
+5. Sisteme yükleyin
+
+**API Endpoint:**
+- `POST /api/secure/bulk-import/csv` (targetTable: car_brands_models)
+- `GET /api/secure/bulk-import/status/{importId}` (durumu takip edin)
+
+Sistem artık 28.000+ satırlık veri importuna hazır!

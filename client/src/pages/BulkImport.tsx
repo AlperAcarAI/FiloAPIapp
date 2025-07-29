@@ -201,7 +201,7 @@ export default function BulkImport() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Button 
                 variant="outline" 
                 onClick={() => downloadTemplate('assets')}
@@ -225,6 +225,14 @@ export default function BulkImport() {
               >
                 <FileText className="h-4 w-4" />
                 Yakıt Template
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => downloadTemplate('car_brands_models')}
+                className="flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Marka & Model Template
               </Button>
             </div>
           </CardContent>
@@ -269,6 +277,7 @@ export default function BulkImport() {
                   <SelectItem value="personnel">Personnel (Personel)</SelectItem>
                   <SelectItem value="fuel_records">Fuel Records (Yakıt Kayıtları)</SelectItem>
                   <SelectItem value="companies">Companies (Şirketler)</SelectItem>
+                  <SelectItem value="car_brands_models">Car Brands & Models (Marka ve Modeller)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

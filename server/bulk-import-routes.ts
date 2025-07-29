@@ -17,11 +17,17 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     const allowedTypes = [
       'text/csv',
+      'text/plain', // CSV dosyalar bazen text/plain olarak gelebilir
+      'application/csv',
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     ];
     
-    if (allowedTypes.includes(file.mimetype)) {
+    // Dosya uzantısı kontrolü de ekle
+    const isCSV = file.originalname.endsWith('.csv');
+    const isExcel = file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls');
+    
+    if (allowedTypes.includes(file.mimetype) || isCSV || isExcel) {
       cb(null, true);
     } else {
       cb(new Error('Desteklenmeyen dosya formatı. CSV veya Excel dosyası gerekli.'));
@@ -62,7 +68,7 @@ const importStatus = new Map<string, {
  *                 description: CSV dosyası
  *               targetTable:
  *                 type: string
- *                 enum: [assets, personnel, companies, fuel_records]
+ *                 enum: [assets, personnel, companies, fuel_records, car_brands_models]
  *                 description: Hedef tablo adı
  *               batchSize:
  *                 type: integer
@@ -222,6 +228,10 @@ async function processCSVImport(
 // Batch Processing Function
 async function processBatch(batch: any[], targetTable: string) {
   switch (targetTable) {
+    case 'car_brands_models':
+      await processCarBrandsModels(batch);
+      break;
+      
     case 'assets':
       // Assets tablosuna bulk insert
       // TODO: Schema validation ve mapping
@@ -239,6 +249,97 @@ async function processBatch(batch: any[], targetTable: string) {
       
     default:
       throw new Error(`Desteklenmeyen tablo: ${targetTable}`);
+  }
+}
+
+// Car Brands & Models Processing Function
+async function processCarBrandsModels(batch: any[]) {
+  const { carBrands, carModels, carTypes } = await import('../shared/schema.js');
+  const { eq, and } = await import('drizzle-orm');
+  
+  for (const row of batch) {
+    try {
+      // CSV kolonları: Marka Kodu, Tip Kodu, Marka Adı, Tip Adı, Tip, Kapasite, Tip ID
+      const {
+        'Marka Kodu': markaKodu,
+        'Marka Adı': markaAdi,
+        'Tip Adı': tipAdi,
+        'Kapasite': kapasite,
+        'Tip ID': tipId
+      } = row;
+
+      if (!markaKodu || !markaAdi || !tipAdi || !kapasite || !tipId) {
+        console.warn('Eksik veri (marka, model, kapasite veya tip ID eksik), satır atlandı:', row);
+        continue;
+      }
+
+      // Integer kontrolü
+      const markaKoduInt = parseInt(markaKodu);
+      const kapasiteInt = parseInt(kapasite);
+      const tipIdInt = parseInt(tipId);
+
+      if (isNaN(markaKoduInt) || isNaN(kapasiteInt) || isNaN(tipIdInt)) {
+        console.warn('Geçersiz sayısal değer, satır atlandı:', row);
+        continue;
+      }
+
+      // 1. Marka kontrolü ve ekleme (duplicate check)
+      let existingBrand = await db.select()
+        .from(carBrands)
+        .where(eq(carBrands.id, markaKoduInt))
+        .limit(1);
+
+      if (existingBrand.length === 0) {
+        // Yeni marka ekle
+        await db.insert(carBrands).values({
+          id: markaKoduInt,
+          name: markaAdi,
+          isActive: true
+        }).onConflictDoUpdate({
+          target: carBrands.id,
+          set: {
+            name: markaAdi,
+            isActive: true
+          }
+        });
+      }
+
+      // 2. Model duplicate kontrolü ve ekleme
+      let existingModel = await db.select()
+        .from(carModels)
+        .where(and(
+          eq(carModels.name, tipAdi),
+          eq(carModels.brandId, markaKoduInt)
+        ))
+        .limit(1);
+
+      if (existingModel.length === 0) {
+        // Yeni model ekle
+        await db.insert(carModels).values({
+          name: tipAdi,
+          brandId: markaKoduInt,
+          typeId: tipIdInt,
+          capacity: kapasiteInt,
+          isActive: true
+        });
+      } else {
+        // Mevcut modeli güncelle
+        await db.update(carModels)
+          .set({
+            typeId: tipIdInt,
+            capacity: kapasiteInt,
+            isActive: true
+          })
+          .where(and(
+            eq(carModels.name, tipAdi),
+            eq(carModels.brandId, markaKoduInt)
+          ));
+      }
+
+    } catch (error) {
+      console.error('Satır işleme hatası:', error, 'Row:', row);
+      // Hata durumunda devam et, batch'i kesme
+    }
   }
 }
 
@@ -267,6 +368,9 @@ router.get('/bulk-import/template/:tableName',
           break;
         case 'fuel_records':
           headers = ['assetId', 'recordDate', 'currentKilometers', 'fuelAmount', 'fuelCostCents', 'gasStationName'];
+          break;
+        case 'car_brands_models':
+          headers = ['Marka Kodu', 'Tip Kodu', 'Marka Adı', 'Tip Adı', 'Tip', 'Kapasite', 'Tip ID'];
           break;
         default:
           return res.status(400).json({
