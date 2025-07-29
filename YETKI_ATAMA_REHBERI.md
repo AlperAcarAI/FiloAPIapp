@@ -1,157 +1,167 @@
-# Yetki Atama Sistemi Rehberi
+# Yetki Atama Rehberi (29 Ocak 2025)
 
-## Mevcut Yetki Yapısı
+## 🔐 Admin Yetkilendirme Sistemi
 
-### 1. Yetki Seviyeleri (access_levels tablosu)
-```
-1. Şantiye Seviyesi (WORKSITE) - Sadece kendi şantiyesine erişim
-2. Bölge Seviyesi (REGIONAL) - Bölgedeki tüm şantiyelere erişim  
-3. Genel Müdürlük (CORPORATE) - Tüm şirket verilerine erişim
-4. Departman Bazlı (DEPARTMENT) - Departman yetkisine göre erişim
-```
+**Admin Email:** `alper.acar@architectaiagency.com`
+- Sadece admin ve permission:manage yetkisi olan kişiler yetki ataması yapabilir
+- Corporate seviye kullanıcılar permission:manage izni ile yetki yöneticisi olabilir
 
-### 2. Yetki Atama Tabloları
-- **users**: Temel kullanıcı bilgileri
-- **user_access_rights**: Kullanıcıya verilen yetkiler
-- **access_levels**: Yetki seviye tanımları
-- **personnel_work_areas**: Personel-şantiye atamaları
+## 📊 API Endpoint'leri
 
-## Yetki Atama İşlemleri
-
-### A) YENİ KULLANICI OLUŞTURMA
-
-```sql
--- 1. Yeni kullanıcı ekle
-INSERT INTO users (email, password_hash, company_id, department, position_level, personnel_id) 
-VALUES ('kullanici@sirket.com', 'hash_password', 1, 'muhasebe', 2, NULL);
-
--- 2. Kullanıcıya yetki ata
-INSERT INTO user_access_rights (user_id, access_level_id, access_scope, granted_by, is_active)
-VALUES (
-  (SELECT id FROM users WHERE email = 'kullanici@sirket.com'),
-  2, -- Bölge Seviyesi
-  '{"work_area_ids": [1, 2, 3]}', -- Erişim kapsamı
-  12, -- Yetkiyi veren kişi ID
-  true
-);
+### 1. Kullanıcı Listesi
+```http
+GET /api/permission-management/users?search=email&limit=20&offset=0
+Authorization: Bearer {JWT_TOKEN}
 ```
 
-### B) ŞANTİYE SEVİYESİ YETKİ ATAMA
-
-```sql
--- Şantiye şefi ataması
-INSERT INTO user_access_rights (user_id, access_level_id, access_scope, granted_by, is_active)
-VALUES (
-  15, -- Kullanıcı ID
-  1,  -- Şantiye Seviyesi
-  '{"work_area_ids": [2]}', -- Sadece 2 numaralı şantiye
-  12, -- Admin tarafından atandı
-  true
-);
+**Yanıt:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 12,
+      "email": "kullanici@sirket.com",
+      "department": "operasyon",
+      "personnelName": "Ali",
+      "accessLevelName": "Bölge Seviyesi",
+      "accessScope": "{\"work_area_ids\": [1,2,3]}"
+    }
+  ]
+}
 ```
 
-### C) BÖLGE SEVİYESİ YETKİ ATAMA
-
-```sql
--- Bölge müdürü ataması
-INSERT INTO user_access_rights (user_id, access_level_id, access_scope, granted_by, is_active)
-VALUES (
-  16, -- Kullanıcı ID
-  2,  -- Bölge Seviyesi
-  '{"work_area_ids": [1, 2, 3, 4]}', -- Bölgedeki tüm şantiyeler
-  12, -- Admin tarafından atandı
-  true
-);
+### 2. Yetki Seviyeleri
+```http
+GET /api/permission-management/access-levels
+Authorization: Bearer {JWT_TOKEN}
 ```
 
-### D) GENEL MÜDÜRLÜK YETKİ ATAMA
-
-```sql
--- Genel müdür ataması
-INSERT INTO user_access_rights (user_id, access_level_id, access_scope, granted_by, is_active)
-VALUES (
-  17, -- Kullanıcı ID
-  3,  -- Genel Müdürlük
-  '{"work_area_ids": null}', -- Tüm şantiyelere erişim
-  12, -- Admin tarafından atandı
-  true
-);
+**Yanıt:**
+```json
+{
+  "success": true,
+  "data": [
+    {"id": 1, "name": "Şantiye Seviyesi", "hierarchyLevel": 1},
+    {"id": 2, "name": "Bölge Seviyesi", "hierarchyLevel": 2},
+    {"id": 3, "name": "Genel Müdürlük", "hierarchyLevel": 3},
+    {"id": 4, "name": "Departman Seviyesi", "hierarchyLevel": 4}
+  ]
+}
 ```
 
-### E) DEPARTMAN BAZLI YETKİ ATAMA
+### 3. Yetki Atama
+```http
+POST /api/permission-management/assign-permission
+Authorization: Bearer {JWT_TOKEN}
+Content-Type: application/json
 
-```sql
--- Muhasebe departmanı ataması
-INSERT INTO user_access_rights (user_id, access_level_id, access_scope, granted_by, is_active)
-VALUES (
-  18, -- Kullanıcı ID
-  4,  -- Departman Bazlı
-  '{"department": "muhasebe", "work_area_ids": null, "permissions": ["financial:read", "financial:write"]}',
-  12, -- Admin tarafından atandı
-  true
-);
+{
+  "userId": 12,
+  "accessLevelId": 2,
+  "accessScope": "{\"work_area_ids\": [1, 2, 3]}"
+}
 ```
 
-## Yetki Güncelleme İşlemleri
+### 4. Yetki Güncelleme
+```http
+PUT /api/permission-management/update-permission/5
+Authorization: Bearer {JWT_TOKEN}
+Content-Type: application/json
 
-### Mevcut Yetkiyi Pasif Yapma
-```sql
-UPDATE user_access_rights 
-SET is_active = false 
-WHERE user_id = 15 AND is_active = true;
+{
+  "accessLevelId": 3,
+  "accessScope": "{\"unlimited_access\": true, \"work_area_ids\": \"ALL\"}"
+}
 ```
 
-### Yeni Yetki Ekleme
-```sql
-INSERT INTO user_access_rights (user_id, access_level_id, access_scope, granted_by, is_active)
-VALUES (15, 2, '{"work_area_ids": [1, 2]}', 12, true);
+### 5. Yetki İptali
+```http
+DELETE /api/permission-management/revoke-permission/5
+Authorization: Bearer {JWT_TOKEN}
 ```
 
-## Personel-Şantiye Ataması
-
-```sql
--- Personeli şantiyeye ata
-INSERT INTO personnel_work_areas (personnel_id, work_area_id, position_id, start_date, is_active)
-VALUES (1, 2, 3, CURRENT_DATE, true);
+### 6. Kullanıcı Yetki Geçmişi
+```http
+GET /api/permission-management/user-permissions/12
+Authorization: Bearer {JWT_TOKEN}
 ```
 
-## Yetki Kontrolü Sorguları
+## 🏗️ Yetki Seviyesi Örnekleri
 
-### Kullanıcının Mevcut Yetkilerini Görme
-```sql
-SELECT u.email, al.name as access_level, uar.access_scope
-FROM users u
-JOIN user_access_rights uar ON u.id = uar.user_id
-JOIN access_levels al ON uar.access_level_id = al.id
-WHERE u.id = 15 AND uar.is_active = true;
+### Corporate Seviye (ID: 3)
+```json
+{
+  "userId": 7,
+  "accessLevelId": 3,
+  "accessScope": "{\"unlimited_access\": true, \"work_area_ids\": \"ALL\", \"permissions\": [\"permission:manage\"]}"
+}
 ```
 
-### Şantiye Bazlı Erişim Kontrolü
-```sql
-SELECT wa.name as work_area_name, uar.access_scope
-FROM user_access_rights uar
-JOIN users u ON uar.user_id = u.id
-LEFT JOIN work_areas wa ON wa.id = ANY(
-  CAST(uar.access_scope->>'work_area_ids' AS int[])
-)
-WHERE u.id = 15 AND uar.is_active = true;
+### Bölge Seviyesi (ID: 2)
+```json
+{
+  "userId": 15,
+  "accessLevelId": 2,
+  "accessScope": "{\"work_area_ids\": [1, 2, 3, 4]}"
+}
 ```
 
-## Örnek Senaryolar
+### Şantiye Seviyesi (ID: 1)
+```json
+{
+  "userId": 14,
+  "accessLevelId": 1,
+  "accessScope": "{\"work_area_ids\": [2]}"
+}
+```
 
-### 1. Yeni Şantiye Şefi Atama
-- Email: mehmet.usta@sirket.com
-- Şantiye: İstanbul Merkez (ID: 2)
-- Pozisyon: Şantiye Şefi
+### Departman Seviyesi (ID: 4)
+```json
+{
+  "userId": 13,
+  "accessLevelId": 4,
+  "accessScope": "{\"department\": \"muhasebe\", \"work_area_ids\": [1, 2, 3], \"permissions\": [\"financial:read\", \"financial:write\"]}"
+}
+```
 
-### 2. Bölge Müdürü Atama  
-- Email: ali.yonetici@sirket.com
-- Bölge: İstanbul bölgesi (Şantiye ID: 1,2,3)
-- Pozisyon: Bölge Müdürü
+## 🛡️ Güvenlik Özellikleri
 
-### 3. Muhasebe Uzmanı Atama
-- Email: ayse.muhasebe@sirket.com
-- Departman: Muhasebe
-- Erişim: Tüm şantiyelerin finansal verileri
+✅ **Admin Kontrolü**: Sadece alper.acar@architectaiagency.com admin yetkisi
+✅ **Permission Manager**: Corporate seviye + permission:manage izni gerekli
+✅ **Soft Delete**: Yetki iptali hard delete değil, isActive=false yapıyor
+✅ **Admin Koruması**: Admin yetkisi iptal edilemiyor
+✅ **Audit Trail**: Tüm yetki atamaları grantedBy field'inde kayıtlı
 
-Bu sistem üzerinden tüm yetki atamalarınızı yapabilirsiniz.
+## 📋 Kullanım Adımları
+
+1. **Admin Token Al:**
+```bash
+curl -X POST "/api/backend/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "alper.acar@architectaiagency.com", "password": "admin_password"}'
+```
+
+2. **Kullanıcı Listesi Görüntüle:**
+```bash
+curl -X GET "/api/permission-management/users" \
+  -H "Authorization: Bearer {TOKEN}"
+```
+
+3. **Yetki Ata:**
+```bash
+curl -X POST "/api/permission-management/assign-permission" \
+  -H "Authorization: Bearer {TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"userId": 12, "accessLevelId": 2, "accessScope": "{\"work_area_ids\": [1,2,3]}"}'
+```
+
+## ⚠️ Önemli Notlar
+
+- **JSON Format**: accessScope mutlaka JSON string formatında olmalı
+- **Quotes Escape**: JSON içindeki quotes (\") escape edilmeli
+- **Work Area IDs**: Array formatında [1,2,3] şeklinde
+- **Corporate Access**: unlimited_access: true flag'i ile kontrollü
+- **Admin Email**: Sistem kodunda tanımlı, değiştirilemez
+
+Bu rehberle güvenli yetki atamaları yapabilirsiniz!

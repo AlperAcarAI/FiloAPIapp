@@ -201,6 +201,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const backendApiRoutes = await import("./backend-api-fixed.js");
   app.use("/api/backend", backendApiRoutes.default);
 
+  // Permission Management Route'larını kaydet (Admin yetkisi gerekli)
+  const permissionRoutes = await import("./permission-management-routes.js");
+  app.use("/api/permission-management", permissionRoutes.default);
+
   const httpServer = createServer(app);
   return httpServer;
 }

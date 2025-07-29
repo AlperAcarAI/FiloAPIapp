@@ -103,41 +103,68 @@ function calculateAllowedWorkAreas(userContext: any): number[] | null {
 
 // İzinleri hesapla
 function calculatePermissions(userContext: any): string[] {
-  const { accessLevel, department, positionLevel } = userContext;
+  const { accessLevel, department, positionLevel, accessScope } = userContext;
   
   const basePermissions = ['data:read'];
+  
+  // Access scope'tan özel izinleri kontrol et
+  let scopePermissions: string[] = [];
+  if (accessScope) {
+    try {
+      const scope = typeof accessScope === 'object' ? accessScope : JSON.parse(accessScope);
+      if (scope.permissions && Array.isArray(scope.permissions)) {
+        scopePermissions = scope.permissions;
+      }
+    } catch (error) {
+      console.log('Permission scope parse error:', error);
+    }
+  }
+  
+  let levelPermissions: string[] = [];
   
   switch (accessLevel) {
     case 'WORKSITE':
       if (positionLevel >= 2) { // Şef seviyesi ve üstü
-        return [...basePermissions, 'data:write', 'personnel:read', 'fleet:read', 'fleet:write', 'fuel:write'];
+        levelPermissions = [...basePermissions, 'data:write', 'personnel:read', 'fleet:read', 'fleet:write', 'fuel:write'];
+      } else {
+        levelPermissions = [...basePermissions, 'fleet:read', 'fuel:write'];
       }
-      return [...basePermissions, 'fleet:read', 'fuel:write'];
+      break;
       
     case 'REGIONAL':
-      return [...basePermissions, 'data:write', 'personnel:read', 'personnel:write', 
+      levelPermissions = [...basePermissions, 'data:write', 'personnel:read', 'personnel:write', 
               'fleet:read', 'fleet:write', 'reports:read', 'fuel:read', 'fuel:write'];
+      break;
       
     case 'CORPORATE':
-      return ['*']; // Tüm izinler
+      levelPermissions = ['*']; // Tüm izinler
+      break;
       
     case 'DEPARTMENT':
       switch (department) {
         case 'muhasebe':
-          return [...basePermissions, 'finance:read', 'finance:write', 'reports:read', 'data:write'];
+          levelPermissions = [...basePermissions, 'finance:read', 'finance:write', 'reports:read', 'data:write'];
+          break;
         case 'ik':
-          return [...basePermissions, 'personnel:read', 'personnel:write', 'reports:read', 'data:write'];
+          levelPermissions = [...basePermissions, 'personnel:read', 'personnel:write', 'reports:read', 'data:write'];
+          break;
         case 'satin_alma':
-          return [...basePermissions, 'assets:read', 'assets:write', 'finance:read', 'data:write'];
+          levelPermissions = [...basePermissions, 'assets:read', 'assets:write', 'finance:read', 'data:write'];
+          break;
         case 'operasyon':
-          return [...basePermissions, 'fleet:read', 'fleet:write', 'fuel:read', 'fuel:write', 'data:write'];
+          levelPermissions = [...basePermissions, 'fleet:read', 'fleet:write', 'fuel:read', 'fuel:write', 'data:write'];
+          break;
         default:
-          return basePermissions;
+          levelPermissions = basePermissions;
       }
+      break;
       
     default:
-      return basePermissions;
+      levelPermissions = basePermissions;
   }
+  
+  // Scope permissions ile level permissions'ı birleştir
+  return [...new Set([...levelPermissions, ...scopePermissions])];
 }
 
 // JWT tabanlı hiyerarşik authentication middleware
@@ -255,7 +282,8 @@ export const authenticateJWT = async (
       permissions: calculatePermissions({
         accessLevel,
         department: userData.department,
-        positionLevel: userData.positionLevel || 1
+        positionLevel: userData.positionLevel || 1,
+        accessScope: userData.accessScope
       }),
       department: userData.department,
       positionLevel: userData.positionLevel || 1,
