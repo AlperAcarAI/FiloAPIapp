@@ -49,7 +49,8 @@ const importStatus = new Map<string, {
 // Tüm aktif import işlemlerini durdur
 function stopAllImports() {
   console.log('Tüm bulk import işlemleri durduruluyor...');
-  for (const [importId, status] of importStatus.entries()) {
+  const entries = Array.from(importStatus.entries());
+  for (const [importId, status] of entries) {
     if (status.status === 'processing') {
       status.status = 'cancelled';
       status.endTime = new Date();
