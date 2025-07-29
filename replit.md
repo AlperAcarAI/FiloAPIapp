@@ -12,7 +12,7 @@ This is a full-stack API management system built with a modern tech stack. The a
 - Dual-layer authentication (API Key + JWT Token)
 - Rate limiting and request logging
 - Real-time API monitoring and analytics
-- Demo API Client with key: `ak_demo2025key`
+- Production API Client with key: `ak_prod2025_rwba6dj1sw`
 
 ## User Preferences
 

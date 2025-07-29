@@ -652,7 +652,7 @@ const API_ENDPOINTS: ApiEndpoint[] = [
 
 export default function ApiTest() {
   const [selectedApi, setSelectedApi] = useState<ApiEndpoint | null>(null);
-  const [apiKey, setApiKey] = useState("ak_demo2025key");
+  const [apiKey, setApiKey] = useState("");
   const [requestBody, setRequestBody] = useState("{\n  \"name\": \"Yeni Poliçe Tipi\",\n  \"isActive\": true\n}");
   
   // Filtreleme parametreleri için state'ler
@@ -1039,9 +1039,6 @@ Swagger dokümantasyonundan veya /documents sayfasından test edebilirsiniz.`;
                     placeholder="API anahtarınızı girin"
                     className="font-mono text-sm"
                   />
-                  <p className="text-xs text-slate-500 mt-1">
-                    Demo: ak_demo2025key
-                  </p>
                 </div>
 
                 {/* API Categories */}

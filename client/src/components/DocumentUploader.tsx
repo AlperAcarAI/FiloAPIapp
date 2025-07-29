@@ -158,7 +158,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
       const response = await fetch('/api/secure/documents/upload', {
         method: 'POST',
         headers: {
-          'X-API-Key': 'ak_demo2025key' // Demo key
+          'X-API-Key': '' // API key gerekli
         },
         body: formData
       });

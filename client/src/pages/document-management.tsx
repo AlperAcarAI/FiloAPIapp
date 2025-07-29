@@ -32,7 +32,7 @@ const DocumentManagement = () => {
     queryFn: async () => {
       const response = await fetch('/api/secure/getDocTypes', {
         headers: {
-          'X-API-Key': 'ak_demo2025key'
+          'X-API-Key': '' // API key gerekli
         }
       });
       if (!response.ok) throw new Error('Kategoriler yüklenemedi');
@@ -51,7 +51,7 @@ const DocumentManagement = () => {
       
       const response = await fetch(url.toString(), {
         headers: {
-          'X-API-Key': 'ak_demo2025key'
+          'X-API-Key': '' // API key gerekli
         }
       });
       if (!response.ok) throw new Error('Dokümanlar yüklenemedi');
@@ -93,7 +93,7 @@ const DocumentManagement = () => {
     try {
       const response = await fetch(`/api/secure/documents/download/${documentId}`, {
         headers: {
-          'X-API-Key': 'ak_demo2025key'
+          'X-API-Key': '' // API key gerekli
         }
       });
       

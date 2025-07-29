@@ -56,7 +56,7 @@ export function Header() {
             {/* Status Badge */}
             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 hidden md:flex">
               <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-              75 API Active
+              138+ API Active
             </Badge>
           </div>
 
