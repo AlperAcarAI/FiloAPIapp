@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, Download, FileText, TrendingUp } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Upload, Download, FileText, TrendingUp, Clock, CheckCircle, XCircle, StopCircle, Trash2, Database } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -27,7 +28,104 @@ export default function BulkImport() {
   const [targetTable, setTargetTable] = useState<string>("");
   const [importing, setImporting] = useState(false);
   const [importStatus, setImportStatus] = useState<ImportStatus | null>(null);
+  const [activeImports, setActiveImports] = useState<ImportStatus[]>([]);
   const { toast } = useToast();
+
+  // Aktif import'ları yükle ve takip et
+  useEffect(() => {
+    const loadActiveImports = async () => {
+      try {
+        const savedImports = localStorage.getItem('activeImports');
+        if (savedImports) {
+          const imports = JSON.parse(savedImports);
+          const processingImports = imports.filter((imp: ImportStatus) => imp.status === 'processing');
+          setActiveImports(processingImports);
+          
+          processingImports.forEach((imp: ImportStatus) => {
+            pollImportStatus(imp.id);
+          });
+        }
+      } catch (error) {
+        console.log('Active imports yüklenemedi');
+      }
+    };
+    
+    loadActiveImports();
+  }, []);
+
+  // Import durumunu sürekli kontrol et
+  const pollImportStatus = async (importId: string) => {
+    const checkStatus = async () => {
+      try {
+        const response = await fetch(`/api/secure/bulk-import/status/${importId}`, {
+          headers: { 'X-API-Key': 'ak_test123key' }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          const status: ImportStatus = result.data;
+          
+          setActiveImports(prev => {
+            const updated = prev.map(imp => imp.id === importId ? status : imp);
+            const filtered = updated.filter(imp => imp.status === 'processing');
+            localStorage.setItem('activeImports', JSON.stringify(filtered));
+            return filtered;
+          });
+          
+          if (status.status === 'processing') {
+            setTimeout(checkStatus, 3000);
+          } else {
+            if (status.status === 'completed') {
+              toast({
+                title: "Import Tamamlandı",
+                description: `${status.processedRows} satır başarıyla işlendi`,
+              });
+            } else if (status.status === 'failed') {
+              toast({
+                title: "Import Başarısız", 
+                description: "Import işlemi hatayla sonuçlandı",
+                variant: "destructive",
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.log('Status kontrol hatası:', error);
+      }
+    };
+    
+    checkStatus();
+  };
+
+  // Import'u durdurmak için
+  const stopImport = async (importId: string) => {
+    try {
+      const response = await fetch(`/api/secure/bulk-import/stop/${importId}`, {
+        method: 'POST',
+        headers: { 'X-API-Key': 'ak_test123key' }
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Import Durduruldu",
+          description: "Import işlemi başarıyla durduruldu",
+        });
+        
+        // Active imports'dan kaldır
+        setActiveImports(prev => {
+          const filtered = prev.filter(imp => imp.id !== importId);
+          localStorage.setItem('activeImports', JSON.stringify(filtered));
+          return filtered;
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "Import durdurulamadı",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -124,6 +222,25 @@ export default function BulkImport() {
           description: `${result.data.totalRows} satır işlenecek`,
         });
 
+        // Yeni import'u active imports'a ekle
+        const newImport: ImportStatus = {
+          id: importId,
+          status: 'processing',
+          totalRows: result.data.totalRows,
+          processedRows: 0,
+          progress: 0,
+          elapsedTime: 0,
+          estimatedTimeRemaining: 0,
+          speed: 0,
+          errors: []
+        };
+        
+        setActiveImports(prev => {
+          const updated = [...prev, newImport];
+          localStorage.setItem('activeImports', JSON.stringify(updated));
+          return updated;
+        });
+
         // Status polling başlat
         pollImportStatus(importId);
       }
@@ -138,47 +255,6 @@ export default function BulkImport() {
     }
   };
 
-  const pollImportStatus = async (importId: string) => {
-    const poll = async () => {
-      try {
-        const response = await fetch(`/api/secure/bulk-import/status/${importId}`, {
-          headers: {
-            'X-API-Key': 'ak_test123key'
-          }
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          setImportStatus(result.data);
-
-          if (result.data.status === 'completed') {
-            setImporting(false);
-            toast({
-              title: "Import Tamamlandı",
-              description: `${result.data.totalRows} satır başarıyla işlendi`,
-            });
-          } else if (result.data.status === 'failed') {
-            setImporting(false);
-            toast({
-              title: "Import Başarısız",
-              description: "Import işlemi sırasında hata oluştu",
-              variant: "destructive",
-            });
-          } else {
-            // Devam eden import - 2 saniye sonra tekrar kontrol et
-            setTimeout(poll, 2000);
-          }
-        }
-      } catch (error) {
-        console.error('Status poll hatası:', error);
-        setImporting(false);
-      }
-    };
-
-    poll();
-  };
-
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="mb-6">
@@ -189,6 +265,85 @@ export default function BulkImport() {
       </div>
 
       <div className="grid gap-6">
+        {/* Aktif Import'lar Dashboard */}
+        {activeImports.length > 0 && (
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-700">
+                <Database className="h-5 w-5" />
+                Aktif Import İşlemleri ({activeImports.length})
+              </CardTitle>
+              <CardDescription>
+                Şu anda çalışan toplu veri aktarım işlemleri
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {activeImports.map((imp) => (
+                <div key={imp.id} className="border rounded-lg p-4 bg-white">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-blue-100 text-blue-700">
+                        <Clock className="h-3 w-3 mr-1" />
+                        İşleniyor
+                      </Badge>
+                      <span className="text-sm font-medium">
+                        Import ID: {imp.id.split('_').pop()}
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => stopImport(imp.id)}
+                      className="text-red-600 hover:bg-red-50"
+                    >
+                      <StopCircle className="h-4 w-4 mr-1" />
+                      Durdur
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>İlerleme: {imp.processedRows} / {imp.totalRows}</span>
+                        <span className="font-medium">{imp.progress.toFixed(1)}%</span>
+                      </div>
+                      <Progress value={imp.progress} className="h-2" />
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Hız:</span>
+                        <div className="font-medium">{imp.speed} satır/sn</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Geçen Süre:</span>
+                        <div className="font-medium">{Math.floor(imp.elapsedTime / 1000)}s</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Kalan Süre:</span>
+                        <div className="font-medium">
+                          {imp.estimatedTimeRemaining > 0 
+                            ? `${Math.floor(imp.estimatedTimeRemaining / 1000)}s`
+                            : 'Hesaplanıyor...'
+                          }
+                        </div>
+                      </div>
+                    </div>
+
+                    {imp.errors.length > 0 && (
+                      <Alert className="border-amber-200 bg-amber-50">
+                        <AlertDescription className="text-sm">
+                          <strong>{imp.errors.length} uyarı:</strong> {imp.errors.slice(0, 2).join(', ')}
+                          {imp.errors.length > 2 && ` (+${imp.errors.length - 2} daha)`}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
         {/* Template İndirme */}
         <Card>
           <CardHeader>
