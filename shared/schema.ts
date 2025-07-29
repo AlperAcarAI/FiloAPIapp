@@ -527,6 +527,62 @@ export const assetsMaintenance = pgTable("assets_maintenance", {
   amountCheck: check("amount_cents_check", sql`amount_cents >= 0`),
 }));
 
+// Yakıt Yönetimi Tablosu - Fuel Records
+export const fuelRecords = pgTable("fuel_records", {
+  id: serial("id").primaryKey(),
+  assetId: integer("asset_id").notNull().references(() => assets.id),
+  recordDate: date("record_date").notNull(),
+  currentKilometers: integer("current_kilometers").notNull(),
+  fuelAmount: decimal("fuel_amount", { precision: 8, scale: 2 }).notNull(), // litre cinsinden
+  fuelCostCents: integer("fuel_cost_cents").notNull(), // kuruş cinsinden
+  gasStationName: varchar("gas_station_name", { length: 100 }),
+  driverId: integer("driver_id").references(() => personnel.id),
+  notes: text("notes"),
+  receiptNumber: varchar("receipt_number", { length: 50 }),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => personnel.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => personnel.id),
+}, (table) => ({
+  assetDateIdx: index("idx_fuel_records_asset_date").on(table.assetId, table.recordDate),
+  kilometersIdx: index("idx_fuel_records_kilometers").on(table.currentKilometers),
+  costCheck: check("fuel_cost_cents_check", sql`fuel_cost_cents >= 0`),
+  kilometersCheck: check("current_kilometers_check", sql`current_kilometers >= 0`),
+  fuelAmountCheck: check("fuel_amount_check", sql`fuel_amount > 0`),
+}));
+
+// Fuel Records Zod schemas
+export const insertFuelRecordSchema = createInsertSchema(fuelRecords).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+}).extend({
+  currentKilometers: z.number().int().min(0),
+  fuelAmount: z.number().positive(),
+  fuelCostCents: z.number().int().min(0),
+  recordDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır"),
+});
+
+export const updateFuelRecordSchema = createInsertSchema(fuelRecords).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+}).extend({
+  currentKilometers: z.number().int().min(0).optional(),
+  fuelAmount: z.number().positive().optional(),
+  fuelCostCents: z.number().int().min(0).optional(),
+  recordDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır").optional(),
+}).partial();
+
+export type InsertFuelRecord = z.infer<typeof insertFuelRecordSchema>;
+export type UpdateFuelRecord = z.infer<typeof updateFuelRecordSchema>;
+export type FuelRecord = typeof fuelRecords.$inferSelect;
+
 export const rentalAgreements = pgTable("rental_agreements", {
   id: serial("id").primaryKey(),
   agreementNumber: varchar("agreement_number", { length: 50 }).notNull().unique(),

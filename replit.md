@@ -524,3 +524,35 @@ Tüm GET endpoint'lere gelişmiş filtreleme metodu eklendi:
 - Toplam sayı (totalCount) ayrı sorgu ile hesaplanıyor
 - Conditions array ile dinamik WHERE clause'lar
 - Index kullanımı ile hızlı arama
+
+## ✅ Yakıt Yönetimi Sistemi Eklendi (27 Ocak 2025)
+
+**Fuel Records Tablosu Başarıyla Oluşturuldu:**
+- Diğer tablolarla tutarlı isimlendirme: `fuel_records` tablosu ✅
+- Assets tablosuna referans ile araç bağlantısı ✅
+- Kapsamlı veri alanları ve validasyonlar ✅
+
+**Tablo Yapısı:**
+- `asset_id` - Araç referansı (assets tablosuna foreign key)
+- `record_date` - Yakıt alım tarihi
+- `current_kilometers` - Güncel kilometre bilgisi
+- `fuel_amount` - Yakıt miktarı (litre, decimal)
+- `fuel_cost_cents` - Yakıt maliyeti (kuruş cinsinden)
+- `gas_station_name` - Benzin istasyonu adı
+- `driver_id` - Sürücü bilgisi (personnel referansı)
+- `notes` - Notlar
+- `receipt_number` - Fiş numarası
+- Audit alanları: `created_at`, `created_by`, `updated_at`, `updated_by`
+- `is_active` - Soft delete için
+
+**Validasyonlar ve Kısıtlamalar:**
+- Yakıt maliyeti sıfırdan büyük olmalı (fuel_cost_cents >= 0)
+- Kilometre negatif olamaz (current_kilometers >= 0) 
+- Yakıt miktarı pozitif olmalı (fuel_amount > 0)
+- Performance indeksleri: asset_id + record_date, current_kilometers
+
+**Test Verileri:**
+- 3 örnek yakıt kaydı eklendi (34XYZ789 plakalı araç için)
+- Join'li sorgular başarıyla çalışıyor
+- Shell, BP, Petrol Ofisi istasyonlarından örnek alımlar
+- Kuruş cinsinden maliyet hesaplaması (42.50 TL = 4250 kuruş)
