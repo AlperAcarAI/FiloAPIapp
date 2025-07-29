@@ -653,14 +653,8 @@ router.get('/work-areas',
     try {
       const { allowedWorkAreaIds, currentWorkAreaId } = req.userContext!;
 
-      // Simple work areas query without problematic joins
-      const conditions = [eq(workAreas.isActive, true)];
-      
-      if (allowedWorkAreaIds !== null) {
-        conditions.push(inArray(workAreas.id, allowedWorkAreaIds));
-      }
-
-      const workAreasList = await db.select({
+      // Simplified work areas query
+      let baseQuery = db.select({
         id: workAreas.id,
         name: workAreas.name,
         address: workAreas.address,
@@ -670,10 +664,20 @@ router.get('/work-areas',
         managerId: workAreas.managerId,
         personnelCount: sql<number>`0`,
         assetsCount: sql<number>`0`,
-        isCurrentWorkArea: sql<boolean>`CASE WHEN ${workAreas.id} = ${currentWorkAreaId} THEN true ELSE false END`
+        isCurrentWorkArea: sql<boolean>`false`
       })
       .from(workAreas)
-      .where(and(...conditions));
+      .where(eq(workAreas.isActive, true));
+
+      // Apply hierarchical filtering if needed
+      if (allowedWorkAreaIds !== null && allowedWorkAreaIds.length > 0) {
+        baseQuery = baseQuery.where(and(
+          eq(workAreas.isActive, true),
+          inArray(workAreas.id, allowedWorkAreaIds)
+        ));
+      }
+
+      const workAreasList = await baseQuery;
 
       res.json({
         success: true,

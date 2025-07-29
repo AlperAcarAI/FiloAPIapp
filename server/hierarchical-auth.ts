@@ -49,9 +49,28 @@ export const generateJWTToken = (userContext: UserContext) => {
 function calculateAllowedWorkAreas(userContext: any): number[] | null {
   const { accessLevel, accessScope, currentWorkAreaId } = userContext;
   
-  // Corporate ve Department seviyesi için direkt null döndür (tüm erişim)
-  if (accessLevel === 'CORPORATE' || accessLevel === 'DEPARTMENT') {
-    return null;
+  // Corporate seviyesi için özel işaretleyici
+  if (accessLevel === 'CORPORATE') {
+    // Corporate seviye: Açık tüm erişim yetkisi
+    return null; // Sadece CORPORATE için null, ama bu kontrollü olacak
+  }
+  
+  if (accessLevel === 'DEPARTMENT') {
+    // Department seviye: accessScope'tan work_area_ids al
+    try {
+      let scope = {};
+      if (accessScope) {
+        if (typeof accessScope === 'object') {
+          scope = accessScope;
+        } else if (typeof accessScope === 'string') {
+          scope = JSON.parse(accessScope);
+        }
+      }
+      return (scope as any)?.work_area_ids || [];
+    } catch (error) {
+      console.log('Department access scope parse error:', error);
+      return [];
+    }
   }
   
   // WORKSITE seviyesi için sadece kendi şantiyesi
@@ -72,7 +91,7 @@ function calculateAllowedWorkAreas(userContext: any): number[] | null {
         }
       }
       
-      return scope?.work_area_ids || [];
+      return (scope as any)?.work_area_ids || [];
     } catch (error) {
       console.log('Regional access scope parse warning:', error);
       return [];
@@ -200,6 +219,30 @@ export const authenticateJWT = async (
     const accessLevel = userData.accessLevel || 'WORKSITE';
     const hierarchyLevel = userData.hierarchyLevel || 1;
     
+    // Access scope kontrolü - Corporate için unlimited_access kontrolü
+    let allowedWorkAreaIds: number[] | null = null;
+    
+    if (accessLevel === 'CORPORATE') {
+      // Corporate için unlimited_access flag'i kontrol et
+      try {
+        const scope = userData.accessScope as any;
+        if (scope && scope.unlimited_access === true) {
+          allowedWorkAreaIds = null; // Tüm erişim
+        } else {
+          allowedWorkAreaIds = []; // Hiç erişim yok
+        }
+      } catch (error) {
+        allowedWorkAreaIds = []; // Default: erişim yok
+      }
+    } else {
+      // Diğer seviyeler için hesapla
+      allowedWorkAreaIds = calculateAllowedWorkAreas({
+        accessLevel,
+        accessScope: userData.accessScope,
+        currentWorkAreaId: userData.currentWorkAreaId
+      });
+    }
+
     // User context oluştur
     const userContext: UserContext = {
       userId: userData.userId,
@@ -208,11 +251,7 @@ export const authenticateJWT = async (
       personnelSurname: userData.personnelSurname,
       accessLevel: accessLevel,
       hierarchyLevel: hierarchyLevel,
-      allowedWorkAreaIds: calculateAllowedWorkAreas({
-        accessLevel,
-        accessScope: userData.accessScope,
-        currentWorkAreaId: userData.currentWorkAreaId
-      }),
+      allowedWorkAreaIds: allowedWorkAreaIds,
       permissions: calculatePermissions({
         accessLevel,
         department: userData.department,
