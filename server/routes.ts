@@ -14,6 +14,7 @@ import companyRoutes from "./company-routes.js";
 import assetRoutes from "./asset-routes.js";
 import apiAnalyticsRoutes from "./api-analytics-routes.js";
 import { apiAnalyticsMiddleware } from "./api-analytics-middleware.js";
+import fuelRoutes from "./fuel-routes-simple.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // API Analytics middleware - Geçici olarak devre dışı
@@ -188,6 +189,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Financial Route'larını kaydet
   const financialRoutes = await import("./financial-routes-fixed.js");
   app.use("/api/secure/financial", financialRoutes.default);
+
+  // Fuel Management Route'larını kaydet
+  app.use('/api/secure', fuelRoutes);
 
   const httpServer = createServer(app);
   return httpServer;
