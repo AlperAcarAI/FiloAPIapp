@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/home";
 import ApiDetails from "@/pages/api-details";
 import VarlikTest from "@/pages/varlik-test";
-import ApiTest from "@/pages/api-test";
+import ApiCenter from "@/pages/api-center";
 import DocumentManagement from "@/pages/document-management";
 import Dashboard from "@/pages/Dashboard";
 import Analytics from "@/pages/Analytics";
@@ -20,7 +20,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/api/:id" component={ApiDetails} />
       <Route path="/test" component={VarlikTest} />
-      <Route path="/api-test" component={ApiTest} />
+      <Route path="/api-center" component={ApiCenter} />
       <Route path="/documents" component={DocumentManagement} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/analytics" component={Analytics} />

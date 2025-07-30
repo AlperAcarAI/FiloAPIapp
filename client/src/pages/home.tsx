@@ -69,16 +69,16 @@ export default function Home() {
               <div className="flex items-center gap-3">
                 <TestTube className="h-8 w-8 text-blue-600" />
                 <div>
-                  <h3 className="text-lg font-semibold text-blue-800">API Test Ortamı</h3>
+                  <h3 className="text-lg font-semibold text-blue-800">API Center</h3>
                   <p className="text-blue-600">
-                    138+ güvenli API endpoint'i test edebilirsiniz
+                    138+ API'yi test edin ve dokümantasyonu inceleyin
                   </p>
                 </div>
               </div>
-              <Link to="/api-test">
+              <Link to="/api-center">
                 <Button variant="outline" className="bg-white hover:bg-blue-100 text-blue-700 border-blue-300">
                   <TestTube className="h-4 w-4 mr-2" />
-                  API Test Sayfası
+                  API Center
                 </Button>
               </Link>
             </div>
@@ -205,7 +205,7 @@ export default function Home() {
                   </p>
                 </div>
               </Button>
-              <Link to="/api-test">
+              <Link to="/api-center">
                 <Button
                   variant="outline"
                   className="flex items-center space-x-3 p-4 bg-emerald-50 hover:bg-emerald-100 h-auto justify-start w-full"
@@ -214,9 +214,9 @@ export default function Home() {
                     <Activity className="text-white" size={20} />
                   </div>
                   <div className="text-left">
-                    <h4 className="font-medium text-slate-800">API Test</h4>
+                    <h4 className="font-medium text-slate-800">API Center</h4>
                     <p className="text-sm text-slate-600">
-                      Güvenli API'leri test et
+                      API test ve dokümantasyon merkezi
                     </p>
                   </div>
                 </Button>

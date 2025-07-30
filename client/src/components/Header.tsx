@@ -20,7 +20,7 @@ export function Header() {
   const navigation = [
     { name: "Ana Sayfa", href: "/", icon: Home },
     { name: "Login", href: "/login", icon: Key },
-    { name: "API Test", href: "/api-test", icon: TestTube },
+    { name: "API Center", href: "/api-center", icon: TestTube },
     { name: "Dashboard", href: "/dashboard", icon: Key },
     { name: "Analytics", href: "/analytics", icon: BarChart3 },
     { name: "Dokümanlar", href: "/documents", icon: FileText },
