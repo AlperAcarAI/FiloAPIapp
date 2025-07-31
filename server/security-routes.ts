@@ -293,36 +293,30 @@ export const registerSecurityRoutes = (app: Express) => {
 
       const offset = (Number(page) - 1) * Number(limit);
       
-      let query = db
+      // Build where conditions
+      let whereConditions = [eq(securityEvents.userId, userId)];
+      
+      if (severity) {
+        whereConditions.push(eq(securityEvents.severity, severity as string));
+      }
+      
+      if (eventType) {
+        whereConditions.push(eq(securityEvents.eventType, eventType as string));
+      }
+
+      const events = await db
         .select()
         .from(securityEvents)
-        .where(eq(securityEvents.userId, userId));
-
-      // Apply filters
-      if (severity) {
-        query = query.where(and(
-          eq(securityEvents.userId, userId),
-          eq(securityEvents.severity, severity as string)
-        ));
-      }
-
-      if (eventType) {
-        query = query.where(and(
-          eq(securityEvents.userId, userId),
-          eq(securityEvents.eventType, eventType as string)
-        ));
-      }
-
-      const events = await query
+        .where(whereConditions.length > 1 ? and(...whereConditions) : whereConditions[0])
         .orderBy(desc(securityEvents.createdAt))
         .limit(Number(limit))
         .offset(offset);
 
-      // Get total count
+      // Get total count  
       const [{ totalCount }] = await db
         .select({ totalCount: count() })
         .from(securityEvents)
-        .where(eq(securityEvents.userId, userId));
+        .where(whereConditions.length > 1 ? and(...whereConditions) : whereConditions[0]);
 
       res.json({
         success: true,

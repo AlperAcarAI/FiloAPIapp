@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { db } from './db';
-import { loginAttempts, rateLimitBuckets, securityEvents, userSecuritySettings } from '@shared/schema';
+import { loginAttempts, securityEvents, userSecuritySettings } from '@shared/schema';
 import { eq, and, gte, lt, desc, sql } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
@@ -37,72 +37,28 @@ export const rateLimitMiddleware = (bucketType: keyof typeof RATE_LIMITS) => {
       const windowStart = new Date();
       windowStart.setMinutes(windowStart.getMinutes() - config.windowMinutes);
       
-      // Check existing bucket
-      const [existingBucket] = await db
-        .select()
-        .from(rateLimitBuckets)
-        .where(and(
-          eq(rateLimitBuckets.identifier, identifier),
-          eq(rateLimitBuckets.bucketType, bucketType)
-        ));
-
+      // Simplified rate limiting (memory-based for now)
       let requestCount = 1;
       let isBlocked = false;
 
-      if (existingBucket) {
-        // Check if window has expired
-        if (new Date() > existingBucket.windowEnd) {
-          // Reset bucket
-          const newWindowEnd = new Date();
-          newWindowEnd.setMinutes(newWindowEnd.getMinutes() + config.windowMinutes);
-          
-          await db
-            .update(rateLimitBuckets)
-            .set({
-              requestCount: 1,
-              windowStart: new Date(),
-              windowEnd: newWindowEnd,
-              isBlocked: false,
-              blockedUntil: null,
-            })
-            .where(eq(rateLimitBuckets.id, existingBucket.id));
-          
-          requestCount = 1;
-        } else {
-          // Increment counter
-          requestCount = existingBucket.requestCount + 1;
-          isBlocked = requestCount > config.maxAttempts;
-          
-          let blockedUntil = null;
-          if (isBlocked) {
-            blockedUntil = new Date();
-            blockedUntil.setMinutes(blockedUntil.getMinutes() + config.windowMinutes);
-          }
-          
-          await db
-            .update(rateLimitBuckets)
-            .set({
-              requestCount,
-              isBlocked,
-              blockedUntil,
-            })
-            .where(eq(rateLimitBuckets.id, existingBucket.id));
-        }
-      } else {
-        // Create new bucket
-        const windowEnd = new Date();
-        windowEnd.setMinutes(windowEnd.getMinutes() + config.windowMinutes);
-        
-        await db
-          .insert(rateLimitBuckets)
-          .values({
-            identifier,
-            bucketType,
-            requestCount: 1,
-            windowStart: new Date(),
-            windowEnd,
-          });
+      // Basic rate limiting logic without database for now
+      // In production this would be stored in database or Redis
+      const rateLimitKey = `${identifier}_${bucketType}`;
+      
+      // Simple memory-based rate limiting (not persistent across restarts)
+      global.rateLimitMemory = global.rateLimitMemory || {};
+      const bucket = global.rateLimitMemory[rateLimitKey] || { count: 0, resetTime: Date.now() + (config.windowMinutes * 60 * 1000) };
+      
+      if (Date.now() > bucket.resetTime) {
+        bucket.count = 0;
+        bucket.resetTime = Date.now() + (config.windowMinutes * 60 * 1000);
       }
+      
+      bucket.count++;
+      requestCount = bucket.count;
+      isBlocked = requestCount > config.maxAttempts;
+      
+      global.rateLimitMemory[rateLimitKey] = bucket;
 
       // Set security info
       req.security = {

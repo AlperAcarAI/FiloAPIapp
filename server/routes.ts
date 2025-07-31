@@ -16,20 +16,52 @@ import apiAnalyticsRoutes from "./api-analytics-routes.js";
 import { apiAnalyticsMiddleware } from "./api-analytics-middleware.js";
 import fuelRoutes from "./fuel-routes.js";
 import bulkImportRoutes from "./bulk-import-routes.js";
+import { 
+  rateLimitMiddleware, 
+  trackLoginAttempt, 
+  isAccountLocked, 
+  securityHeadersMiddleware,
+  deviceFingerprintMiddleware,
+  logSecurityEvent,
+  type SecurityRequest 
+} from "./security-middleware.js";
+import { registerSecurityRoutes } from "./security-routes.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Security headers - tüm isteklere uygula
+  app.use(securityHeadersMiddleware);
+  
+  // Device fingerprinting middleware
+  app.use(deviceFingerprintMiddleware);
+
   // API Analytics middleware - Geçici olarak devre dışı
 
   // API route'larını kaydet
   app.use("/api/documents", documentRoutes);
   app.use("/api/trip-rentals", await import("./trip-rental-routes.js").then(m => m.default));
 
-  // Kullanıcı kimlik doğrulama - Refresh Token sistemi ile
-  app.post("/api/auth/login", async (req, res) => {
+  // Kullanıcı kimlik doğrulama - Refresh Token sistemi ile (Rate limiting + Security tracking)
+  app.post("/api/auth/login", rateLimitMiddleware('login'), async (req: SecurityRequest, res) => {
     try {
       const { email, password } = req.body;
-      const user = await storage.authenticateUser(email, password);
-      if (!user) {
+      
+      // Check if account is locked first  
+      const user = await storage.getUserByUsername(email);
+      if (user) {
+        const locked = await isAccountLocked(user.id);
+        if (locked) {
+          await trackLoginAttempt(email, false, req.ip || 'unknown', req.get('User-Agent'), 'account_locked');
+          return res.status(423).json({
+            success: false,
+            error: "ACCOUNT_LOCKED",
+            message: "Hesabınız güvenlik nedeniyle kilitlenmiştir. Lütfen daha sonra tekrar deneyin."
+          });
+        }
+      }
+      
+      const authenticatedUser = await storage.authenticateUser(email, password);
+      if (!authenticatedUser) {
+        await trackLoginAttempt(email, false, req.ip || 'unknown', req.get('User-Agent'), 'invalid_password');
         return res.status(401).json({
           success: false,
           error: "INVALID_CREDENTIALS",
@@ -41,9 +73,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ipAddress = req.ip || req.connection.remoteAddress;
       const userAgent = req.get('User-Agent');
       
+      // Successful login tracking
+      await trackLoginAttempt(email, true, req.ip || 'unknown', req.get('User-Agent'));
+      
+      // Log security event
+      await logSecurityEvent('login', {
+        userId: authenticatedUser.id,
+        severity: 'low',
+        description: 'Successful user login',
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+        deviceFingerprint: req.security?.deviceFingerprint,
+      });
+      
       // Token çifti oluştur (access + refresh)
       const tokens = await generateTokenPair(
-        { id: user.id, username: user.email },
+        { id: authenticatedUser.id, username: authenticatedUser.email },
         ipAddress,
         userAgent
       );
@@ -52,7 +97,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         message: "Giriş başarılı",
         data: { 
-          user,
+          user: authenticatedUser,
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
           expiresIn: tokens.expiresIn,
@@ -62,6 +107,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Giriş hatası:", error);
+      await logSecurityEvent('login_error', {
+        severity: 'medium',
+        description: `Login error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+      });
       res.status(401).json({
         success: false,
         error: "LOGIN_ERROR",
@@ -298,6 +349,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Permission Management Route'larını kaydet (Admin yetkisi gerekli)
   const permissionRoutes = await import("./permission-management-routes.js");
   app.use("/api/permission-management", permissionRoutes.default);
+
+  // Security Route'larını kaydet (Advanced Security System)
+  registerSecurityRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;
