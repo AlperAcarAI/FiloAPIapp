@@ -54,6 +54,7 @@ Preferred communication style: Simple, everyday language.
 - **Test Data Tables**: Realistic fleet management data (araclar, soforler, yolculuklar)
 - **Company Types System**: company_types (müşteri, taşeron, tedarikçi) with many-to-many relationships via company_type_matches
 - **Personnel Company Relations**: personnel_company_matches tracking employment history with positions (personnel_id, company_id, position_id, start_date, end_date, is_active)
+- **Unified Documents System**: Polymorphic documents table supporting multiple entity types (personnel, asset, company, work_area) with comprehensive search capabilities
 - **Timestamps**: Automatic creation and update tracking
 - **Validation**: Zod schemas for runtime type checking
 

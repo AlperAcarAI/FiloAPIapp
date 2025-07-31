@@ -538,6 +538,33 @@ export const personnelDocuments = pgTable("personnel_documents", {
   fileHash: varchar("file_hash", { length: 64 }), // SHA256 for duplicate detection
 });
 
+// Unified Documents Table - Polimorfik yapı
+export const documents = pgTable("documents", {
+  id: serial("id").primaryKey(),
+  entityType: varchar("entity_type", { length: 20 }).notNull(), // 'personnel', 'asset', 'company', 'work_area'
+  entityId: integer("entity_id").notNull(),
+  docTypeId: integer("doc_type_id").notNull().references(() => docSubTypes.id),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  filePath: text("file_path").notNull(),
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  fileSize: integer("file_size"), // bytes
+  mimeType: varchar("mime_type", { length: 100 }),
+  fileHash: varchar("file_hash", { length: 64 }), // SHA256 for duplicate detection
+  uploadedBy: integer("uploaded_by").notNull().references(() => users.id),
+  uploadDate: timestamp("upload_date").notNull().defaultNow(),
+  validityStartDate: date("validity_start_date"),
+  validityEndDate: date("validity_end_date"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  entityIdx: index("idx_documents_entity").on(table.entityType, table.entityId),
+  fileHashIdx: index("idx_documents_file_hash").on(table.fileHash),
+  uploadDateIdx: index("idx_documents_upload_date").on(table.uploadDate),
+  entityTypeCheck: check("entity_type_check", sql`entity_type IN ('personnel', 'asset', 'company', 'work_area')`),
+}));
+
 export const assetsPolicies = pgTable("assets_policies", {
   id: serial("id").primaryKey(),
   assetId: integer("asset_id").notNull().references(() => assets.id),
@@ -858,6 +885,18 @@ export const personnelRelations = relations(personnel, ({ one, many }) => ({
   personnelDocuments: many(personnelDocuments),
 }));
 
+// Documents Relations
+export const documentsRelations = relations(documents, ({ one }) => ({
+  docSubType: one(docSubTypes, {
+    fields: [documents.docTypeId],
+    references: [docSubTypes.id],
+  }),
+  uploadedByUser: one(users, {
+    fields: [documents.uploadedBy],
+    references: [users.id],
+  }),
+}));
+
 export const usersRelations = relations(users, ({ one, many }) => ({
   company: one(companies, {
     fields: [users.companyId],
@@ -979,6 +1018,20 @@ export const insertPersonnelCompanyMatchSchema = createInsertSchema(personnelCom
 
 export const updatePersonnelCompanyMatchSchema = insertPersonnelCompanyMatchSchema.partial();
 
+// Documents Schemas
+export const insertDocumentSchema = createInsertSchema(documents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  entityType: z.enum(['personnel', 'asset', 'company', 'work_area']),
+  title: z.string().min(1).max(255),
+  fileName: z.string().min(1).max(255),
+  filePath: z.string().min(1),
+});
+
+export const updateDocumentSchema = insertDocumentSchema.partial();
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
@@ -1032,6 +1085,11 @@ export type UpdatePersonnelWorkArea = z.infer<typeof updatePersonnelWorkAreaSche
 export type PersonnelCompanyMatch = typeof personnelCompanyMatches.$inferSelect;
 export type InsertPersonnelCompanyMatch = z.infer<typeof insertPersonnelCompanyMatchSchema>;
 export type UpdatePersonnelCompanyMatch = z.infer<typeof updatePersonnelCompanyMatchSchema>;
+
+// Documents Types
+export type Document = typeof documents.$inferSelect;
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+export type UpdateDocument = z.infer<typeof updateDocumentSchema>;
 
 export type PolicyType = typeof policyTypes.$inferSelect;
 export type DamageType = typeof damageTypes.$inferSelect;
