@@ -538,6 +538,34 @@ export const personnelDocuments = pgTable("personnel_documents", {
   fileHash: varchar("file_hash", { length: 64 }), // SHA256 for duplicate detection
 });
 
+// Trip Rentals Table - Sefer bazlı kiralama
+export const tripRentals = pgTable("trip_rentals", {
+  id: serial("id").primaryKey(),
+  assetId: integer("asset_id").notNull().references(() => assets.id),
+  rentalCompanyId: integer("rental_company_id").notNull().references(() => companies.id),
+  driverId: integer("driver_id").references(() => personnel.id),
+  tripDate: date("trip_date").notNull(),
+  tripStartTime: varchar("trip_start_time", { length: 5 }), // HH:MM format
+  tripEndTime: varchar("trip_end_time", { length: 5 }), // HH:MM format
+  fromLocation: varchar("from_location", { length: 255 }).notNull(),
+  toLocation: varchar("to_location", { length: 255 }).notNull(),
+  routeDescription: text("route_description"),
+  distanceKm: decimal("distance_km", { precision: 10, scale: 2 }),
+  pricePerTripCents: integer("price_per_trip_cents").notNull(),
+  additionalCostsCents: integer("additional_costs_cents").default(0),
+  totalAmountCents: integer("total_amount_cents").notNull(),
+  tripStatus: varchar("trip_status", { length: 20 }).notNull().default('planned'), // planned, ongoing, completed, cancelled
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  assetDateIdx: index("idx_trip_rentals_asset_date").on(table.assetId, table.tripDate),
+  companyDateIdx: index("idx_trip_rentals_company_date").on(table.rentalCompanyId, table.tripDate),
+  statusIdx: index("idx_trip_rentals_status").on(table.tripStatus),
+}));
+
 // Unified Documents Table - Polimorfik yapı
 export const documents = pgTable("documents", {
   id: serial("id").primaryKey(),
@@ -897,6 +925,32 @@ export const documentsRelations = relations(documents, ({ one }) => ({
   }),
 }));
 
+// Trip Rentals Relations
+export const tripRentalsRelations = relations(tripRentals, ({ one }) => ({
+  asset: one(assets, {
+    fields: [tripRentals.assetId],
+    references: [assets.id],
+  }),
+  rentalCompany: one(companies, {
+    fields: [tripRentals.rentalCompanyId],
+    references: [companies.id],
+  }),
+  driver: one(personnel, {
+    fields: [tripRentals.driverId],
+    references: [personnel.id],
+  }),
+  createdByUser: one(users, {
+    fields: [tripRentals.createdBy],
+    references: [users.id],
+    relationName: "tripRentalCreator",
+  }),
+  updatedByUser: one(users, {
+    fields: [tripRentals.updatedBy],
+    references: [users.id],
+    relationName: "tripRentalUpdater",
+  }),
+}));
+
 export const usersRelations = relations(users, ({ one, many }) => ({
   company: one(companies, {
     fields: [users.companyId],
@@ -1032,6 +1086,24 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({
 
 export const updateDocumentSchema = insertDocumentSchema.partial();
 
+// Trip Rentals Schemas
+export const insertTripRentalSchema = createInsertSchema(tripRentals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  tripDate: z.string(), // YYYY-MM-DD format
+  tripStartTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(), // HH:MM format
+  tripEndTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(), // HH:MM format
+  tripStatus: z.enum(['planned', 'ongoing', 'completed', 'cancelled']).default('planned'),
+  pricePerTripCents: z.number().int().min(0),
+  additionalCostsCents: z.number().int().min(0).default(0),
+  totalAmountCents: z.number().int().min(0),
+  distanceKm: z.string().optional(), // decimal as string
+});
+
+export const updateTripRentalSchema = insertTripRentalSchema.partial();
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
@@ -1090,6 +1162,11 @@ export type UpdatePersonnelCompanyMatch = z.infer<typeof updatePersonnelCompanyM
 export type Document = typeof documents.$inferSelect;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type UpdateDocument = z.infer<typeof updateDocumentSchema>;
+
+// Trip Rentals Types
+export type TripRental = typeof tripRentals.$inferSelect;
+export type InsertTripRental = z.infer<typeof insertTripRentalSchema>;
+export type UpdateTripRental = z.infer<typeof updateTripRentalSchema>;
 
 export type PolicyType = typeof policyTypes.$inferSelect;
 export type DamageType = typeof damageTypes.$inferSelect;
