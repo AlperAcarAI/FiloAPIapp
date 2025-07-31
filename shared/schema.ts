@@ -62,6 +62,19 @@ export const companyTypeMatches = pgTable("company_type_matches", {
   uniqueCompanyType: unique().on(table.companyId, table.typeId),
 }));
 
+// Personnel Company Matches - Tracks personnel employment history across companies
+export const personnelCompanyMatches = pgTable("personnel_company_matches", {
+  id: serial("id").primaryKey(),
+  personnelId: integer("personnel_id").notNull().references(() => personnel.id),
+  companyId: integer("company_id").notNull().references(() => companies.id),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  isActive: boolean("is_active").notNull().default(true),
+}, (table) => ({
+  // Bir personel aynı şirkette aynı anda sadece bir aktif kaydı olabilir
+  uniqueActivePersonnelCompany: unique().on(table.personnelId, table.companyId, table.isActive),
+}));
+
 export const policyTypes = pgTable("policy_types", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 50 }).notNull().unique(),
@@ -740,6 +753,7 @@ export const companiesRelations = relations(companies, ({ one, many }) => ({
   finCurrentAccountsAsPayer: many(finCurrentAccounts, { relationName: "payerCompany" }),
   finCurrentAccountsAsPayee: many(finCurrentAccounts, { relationName: "payeeCompany" }),
   companyTypeMatches: many(companyTypeMatches),
+  personnelCompanyMatches: many(personnelCompanyMatches),
 }));
 
 export const companyTypesRelations = relations(companyTypes, ({ many }) => ({
@@ -754,6 +768,17 @@ export const companyTypeMatchesRelations = relations(companyTypeMatches, ({ one 
   type: one(companyTypes, {
     fields: [companyTypeMatches.typeId],
     references: [companyTypes.id],
+  }),
+}));
+
+export const personnelCompanyMatchesRelations = relations(personnelCompanyMatches, ({ one }) => ({
+  personnel: one(personnel, {
+    fields: [personnelCompanyMatches.personnelId],
+    references: [personnel.id],
+  }),
+  company: one(companies, {
+    fields: [personnelCompanyMatches.companyId],
+    references: [companies.id],
   }),
 }));
 
@@ -806,6 +831,26 @@ export const assetsRelations = relations(assets, ({ one, many }) => ({
   maintenance: many(assetsMaintenance),
   rentalAssets: many(rentalAssets),
   penalties: many(penalties),
+}));
+
+// Personnel Relations
+export const personnelRelations = relations(personnel, ({ one, many }) => ({
+  nation: one(countries, {
+    fields: [personnel.nationId],
+    references: [countries.id],
+  }),
+  birthplace: one(cities, {
+    fields: [personnel.birthplaceId],
+    references: [cities.id],
+  }),
+  users: many(users),
+  personnelWorkAreas: many(personnelWorkAreas),
+  assetsPersonelAssignments: many(assetsPersonelAssignment),
+  personnelCompanyMatches: many(personnelCompanyMatches),
+  createdAssets: many(assets, { relationName: "assetCreator" }),
+  updatedAssets: many(assets, { relationName: "assetUpdater" }),
+  assetDocuments: many(assetDocuments),
+  personnelDocuments: many(personnelDocuments),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -922,6 +967,13 @@ export const insertPersonnelWorkAreaSchema = createInsertSchema(personnelWorkAre
 
 export const updatePersonnelWorkAreaSchema = insertPersonnelWorkAreaSchema.partial();
 
+// Personnel Company Matches Schemas
+export const insertPersonnelCompanyMatchSchema = createInsertSchema(personnelCompanyMatches).omit({
+  id: true,
+});
+
+export const updatePersonnelCompanyMatchSchema = insertPersonnelCompanyMatchSchema.partial();
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
@@ -970,6 +1022,11 @@ export type UpdatePersonnelPosition = z.infer<typeof updatePersonnelPositionSche
 export type PersonnelWorkArea = typeof personnelWorkAreas.$inferSelect;
 export type InsertPersonnelWorkArea = z.infer<typeof insertPersonnelWorkAreaSchema>;
 export type UpdatePersonnelWorkArea = z.infer<typeof updatePersonnelWorkAreaSchema>;
+
+// Personnel Company Matches Types
+export type PersonnelCompanyMatch = typeof personnelCompanyMatches.$inferSelect;
+export type InsertPersonnelCompanyMatch = z.infer<typeof insertPersonnelCompanyMatchSchema>;
+export type UpdatePersonnelCompanyMatch = z.infer<typeof updatePersonnelCompanyMatchSchema>;
 
 export type PolicyType = typeof policyTypes.$inferSelect;
 export type DamageType = typeof damageTypes.$inferSelect;
