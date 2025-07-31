@@ -67,6 +67,7 @@ export const personnelCompanyMatches = pgTable("personnel_company_matches", {
   id: serial("id").primaryKey(),
   personnelId: integer("personnel_id").notNull().references(() => personnel.id),
   companyId: integer("company_id").notNull().references(() => companies.id),
+  positionId: integer("position_id").notNull().references(() => personnelPositions.id),
   startDate: date("start_date").notNull(),
   endDate: date("end_date"),
   isActive: boolean("is_active").notNull().default(true),
@@ -779,6 +780,10 @@ export const personnelCompanyMatchesRelations = relations(personnelCompanyMatche
   company: one(companies, {
     fields: [personnelCompanyMatches.companyId],
     references: [companies.id],
+  }),
+  position: one(personnelPositions, {
+    fields: [personnelCompanyMatches.positionId],
+    references: [personnelPositions.id],
   }),
 }));
 

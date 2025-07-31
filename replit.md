@@ -53,7 +53,7 @@ Preferred communication style: Simple, everyday language.
 - **Users Table**: User authentication with bcrypt password hashing
 - **Test Data Tables**: Realistic fleet management data (araclar, soforler, yolculuklar)
 - **Company Types System**: company_types (müşteri, taşeron, tedarikçi) with many-to-many relationships via company_type_matches
-- **Personnel Company Relations**: personnel_company_matches tracking employment history (start_date, end_date, is_active)
+- **Personnel Company Relations**: personnel_company_matches tracking employment history with positions (personnel_id, company_id, position_id, start_date, end_date, is_active)
 - **Timestamps**: Automatic creation and update tracking
 - **Validation**: Zod schemas for runtime type checking
 
