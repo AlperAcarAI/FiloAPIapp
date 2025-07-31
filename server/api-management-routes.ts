@@ -3645,7 +3645,7 @@ export function registerApiManagementRoutes(app: Express) {
     res.json({
       message: 'Fleet Management API Documentation',
       version: '3.0.0',
-      totalEndpoints: 89,
+      totalEndpoints: 98,
       categories: [
         { name: 'Referans Veriler', count: 22, path: '/api/secure/' },
         { name: 'İş Verisi API', count: 18, path: '/api/secure/' },

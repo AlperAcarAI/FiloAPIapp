@@ -71,7 +71,7 @@ export default function Home() {
                 <div>
                   <h3 className="text-lg font-semibold text-blue-800">API Center</h3>
                   <p className="text-blue-600">
-                    138+ API'yi test edin ve dokümantasyonu inceleyin
+                    98 API'yi test edin ve dokümantasyonu inceleyin
                   </p>
                 </div>
               </div>
@@ -140,7 +140,7 @@ export default function Home() {
                 <div>
                   <h3 className="text-lg font-semibold text-indigo-800">API Dokümantasyonu</h3>
                   <p className="text-indigo-600">
-                    138+ API endpoint'inin detaylı Swagger dokümantasyonu
+                    98 API endpoint'inin detaylı Swagger dokümantasyonu
                   </p>
                 </div>
               </div>
