@@ -209,6 +209,24 @@ export const users = pgTable("users", {
   usersPersonnelUnique: unique().on(table.personnelId),
 }));
 
+// Refresh Tokens Table - JWT Token Yenileme Sistemi
+export const refreshTokens = pgTable("refresh_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  tokenHash: text("token_hash").notNull(), // bcrypt hash of refresh token
+  expiresAt: timestamp("expires_at").notNull(),
+  isRevoked: boolean("is_revoked").notNull().default(false),
+  revokedAt: timestamp("revoked_at"),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  lastUsedAt: timestamp("last_used_at"),
+}, (table) => ({
+  userIdIdx: index("idx_refresh_tokens_user_id").on(table.userId),
+  expiresAtIdx: index("idx_refresh_tokens_expires_at").on(table.expiresAt),
+  tokenHashIdx: index("idx_refresh_tokens_hash").on(table.tokenHash),
+}));
+
 // Hiyerarşik Erişim Seviyeleri Tablosu
 export const accessLevels = pgTable("access_levels", {
   id: serial("id").primaryKey(),

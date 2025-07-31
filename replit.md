@@ -188,6 +188,45 @@ Kapsamlı API güvenlik sistemi başarıyla kuruldu ve test edildi:
 - **Dosya İşlemleri (3 API)**: document upload/list
 - **Admin İşlemleri (8 API)**: user authentication, API client management
 
+## ✅ Refresh Token Authentication Sistemi Eklendi (31 Ocak 2025)
+
+**Kapsamlı JWT Refresh Token Sistemi Kuruldu:**
+- Access Token: 30 dakika (kısa süreli, güvenli)
+- Refresh Token: 30 gün (uzun süreli, database'de saklanır)
+- Token rotation güvenliği (her yenileme yeni token oluşturur)
+- Otomatik token iptal sistemi (logout ile tüm tokenlar iptal)
+- IP ve User-Agent tracking (güvenlik için)
+
+**Yeni API Endpoint'leri:**
+- `POST /api/auth/login` - Kullanıcı girişi (access + refresh token döndürür) ✅
+- `POST /api/auth/refresh` - Token yenileme (refresh token ile) ✅
+- `POST /api/auth/logout` - Çıkış (tüm refresh tokenları iptal) ✅
+
+**Teknik Özellikler:**
+- `refresh_tokens` tablosu oluşturuldu (user_id, token_hash, expires_at, is_revoked)
+- bcrypt hash ile güvenli token saklama
+- Otomatik expiry kontrolü ve token temizleme
+- Performance indeksleri (user_id, expires_at, token_hash)
+- IP address ve User-Agent loglama
+- Token rotation security (eski token iptal, yeni token oluştur)
+
+**Database Schema:**
+```sql
+refresh_tokens (
+  id, user_id, token_hash, expires_at, is_revoked,
+  revoked_at, ip_address, user_agent, created_at, last_used_at
+)
+```
+
+**Güvenlik Avantajları:**
+- Kısa süreli access token (30 dk) - güvenlik açığı riski azalır
+- Uzun süreli refresh token - kullanıcı deneyimi iyileşir
+- Token rotation - çalınan token otomatik geçersiz hale gelir
+- IP/User-Agent tracking - şüpheli aktivite tespiti
+- Logout ile tüm token iptal - güvenli oturum sonlandırma
+
+**Test Durumu:** Auth API sayısı 4'e ulaştı, sistem çalışır durumda ✅
+
 **Swagger API Dokümantasyonu (26 Ocak 2025) - TÜM 75 API TABLOLU:**
 ✅ **Tüm 75 API endpoint detaylı tablo halinde Swagger dokümantasyonuna eklendi**
 - Ana sayfa özet tablosu: 8 kategori, 75 endpoint numaralı listesi ✅

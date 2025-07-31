@@ -1,9 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { authenticateToken } from "./auth";
+import { authenticateToken, type AuthRequest } from "./auth";
 import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset, cities, type City } from "@shared/schema";
-import { generateToken } from "./auth";
+import { generateTokenPair, validateRefreshToken, revokeRefreshToken, revokeAllUserRefreshTokens } from "./auth";
 import { z } from "zod";
 import { db } from "./db";
 import { assets } from "@shared/schema";
@@ -24,7 +24,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/documents", documentRoutes);
   app.use("/api/trip-rentals", await import("./trip-rental-routes.js").then(m => m.default));
 
-  // Kullanıcı kimlik doğrulama - Standart JSON format
+  // Kullanıcı kimlik doğrulama - Refresh Token sistemi ile
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
@@ -36,11 +36,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "Geçersiz email veya şifre"
         });
       }
-      const token = generateToken({ id: user.id, username: user.email });
+      
+      // IP ve User-Agent bilgilerini al
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      const userAgent = req.get('User-Agent');
+      
+      // Token çifti oluştur (access + refresh)
+      const tokens = await generateTokenPair(
+        { id: user.id, username: user.email },
+        ipAddress,
+        userAgent
+      );
+      
       res.json({
         success: true,
         message: "Giriş başarılı",
-        data: { user, token }
+        data: { 
+          user,
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresIn: tokens.expiresIn,
+          refreshExpiresIn: tokens.refreshExpiresIn,
+          tokenType: "Bearer"
+        }
       });
     } catch (error) {
       console.error("Giriş hatası:", error);
@@ -48,6 +66,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         error: "LOGIN_ERROR",
         message: "Giriş başarısız"
+      });
+    }
+  });
+
+  // Refresh Token endpoint - Token yenileme
+  app.post("/api/auth/refresh", async (req, res) => {
+    try {
+      const { refreshToken } = req.body;
+      
+      if (!refreshToken) {
+        return res.status(400).json({
+          success: false,
+          error: "MISSING_REFRESH_TOKEN",
+          message: "Refresh token gereklidir"
+        });
+      }
+
+      // Refresh token'ı doğrula
+      const tokenData = await validateRefreshToken(refreshToken);
+      
+      // IP ve User-Agent bilgilerini al
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      const userAgent = req.get('User-Agent');
+      
+      // Eski refresh token'ı iptal et (token rotation güvenliği)
+      await revokeRefreshToken(tokenData.id);
+      
+      // Yeni token çifti oluştur
+      const tokens = await generateTokenPair(
+        { id: tokenData.userId, username: tokenData.username },
+        ipAddress,
+        userAgent
+      );
+      
+      res.json({
+        success: true,
+        message: "Token başarıyla yenilendi",
+        data: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresIn: tokens.expiresIn,
+          refreshExpiresIn: tokens.refreshExpiresIn,
+          tokenType: "Bearer"
+        }
+      });
+    } catch (error) {
+      console.error("Token yenileme hatası:", error);
+      res.status(401).json({
+        success: false,
+        error: "INVALID_REFRESH_TOKEN",
+        message: error instanceof Error ? error.message : "Geçersiz refresh token"
+      });
+    }
+  });
+
+  // Logout endpoint - Tüm refresh token'ları iptal et
+  app.post("/api/auth/logout", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      if (req.user?.userId) {
+        // Kullanıcının tüm refresh token'larını iptal et
+        await revokeAllUserRefreshTokens(req.user.userId);
+      }
+      
+      res.json({
+        success: true,
+        message: "Başarıyla çıkış yapıldı"
+      });
+    } catch (error) {
+      console.error("Çıkış hatası:", error);
+      res.status(500).json({
+        success: false,
+        error: "LOGOUT_ERROR",
+        message: "Çıkış işlemi başarısız"
       });
     }
   });
@@ -69,7 +160,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.createUser({
         email,
         passwordHash: password,
-        name: name || email.split('@')[0],
         companyId: 1 // Varsayılan şirket ID
       });
       res.status(201).json({
