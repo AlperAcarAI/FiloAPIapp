@@ -88,7 +88,7 @@ export function registerApiManagementRoutes(app: Express) {
     info: {
       title: 'FiloApi - Fleet Management System',
       version: '3.0.0',
-      description: 'Kapsamlı filo yönetimi API sistemi. 138+ endpoint ile tam güvenlik kontrolü.',
+      description: 'Kapsamlı filo yönetimi API sistemi. 89 endpoint ile tam güvenlik kontrolü, döküman yönetimi ve sefer kiralama sistemi.',
       contact: {
         name: 'API Desteği',
         email: 'alper.acar@architectaiagency.com'
@@ -3019,6 +3019,336 @@ export function registerApiManagementRoutes(app: Express) {
         }
       },
       // ========================
+      // DOCUMENT MANAGEMENT ENDPOINTS
+      // ========================
+      '/api/documents': {
+        get: {
+          tags: ['Döküman Yönetimi'],
+          summary: 'Döküman listesi',
+          description: 'Tüm dökümanları filtreli olarak listeler',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'entityType', in: 'query', schema: { type: 'string', enum: ['personnel', 'asset', 'company', 'work_area'] }, description: 'Entity tipi' },
+            { name: 'entityId', in: 'query', schema: { type: 'integer' }, description: 'Entity ID' },
+            { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Dosya adı araması' },
+            { name: 'docSubTypeId', in: 'query', schema: { type: 'integer' }, description: 'Döküman alt tipi' },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            { name: 'offset', in: 'query', schema: { type: 'integer', default: 0 } }
+          ],
+          responses: {
+            200: {
+              description: 'Döküman listesi başarıyla getirildi',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ApiResponse' }
+                }
+              }
+            }
+          }
+        },
+        post: {
+          tags: ['Döküman Yönetimi'],
+          summary: 'Yeni döküman ekle',
+          description: 'Yeni döküman kaydı oluşturur',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['entityType', 'entityId', 'docSubTypeId', 'fileName'],
+                  properties: {
+                    entityType: { type: 'string', enum: ['personnel', 'asset', 'company', 'work_area'] },
+                    entityId: { type: 'integer', example: 5 },
+                    docSubTypeId: { type: 'integer', example: 3 },
+                    fileName: { type: 'string', example: 'ehliyet_2024.pdf' },
+                    filePath: { type: 'string', example: '/uploads/documents/ehliyet_2024.pdf' },
+                    fileSize: { type: 'integer', example: 2048000 },
+                    notes: { type: 'string', example: 'Ehliyet yenileme belgesi' }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            201: {
+              description: 'Döküman başarıyla oluşturuldu',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ApiResponse' }
+                }
+              }
+            }
+          }
+        }
+      },
+      '/api/documents/{id}': {
+        get: {
+          tags: ['Döküman Yönetimi'],
+          summary: 'Döküman detayı',
+          description: 'Belirli bir dökümanın detaylarını getirir',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'integer' } }
+          ],
+          responses: {
+            200: {
+              description: 'Döküman detayı başarıyla getirildi',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ApiResponse' }
+                }
+              }
+            }
+          }
+        },
+        put: {
+          tags: ['Döküman Yönetimi'],
+          summary: 'Döküman güncelle',
+          description: 'Mevcut döküman bilgilerini günceller',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'integer' } }
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    fileName: { type: 'string' },
+                    notes: { type: 'string' },
+                    isActive: { type: 'boolean' }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            200: {
+              description: 'Döküman başarıyla güncellendi',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ApiResponse' }
+                }
+              }
+            }
+          }
+        },
+        delete: {
+          tags: ['Döküman Yönetimi'],
+          summary: 'Döküman sil',
+          description: 'Dökümanı soft delete yapar',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'integer' } }
+          ],
+          responses: {
+            200: {
+              description: 'Döküman başarıyla silindi',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ApiResponse' }
+                }
+              }
+            }
+          }
+        }
+      },
+      '/api/documents/entity/{entityType}/{entityId}': {
+        get: {
+          tags: ['Döküman Yönetimi'],
+          summary: 'Entity dökümanları',
+          description: 'Belirli bir entity için tüm dökümanları listeler',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'entityType', in: 'path', required: true, schema: { type: 'string', enum: ['personnel', 'asset', 'company', 'work_area'] } },
+            { name: 'entityId', in: 'path', required: true, schema: { type: 'integer' } }
+          ],
+          responses: {
+            200: {
+              description: 'Entity dökümanları başarıyla getirildi',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ApiResponse' }
+                }
+              }
+            }
+          }
+        }
+      },
+      // ========================
+      // TRIP RENTAL MANAGEMENT
+      // ========================
+      '/api/trip-rentals': {
+        get: {
+          tags: ['Sefer Kiralama'],
+          summary: 'Sefer kiralama listesi',
+          description: 'Tüm sefer kiralamalarını listeler',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'assetId', in: 'query', schema: { type: 'integer' }, description: 'Araç ID' },
+            { name: 'companyId', in: 'query', schema: { type: 'integer' }, description: 'Kiralayan şirket ID' },
+            { name: 'driverId', in: 'query', schema: { type: 'integer' }, description: 'Sürücü ID' },
+            { name: 'startDate', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Başlangıç tarihi' },
+            { name: 'endDate', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Bitiş tarihi' },
+            { name: 'status', in: 'query', schema: { type: 'string', enum: ['scheduled', 'ongoing', 'completed', 'cancelled'] } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+            { name: 'offset', in: 'query', schema: { type: 'integer', default: 0 } }
+          ],
+          responses: {
+            200: {
+              description: 'Sefer listesi başarıyla getirildi',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ApiResponse' }
+                }
+              }
+            }
+          }
+        },
+        post: {
+          tags: ['Sefer Kiralama'],
+          summary: 'Yeni sefer ekle',
+          description: 'Yeni sefer kiralama kaydı oluşturur',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['assetId', 'companyId', 'tripDate', 'tripTime', 'fromLocation', 'toLocation', 'tripPriceCents'],
+                  properties: {
+                    assetId: { type: 'integer', example: 5 },
+                    companyId: { type: 'integer', example: 3 },
+                    driverId: { type: 'integer', example: 8 },
+                    tripDate: { type: 'string', format: 'date', example: '2024-02-15' },
+                    tripTime: { type: 'string', example: '08:30' },
+                    fromLocation: { type: 'string', example: 'İstanbul Havalimanı' },
+                    toLocation: { type: 'string', example: 'Sabiha Gökçen Havalimanı' },
+                    tripPriceCents: { type: 'integer', example: 150000 },
+                    estimatedKm: { type: 'integer', example: 95 },
+                    estimatedDuration: { type: 'integer', example: 120 },
+                    notes: { type: 'string', example: 'VIP transfer' }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            201: {
+              description: 'Sefer başarıyla oluşturuldu',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ApiResponse' }
+                }
+              }
+            }
+          }
+        }
+      },
+      '/api/trip-rentals/{id}': {
+        get: {
+          tags: ['Sefer Kiralama'],
+          summary: 'Sefer detayı',
+          description: 'Belirli bir seferin detaylarını getirir',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'integer' } }
+          ],
+          responses: {
+            200: {
+              description: 'Sefer detayı başarıyla getirildi',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ApiResponse' }
+                }
+              }
+            }
+          }
+        },
+        put: {
+          tags: ['Sefer Kiralama'],
+          summary: 'Sefer güncelle',
+          description: 'Mevcut sefer bilgilerini günceller',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'integer' } }
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', enum: ['scheduled', 'ongoing', 'completed', 'cancelled'] },
+                    actualKm: { type: 'integer' },
+                    actualDuration: { type: 'integer' },
+                    actualPriceCents: { type: 'integer' },
+                    notes: { type: 'string' }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            200: {
+              description: 'Sefer başarıyla güncellendi',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ApiResponse' }
+                }
+              }
+            }
+          }
+        },
+        delete: {
+          tags: ['Sefer Kiralama'],
+          summary: 'Sefer iptal et',
+          description: 'Seferi iptal eder (soft delete)',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'integer' } }
+          ],
+          responses: {
+            200: {
+              description: 'Sefer başarıyla iptal edildi',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ApiResponse' }
+                }
+              }
+            }
+          }
+        }
+      },
+      '/api/trip-rentals/summary/daily': {
+        get: {
+          tags: ['Sefer Kiralama'],
+          summary: 'Günlük sefer özeti',
+          description: 'Belirli bir güne ait sefer özetini getirir',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'date', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Özet tarihi' },
+            { name: 'companyId', in: 'query', schema: { type: 'integer' }, description: 'Şirket filtresi' }
+          ],
+          responses: {
+            200: {
+              description: 'Günlük özet başarıyla getirildi',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ApiResponse' }
+                }
+              }
+            }
+          }
+        }
+      },
+      // ========================
       // USER API KEY MANAGEMENT
       // ========================
       '/api/user/api-keys': {
@@ -3315,24 +3645,27 @@ export function registerApiManagementRoutes(app: Express) {
     res.json({
       message: 'Fleet Management API Documentation',
       version: '3.0.0',
-      totalEndpoints: 150,
+      totalEndpoints: 89,
       categories: [
-        { name: 'API Management', count: 79, path: '/api/secure/' },
-        { name: 'Backend API (Hierarchical)', count: 8, path: '/api/backend/' },
-        { name: 'Permission Management', count: 6, path: '/api/permission-management/' },
+        { name: 'Referans Veriler', count: 22, path: '/api/secure/' },
+        { name: 'İş Verisi API', count: 18, path: '/api/secure/' },
+        { name: 'Personel Yönetimi', count: 9, path: '/api/secure/' },
+        { name: 'Çalışma Alanı', count: 3, path: '/api/secure/' },
+        { name: 'Asset Yönetimi', count: 6, path: '/api/secure/assets' },
+        { name: 'Şirket Yönetimi', count: 5, path: '/api/secure/companies' },
+        { name: 'Dosya İşlemleri', count: 3, path: '/api/secure/documents' },
+        { name: 'Döküman Yönetimi', count: 6, path: '/api/documents' },
+        { name: 'Sefer Kiralama', count: 6, path: '/api/trip-rentals' },
+        { name: 'Admin İşlemleri', count: 8, path: '/api/admin/' },
         { name: 'Analytics', count: 6, path: '/api/analytics/' },
-        { name: 'Asset Management', count: 12, path: '/api/secure/assets' },
-        { name: 'Company Management', count: 10, path: '/api/secure/companies' },
-        { name: 'Document Management', count: 8, path: '/api/secure/documents' },
-        { name: 'Financial Management', count: 6, path: '/api/secure/financial' },
-        { name: 'Fuel Management', count: 7, path: '/api/secure/fuel-records' },
-        { name: 'Bulk Import', count: 5, path: '/api/secure/bulk-import' },
-        { name: 'Audit System', count: 3, path: '/api/audit' }
+        { name: 'Backend API', count: 5, path: '/api/backend/' },
+        { name: 'Bulk Import', count: 4, path: '/api/secure/bulk-import' },
+        { name: 'Audit System', count: 4, path: '/api/audit' }
       ],
       authentication: {
         apiKey: 'X-API-Key header required for /api/secure/* endpoints',
-        jwt: 'Authorization: Bearer token for /api/backend/* endpoints',
-        demoKey: 'ak_demo2025key'
+        jwt: 'Authorization: Bearer token for /api/backend/* and /api/documents/* endpoints',
+        demoKey: 'ak_test123key'
       },
       swaggerUI: '/api/docs',
       jsonSchema: '/api/docs/json'

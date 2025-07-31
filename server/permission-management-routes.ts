@@ -6,6 +6,60 @@ import { authenticateJWT, type AuthRequest } from './hierarchical-auth';
 
 const router = express.Router();
 
+// hasPermission middleware'i export et
+export const hasPermission = (requiredPermissions: string[]) => {
+  return async (req: AuthRequest, res: express.Response, next: express.NextFunction) => {
+    try {
+      const userContext = req.userContext;
+      
+      if (!userContext) {
+        return res.status(401).json({
+          success: false,
+          error: 'UNAUTHORIZED',
+          message: 'Kullanıcı kimliği doğrulanmamış'
+        });
+      }
+      
+      // Admin email kontrolü
+      const user = await db.select()
+        .from(users)
+        .where(eq(users.id, userContext.userId))
+        .limit(1);
+      
+      if (user[0]?.email === ADMIN_EMAIL) {
+        return next(); // Admin her şeye erişebilir
+      }
+      
+      // Wildcard (*) permission kontrolü
+      if (userContext.permissions.includes('*')) {
+        return next();
+      }
+      
+      // Spesifik permission kontrolü
+      const hasAllPermissions = requiredPermissions.every(permission => 
+        userContext.permissions.includes(permission)
+      );
+      
+      if (!hasAllPermissions) {
+        return res.status(403).json({
+          success: false,
+          error: 'FORBIDDEN',
+          message: 'Bu işlem için yetkiniz yok'
+        });
+      }
+      
+      next();
+    } catch (error) {
+      console.error('Permission check error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'PERMISSION_CHECK_ERROR',
+        message: 'Yetki kontrolünde hata oluştu'
+      });
+    }
+  };
+};
+
 // Admin email configuration
 const ADMIN_EMAIL = 'alper.acar@architectaiagency.com';
 

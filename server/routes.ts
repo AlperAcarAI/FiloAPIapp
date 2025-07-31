@@ -20,6 +20,10 @@ import bulkImportRoutes from "./bulk-import-routes.js";
 export async function registerRoutes(app: Express): Promise<Server> {
   // API Analytics middleware - Geçici olarak devre dışı
 
+  // API route'larını kaydet
+  app.use("/api/documents", documentRoutes);
+  app.use("/api/trip-rentals", await import("./trip-rental-routes.js").then(m => m.default));
+
   // Kullanıcı kimlik doğrulama - Standart JSON format
   app.post("/api/auth/login", async (req, res) => {
     try {

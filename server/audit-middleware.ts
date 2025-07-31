@@ -13,18 +13,16 @@ export interface AuditableRequest extends Request {
   };
 }
 
-// Request'e audit bilgilerini ekleyen middleware
-export const captureAuditInfo = (req: AuditableRequest, res: Response, next: NextFunction) => {
+// Request'e audit bilgilerini ekleyen fonksiyon (middleware değil)
+export const captureAuditInfo = (req: any) => {
   const apiReq = req as ApiRequest;
   
-  req.auditInfo = {
-    userId: (apiReq.user?.id || apiReq.apiUser?.id) || undefined,
+  return {
+    userId: (apiReq.user?.id || apiReq.apiUser?.id || req.userContext?.userId) || undefined,
     apiClientId: apiReq.apiClient?.id || undefined,
     ipAddress: req.ip || req.socket.remoteAddress || undefined,
     userAgent: req.get('User-Agent') || undefined
   };
-  
-  next();
 };
 
 // Audit log kaydı oluşturan fonksiyon
@@ -72,32 +70,31 @@ export const createAuditLog = async (
 
 // Drizzle ORM için audit wrapper fonksiyonları
 export const auditableInsert = async (
+  dbInstance: any,
   table: any,
   values: any,
-  tableName: string,
   auditInfo?: any
 ) => {
-  const result = await db.insert(table).values(values).returning();
+  const result = await dbInstance.insert(table).values(values).returning();
   if (result[0]) {
+    const tableName = table._.name;
     await createAuditLog(tableName, result[0].id, 'INSERT', null, values, auditInfo);
   }
   return result;
 };
 
 export const auditableUpdate = async (
+  dbInstance: any,
   table: any,
-  condition: any,
   newValues: any,
-  tableName: string,
+  condition: any,
+  oldValues: any,
   auditInfo?: any
 ) => {
-  // Önce mevcut değerleri al
-  const oldRecord = await db.select().from(table).where(condition).limit(1);
-  const oldValues = oldRecord[0] || null;
-  
-  const result = await db.update(table).set(newValues).where(condition).returning();
+  const result = await dbInstance.update(table).set(newValues).where(condition).returning();
   
   if (result[0]) {
+    const tableName = table._.name;
     await createAuditLog(tableName, result[0].id, 'UPDATE', oldValues, newValues, auditInfo);
   }
   return result;
