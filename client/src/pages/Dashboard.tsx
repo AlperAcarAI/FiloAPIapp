@@ -290,7 +290,7 @@ export default function Dashboard() {
                 <Label htmlFor="allowedDomains">İzinli Domainler (Zorunlu)</Label>
                 <Input
                   id="allowedDomains"
-                  placeholder="example.com, api.mysite.com, localhost:3000"
+                  placeholder="replit.dev, elsaulasim.com, localhost:3000"
                   value={allowedDomains}
                   onChange={(e) => setAllowedDomains(e.target.value)}
                 />

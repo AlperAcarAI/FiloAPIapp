@@ -335,6 +335,18 @@ curl -X POST /api/user/api-keys \
 **Sistem Durumu:** %100 - Domain-based API key restrictions tam olarak aktif ✅
 **Test Edildi:** API key oluşturma, domain validation, error handling ✅
 
+**Aktif İzinli Domain'ler (31 Ocak 2025):**
+- replit.dev ve alt domain'leri (*.replit.dev)
+- replit.com ve alt domain'leri (*.replit.com)  
+- elsaulasim.com ve alt domain'leri (*.elsaulasim.com)
+- localhost:3000, localhost:5000 (development)
+
+**Test Sonuçları:**
+- ✅ İzinli domain'lerden API çağrıları başarılı
+- ✅ İzinsiz domain'lerden erişim engellendi
+- ✅ Subdomain matching çalışıyor
+- ✅ Real-time Origin/Referer header doğrulaması aktif
+
 **Swagger API Dokümantasyonu (26 Ocak 2025) - TÜM 75 API TABLOLU:**
 ✅ **Tüm 75 API endpoint detaylı tablo halinde Swagger dokümantasyonuna eklendi**
 - Ana sayfa özet tablosu: 8 kategori, 75 endpoint numaralı listesi ✅
