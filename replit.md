@@ -52,6 +52,7 @@ Preferred communication style: Simple, everyday language.
 - **Status Enum**: Predefined status values (aktif, pasif, hata)
 - **Users Table**: User authentication with bcrypt password hashing
 - **Test Data Tables**: Realistic fleet management data (araclar, soforler, yolculuklar)
+- **Company Types System**: company_types (müşteri, taşeron, tedarikçi) with many-to-many relationships via company_type_matches
 - **Timestamps**: Automatic creation and update tracking
 - **Validation**: Zod schemas for runtime type checking
 

@@ -47,6 +47,21 @@ export const companies = pgTable("companies", {
   isActive: boolean("is_active").notNull().default(true),
 });
 
+// Company Types Table - müşteri, taşeron, tedarikçi
+export const companyTypes = pgTable("company_types", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+});
+
+// Company Type Matches - Many-to-Many relationship between companies and company types
+export const companyTypeMatches = pgTable("company_type_matches", {
+  id: serial("id").primaryKey(),
+  companyId: integer("company_id").notNull().references(() => companies.id),
+  typeId: integer("type_id").notNull().references(() => companyTypes.id),
+}, (table) => ({
+  uniqueCompanyType: unique().on(table.companyId, table.typeId),
+}));
+
 export const policyTypes = pgTable("policy_types", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 50 }).notNull().unique(),
@@ -724,6 +739,22 @@ export const companiesRelations = relations(companies, ({ one, many }) => ({
   rentalAgreementsAsTenant: many(rentalAgreements, { relationName: "tenantCompany" }),
   finCurrentAccountsAsPayer: many(finCurrentAccounts, { relationName: "payerCompany" }),
   finCurrentAccountsAsPayee: many(finCurrentAccounts, { relationName: "payeeCompany" }),
+  companyTypeMatches: many(companyTypeMatches),
+}));
+
+export const companyTypesRelations = relations(companyTypes, ({ many }) => ({
+  companyTypeMatches: many(companyTypeMatches),
+}));
+
+export const companyTypeMatchesRelations = relations(companyTypeMatches, ({ one }) => ({
+  company: one(companies, {
+    fields: [companyTypeMatches.companyId],
+    references: [companies.id],
+  }),
+  type: one(companyTypes, {
+    fields: [companyTypeMatches.typeId],
+    references: [companyTypes.id],
+  }),
 }));
 
 export const carBrandsRelations = relations(carBrands, ({ many }) => ({
@@ -824,6 +855,14 @@ export const insertCompanySchema = createInsertSchema(companies).omit({
   id: true,
 });
 
+export const insertCompanyTypeSchema = createInsertSchema(companyTypes).omit({
+  id: true,
+});
+
+export const insertCompanyTypeMatchSchema = createInsertSchema(companyTypeMatches).omit({
+  id: true,
+});
+
 export const insertCountrySchema = createInsertSchema(countries).omit({
   id: true,
 });
@@ -892,6 +931,14 @@ export type InsertCompany = z.infer<typeof insertCompanySchema>;
 // Company update schema
 export const updateCompanySchema = insertCompanySchema.partial();
 export type UpdateCompany = z.infer<typeof updateCompanySchema>;
+
+// Company Types
+export type CompanyType = typeof companyTypes.$inferSelect;
+export type InsertCompanyType = z.infer<typeof insertCompanyTypeSchema>;
+
+// Company Type Matches
+export type CompanyTypeMatch = typeof companyTypeMatches.$inferSelect;
+export type InsertCompanyTypeMatch = z.infer<typeof insertCompanyTypeMatchSchema>;
 
 export type Country = typeof countries.$inferSelect;
 export type InsertCountry = z.infer<typeof insertCountrySchema>;
