@@ -227,6 +227,122 @@ export const refreshTokens = pgTable("refresh_tokens", {
   tokenHashIdx: index("idx_refresh_tokens_hash").on(table.tokenHash),
 }));
 
+// ========================
+// ADVANCED SECURITY TABLES
+// ========================
+
+// Login Attempts - Brute Force Protection
+export const loginAttempts = pgTable("login_attempts", {
+  id: serial("id").primaryKey(),
+  email: varchar("email", { length: 150 }).notNull(),
+  ipAddress: varchar("ip_address", { length: 45 }).notNull(),
+  userAgent: text("user_agent"),
+  success: boolean("success").notNull().default(false),
+  attemptTime: timestamp("attempt_time").notNull().defaultNow(),
+  failureReason: varchar("failure_reason", { length: 50 }), // 'invalid_password', 'user_not_found', 'account_locked'
+}, (table) => ({
+  emailIdx: index("idx_login_attempts_email").on(table.email),
+  ipIdx: index("idx_login_attempts_ip").on(table.ipAddress),
+  timeIdx: index("idx_login_attempts_time").on(table.attemptTime),
+}));
+
+// Account Security Settings
+export const userSecuritySettings = pgTable("user_security_settings", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id).unique(),
+  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
+  twoFactorSecret: text("two_factor_secret"), // TOTP secret
+  backupCodes: text("backup_codes").array(), // Recovery codes
+  isAccountLocked: boolean("is_account_locked").notNull().default(false),
+  lockReason: varchar("lock_reason", { length: 100 }),
+  lockedAt: timestamp("locked_at"),
+  lockedUntil: timestamp("locked_until"),
+  passwordChangedAt: timestamp("password_changed_at").defaultNow(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  emailVerifyToken: text("email_verify_token"),
+  emailVerifyExpires: timestamp("email_verify_expires"),
+  maxConcurrentSessions: integer("max_concurrent_sessions").default(5),
+  requirePasswordChange: boolean("require_password_change").notNull().default(false),
+  lastPasswordCheck: timestamp("last_password_check"),
+  securityQuestionsEnabled: boolean("security_questions_enabled").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Device Fingerprinting - Cihaz Tanıma
+export const userDevices = pgTable("user_devices", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  deviceFingerprint: text("device_fingerprint").notNull(), // Device hash
+  deviceName: varchar("device_name", { length: 100 }),
+  deviceType: varchar("device_type", { length: 20 }), // 'desktop', 'mobile', 'tablet'
+  browserInfo: text("browser_info"),
+  osInfo: varchar("os_info", { length: 100 }),
+  screenResolution: varchar("screen_resolution", { length: 20 }),
+  timezone: varchar("timezone", { length: 50 }),
+  language: varchar("language", { length: 10 }),
+  isVerified: boolean("is_verified").notNull().default(false),
+  isTrusted: boolean("is_trusted").notNull().default(false),
+  firstSeenAt: timestamp("first_seen_at").notNull().defaultNow(),
+  lastSeenAt: timestamp("last_seen_at").notNull().defaultNow(),
+  timesUsed: integer("times_used").default(1),
+}, (table) => ({
+  userIdIdx: index("idx_user_devices_user_id").on(table.userId),
+  fingerprintIdx: index("idx_user_devices_fingerprint").on(table.deviceFingerprint),
+  uniqueUserDevice: unique("unique_user_device").on(table.userId, table.deviceFingerprint),
+}));
+
+// Security Events - Güvenlik Olayları
+export const securityEvents = pgTable("security_events", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  eventType: varchar("event_type", { length: 50 }).notNull(), // 'login', 'failed_login', 'password_change', 'suspicious_activity', 'account_locked', '2fa_enabled'
+  severity: varchar("severity", { length: 10 }).notNull().default('medium'), // 'low', 'medium', 'high', 'critical'
+  description: text("description").notNull(),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  deviceFingerprint: text("device_fingerprint"),
+  location: text("location"), // Country/City info from IP
+  metadata: text("metadata"), // JSON format for additional data
+  isResolved: boolean("is_resolved").notNull().default(false),
+  resolvedBy: integer("resolved_by").references(() => users.id),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  userIdx: index("idx_security_events_user").on(table.userId),
+  typeIdx: index("idx_security_events_type").on(table.eventType),
+  severityIdx: index("idx_security_events_severity").on(table.severity),
+  timeIdx: index("idx_security_events_time").on(table.createdAt),
+  ipIdx: index("idx_security_events_ip").on(table.ipAddress),
+}));
+
+// Rate Limiting - API/Login Rate Limits
+export const rateLimitBuckets = pgTable("rate_limit_buckets", {
+  id: serial("id").primaryKey(),
+  identifier: varchar("identifier", { length: 100 }).notNull(), // IP address or user ID
+  bucketType: varchar("bucket_type", { length: 20 }).notNull(), // 'login', 'api', 'password_reset'
+  requestCount: integer("request_count").notNull().default(0),
+  windowStart: timestamp("window_start").notNull().defaultNow(),
+  windowEnd: timestamp("window_end").notNull(),
+  isBlocked: boolean("is_blocked").notNull().default(false),
+  blockedUntil: timestamp("blocked_until"),
+}, (table) => ({
+  identifierBucketIdx: index("idx_rate_limit_identifier_bucket").on(table.identifier, table.bucketType),
+  windowIdx: index("idx_rate_limit_window").on(table.windowEnd),
+  uniqueIdentifierBucket: unique("unique_identifier_bucket").on(table.identifier, table.bucketType),
+}));
+
+// Password History - Parola Geçmişi
+export const passwordHistory = pgTable("password_history", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  userIdx: index("idx_password_history_user").on(table.userId),
+  timeIdx: index("idx_password_history_time").on(table.createdAt),
+}));
+
 // Hiyerarşik Erişim Seviyeleri Tablosu
 export const accessLevels = pgTable("access_levels", {
   id: serial("id").primaryKey(),
