@@ -69,7 +69,6 @@ export const registerSecurityRoutes = (app: Express) => {
         success: true,
         data: {
           securitySettings: securitySettings || {
-            twoFactorEnabled: false,
             emailVerified: false,
             isAccountLocked: false,
             passwordChangedAt: null,
@@ -94,72 +93,7 @@ export const registerSecurityRoutes = (app: Express) => {
     }
   });
 
-  // Enable/Disable Two-Factor Authentication
-  app.post('/api/security/2fa/toggle', authenticateToken, async (req: AuthRequest, res) => {
-    try {
-      const userId = req.user?.userId;
-      const { enable, backupCodes } = req.body;
 
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          error: 'UNAUTHORIZED',
-          message: 'Kullanıcı kimliği bulunamadı'
-        });
-      }
-
-      // Generate TOTP secret if enabling
-      let twoFactorSecret = null;
-      if (enable) {
-        twoFactorSecret = randomBytes(20).toString('hex');
-      }
-
-      // Update security settings
-      await db
-        .insert(userSecuritySettings)
-        .values({
-          userId,
-          twoFactorEnabled: enable,
-          twoFactorSecret,
-          backupCodes: backupCodes || [],
-          updatedAt: new Date(),
-        })
-        .onConflictDoUpdate({
-          target: userSecuritySettings.userId,
-          set: {
-            twoFactorEnabled: enable,
-            twoFactorSecret: enable ? twoFactorSecret : null,
-            backupCodes: enable ? backupCodes || [] : [],
-            updatedAt: new Date(),
-          },
-        });
-
-      // Log security event
-      await logSecurityEvent(enable ? '2fa_enabled' : '2fa_disabled', {
-        userId,
-        severity: 'medium',
-        description: `Two-factor authentication ${enable ? 'enabled' : 'disabled'}`,
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent'),
-      });
-
-      res.json({
-        success: true,
-        message: `İki faktörlü doğrulama ${enable ? 'etkinleştirildi' : 'devre dışı bırakıldı'}`,
-        data: {
-          twoFactorEnabled: enable,
-          secret: enable ? twoFactorSecret : null,
-        }
-      });
-    } catch (error) {
-      console.error('2FA toggle error:', error);
-      res.status(500).json({
-        success: false,
-        error: '2FA_ERROR',
-        message: 'İki faktörlü doğrulama ayarı değiştirilemedi'
-      });
-    }
-  });
 
   // Change password with security checks
   app.post('/api/security/change-password', authenticateToken, async (req: AuthRequest, res) => {

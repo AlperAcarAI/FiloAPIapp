@@ -250,9 +250,7 @@ export const loginAttempts = pgTable("login_attempts", {
 export const userSecuritySettings = pgTable("user_security_settings", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id).unique(),
-  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
-  twoFactorSecret: text("two_factor_secret"), // TOTP secret
-  backupCodes: text("backup_codes").array(), // Recovery codes
+
   isAccountLocked: boolean("is_account_locked").notNull().default(false),
   lockReason: varchar("lock_reason", { length: 100 }),
   lockedAt: timestamp("locked_at"),
@@ -264,7 +262,7 @@ export const userSecuritySettings = pgTable("user_security_settings", {
   maxConcurrentSessions: integer("max_concurrent_sessions").default(5),
   requirePasswordChange: boolean("require_password_change").notNull().default(false),
   lastPasswordCheck: timestamp("last_password_check"),
-  securityQuestionsEnabled: boolean("security_questions_enabled").notNull().default(false),
+
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
