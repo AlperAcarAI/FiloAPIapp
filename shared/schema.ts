@@ -385,6 +385,7 @@ export const apiKeys = pgTable("api_keys", {
   keyHash: text("key_hash").notNull(), // Hashed API key
   key: text("key"), // Plain text key (can be null)
   permissions: text("permissions").array(), // Array of permissions
+  allowedDomains: text("allowed_domains").array().notNull(), // Domain restrictions
   description: text("description"),
   isActive: boolean("is_active").notNull().default(true),
   lastUsedAt: timestamp("last_used_at"),

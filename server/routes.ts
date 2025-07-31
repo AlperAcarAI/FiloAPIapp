@@ -26,6 +26,8 @@ import {
   type SecurityRequest 
 } from "./security-middleware.js";
 import { registerSecurityRoutes } from "./security-routes.js";
+import { generateApiKey, hashApiKey } from "./api-security.js";
+import { apiKeys, apiClients } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Security headers - tüm isteklere uygula
@@ -309,6 +311,199 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         error: "CITIES_FETCH_ERROR",
         message: "Şehir listesi alınırken bir hata oluştu" 
+      });
+    }
+  });
+
+  // ========================
+  // API KEY YÖNETİMİ (JWT ile korunuyor)
+  // ========================
+
+  // Kullanıcının kendi API key'lerini listele
+  app.get("/api/user/api-keys", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'UNAUTHORIZED',
+          message: 'Kullanıcı kimliği bulunamadı'
+        });
+      }
+      
+      const userApiKeys = await db
+        .select({
+          id: apiKeys.id,
+          name: apiClients.name,
+          permissions: apiKeys.permissions,
+          allowedDomains: apiKeys.allowedDomains,
+          isActive: apiKeys.isActive,
+          createdAt: apiKeys.createdAt,
+          lastUsedAt: apiKeys.lastUsedAt
+        })
+        .from(apiKeys)
+        .leftJoin(apiClients, eq(apiKeys.clientId, apiClients.id))
+        .where(and(
+          eq(apiClients.userId, userId),
+          eq(apiKeys.isActive, true),
+          eq(apiClients.isActive, true)
+        ));
+
+      // Mask API keys for security
+      const maskedKeys = userApiKeys.map(key => ({
+        ...key,
+        key: '•••••••••••' + (key.id.toString().slice(-4)) // Show last 4 digits of ID
+      }));
+
+      res.json({
+        success: true,
+        data: maskedKeys
+      });
+    } catch (error) {
+      console.error("API keys listesi hatası:", error);
+      res.status(500).json({
+        success: false,
+        error: "API_KEYS_FETCH_ERROR",
+        message: "API keys listesi alınamadı"
+      });
+    }
+  });
+
+  // Yeni API key oluştur (Domain zorunlu)
+  app.post("/api/user/api-keys", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user?.userId;
+      const { name, permissions, allowedDomains } = req.body;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'UNAUTHORIZED', 
+          message: 'Kullanıcı kimliği bulunamadı'
+        });
+      }
+
+      if (!name || !permissions || !allowedDomains) {
+        return res.status(400).json({
+          success: false,
+          error: 'MISSING_FIELDS',
+          message: 'İsim, izinler ve allowed domains alanları zorunludur'
+        });
+      }
+
+      if (!Array.isArray(allowedDomains) || allowedDomains.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_DOMAINS',
+          message: 'En az bir domain belirtmelisiniz'
+        });
+      }
+
+      // API Client oluştur
+      const [newClient] = await db
+        .insert(apiClients)
+        .values({
+          name,
+          userId,
+          isActive: true
+        })
+        .returning();
+
+      // API Key oluştur
+      const apiKey = generateApiKey();  
+      const keyHash = await hashApiKey(apiKey);
+
+      const [newKey] = await db
+        .insert(apiKeys)
+        .values({
+          clientId: newClient.id,
+          keyHash,
+          permissions,
+          allowedDomains,
+          isActive: true
+        })
+        .returning();
+
+      res.status(201).json({
+        success: true,
+        message: "API key başarıyla oluşturuldu",
+        data: {
+          apiKey: {
+            id: newKey.id,
+            name,
+            key: apiKey, // Tam API key sadece oluşturma anında
+            permissions,
+            allowedDomains,
+            isActive: true,
+            createdAt: newKey.createdAt,
+            warning: "Bu tam API key sadece şimdi görüntüleniyor! Güvenli bir yerde saklayın."
+          }
+        }
+      });
+    } catch (error) {
+      console.error("API key oluşturma hatası:", error);
+      res.status(500).json({
+        success: false,
+        error: "API_KEY_CREATE_ERROR",
+        message: "API key oluşturulamadı"
+      });
+    }
+  });
+
+  // API key sil (soft delete)
+  app.delete("/api/user/api-keys/:keyId", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user?.userId;
+      const keyId = parseInt(req.params.keyId);
+
+      if (!userId || !keyId) {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_REQUEST',
+          message: 'Geçersiz istek'
+        });
+      }
+
+      // Kullanıcının key'ine sahip olduğunu doğrula
+      const [existingKey] = await db
+        .select()
+        .from(apiKeys)
+        .leftJoin(apiClients, eq(apiKeys.clientId, apiClients.id))
+        .where(and(eq(apiKeys.id, keyId), eq(apiClients.userId, userId)));
+
+      if (!existingKey) {
+        return res.status(404).json({
+          success: false,
+          error: 'API_KEY_NOT_FOUND',
+          message: 'API key bulunamadı'
+        });
+      }
+
+      // Soft delete - API key'i pasif yap
+      await db
+        .update(apiKeys)
+        .set({ 
+          isActive: false,
+          lastUsedAt: new Date()
+        })
+        .where(eq(apiKeys.id, keyId));
+
+      // API client'ı da pasif yap
+      await db
+        .update(apiClients)
+        .set({ isActive: false })
+        .where(eq(apiClients.id, existingKey.api_keys.clientId));
+
+      res.json({
+        success: true,
+        message: "API key başarıyla silindi"
+      });
+    } catch (error) {
+      console.error("API key silme hatası:", error);
+      res.status(500).json({
+        success: false,
+        error: "API_KEY_DELETE_ERROR",
+        message: "API key silinemedi"
       });
     }
   });

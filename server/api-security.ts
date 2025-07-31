@@ -79,6 +79,36 @@ export const generateApiToken = (
 // AUTHENTICATION MIDDLEWARE'LER
 // ========================
 
+// Domain validation helper
+function isDomainAllowed(requestOrigin: string, allowedDomains: string[]): boolean {
+  if (!requestOrigin || !allowedDomains?.length) return false;
+  
+  // Extract domain from full URL
+  let domain: string;
+  try {
+    domain = new URL(requestOrigin).hostname.toLowerCase();
+  } catch {
+    // If not a full URL, treat as domain directly
+    domain = requestOrigin.toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
+  }
+  
+  return allowedDomains.some(allowedDomain => {
+    const normalizedAllowed = allowedDomain.toLowerCase().trim();
+    
+    // Exact match
+    if (domain === normalizedAllowed) return true;
+    
+    // Subdomain match (if allowed domain doesn't start with subdomain)
+    if (!normalizedAllowed.includes('.') || normalizedAllowed.startsWith('www.')) {
+      // Main domain like "example.com" allows "api.example.com", "www.example.com", etc.
+      const mainDomain = normalizedAllowed.replace(/^www\./, '');
+      return domain === mainDomain || domain.endsWith('.' + mainDomain);
+    }
+    
+    return false;
+  });
+}
+
 // API Key tabanlı kimlik doğrulama
 export const authenticateApiKey = async (
   req: ApiRequest,
@@ -105,7 +135,7 @@ export const authenticateApiKey = async (
       });
     }
 
-    // Aktif API keys'leri al
+    // Aktif API keys'leri al (with allowed domains)
     const activeApiKeys = await db
       .select()
       .from(apiKeys)
@@ -126,11 +156,24 @@ export const authenticateApiKey = async (
           ));
         
         if (clientInfo) {
+          // Check domain restrictions
+          const origin = req.headers.origin || req.headers.referer || req.get('host');
+          if (keyRecord.allowedDomains?.length && origin) {
+            if (!isDomainAllowed(origin, keyRecord.allowedDomains)) {
+              return res.status(403).json({
+                success: false,
+                error: 'DOMAIN_NOT_ALLOWED',
+                message: 'Bu domain için erişim izni bulunmuyor'
+              });
+            }
+          }
+
           matchedKey = {
             clientId: keyRecord.clientId,
             clientName: clientInfo.name,
             companyId: clientInfo.companyId,
-            permissions: keyRecord.permissions
+            permissions: keyRecord.permissions,
+            allowedDomains: keyRecord.allowedDomains
           };
           
           // API key kullanım bilgisini güncelle
@@ -157,11 +200,10 @@ export const authenticateApiKey = async (
     req.apiClient = {
       id: matchedKey.clientId,
       name: matchedKey.clientName,
-      companyId: matchedKey.companyId
+      companyId: matchedKey.companyId,
+      permissions: matchedKey.permissions,
+      allowedDomains: matchedKey.allowedDomains
     };
-
-    // İzinleri request'e ekle
-    req.apiClient.permissions = matchedKey.permissions;
 
     req.startTime = Date.now();
     next();

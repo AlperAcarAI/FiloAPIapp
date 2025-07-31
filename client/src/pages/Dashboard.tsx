@@ -18,6 +18,7 @@ interface ApiKey {
   name: string;
   key: string; // Maskelenmiş format: *******abcd
   permissions: string[];
+  allowedDomains: string[];
   isActive: boolean;
   createdAt: string;
   lastUsedAt: string | null;
@@ -33,6 +34,7 @@ interface NewApiKeyResponse {
       name: string;
       key: string; // Tam API key - sadece oluşturma anında
       permissions: string[];
+      allowedDomains: string[];
       isActive: boolean;
       createdAt: string;
       warning?: string;
@@ -61,6 +63,7 @@ export default function Dashboard() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [allowedDomains, setAllowedDomains] = useState<string>('');
   const [visibleKeys, setVisibleKeys] = useState<Set<number>>(new Set());
   const [newlyCreatedKeys, setNewlyCreatedKeys] = useState<Map<number, string>>(new Map());
   const { toast } = useToast();
@@ -107,7 +110,7 @@ export default function Dashboard() {
 
   // Yeni API key oluşturma
   const createKeyMutation = useMutation({
-    mutationFn: async (data: { name: string; permissions: string[] }) => {
+    mutationFn: async (data: { name: string; permissions: string[], allowedDomains: string[] }) => {
       const response = await fetch('/api/user/api-keys', {
         method: 'POST',
         headers: {
@@ -140,6 +143,7 @@ export default function Dashboard() {
       setShowCreateDialog(false);
       setNewKeyName('');
       setSelectedPermissions([]);
+      setAllowedDomains('');
       queryClient.invalidateQueries({ queryKey: ['/api/user/api-keys'] });
     },
     onError: (error: any) => {
@@ -282,6 +286,19 @@ export default function Dashboard() {
                 />
               </div>
               
+              <div className="space-y-2">
+                <Label htmlFor="allowedDomains">İzinli Domainler (Zorunlu)</Label>
+                <Input
+                  id="allowedDomains"
+                  placeholder="example.com, api.mysite.com, localhost:3000"
+                  value={allowedDomains}
+                  onChange={(e) => setAllowedDomains(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  API key'in kullanılabileceği domain'leri virgülle ayırarak girin. Alt domain'ler otomatik dahil edilir.
+                </p>
+              </div>
+              
               <div className="space-y-3">
                 <Label>İzinler</Label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto">
@@ -316,8 +333,12 @@ export default function Dashboard() {
                 İptal
               </Button>
               <Button 
-                onClick={() => createKeyMutation.mutate({ name: newKeyName, permissions: selectedPermissions })}
-                disabled={!newKeyName.trim() || selectedPermissions.length === 0 || createKeyMutation.isPending}
+                onClick={() => createKeyMutation.mutate({ 
+                  name: newKeyName, 
+                  permissions: selectedPermissions,
+                  allowedDomains: allowedDomains.split(',').map(d => d.trim()).filter(d => d.length > 0)
+                })}
+                disabled={!newKeyName.trim() || selectedPermissions.length === 0 || !allowedDomains.trim() || createKeyMutation.isPending}
               >
                 {createKeyMutation.isPending ? 'Oluşturuluyor...' : 'Oluştur'}
               </Button>
@@ -364,7 +385,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {isLoadingEndpoints ? '...' : apiEndpoints.filter(api => api.status === 'active').length}
+              {isLoadingEndpoints ? '...' : apiEndpoints.filter((api: ApiEndpoint) => api.status === 'active').length}
             </div>
             <p className="text-xs text-muted-foreground">
               Çalışan endpoint'ler
