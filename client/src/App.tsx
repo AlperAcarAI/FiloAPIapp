@@ -1,4 +1,4 @@
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -18,10 +18,41 @@ import AdminTenants from "@/pages/AdminTenants";
 
 function ProtectedRoute({ component: Component }: { component: any }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    setIsAuthenticated(!!token);
+    const checkAuth = async () => {
+      const token = localStorage.getItem('authToken');
+      
+      if (!token) {
+        setIsAuthenticated(false);
+        return;
+      }
+
+      // Verify token is still valid
+      try {
+        const response = await fetch('/api/test-auth', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          setIsAuthenticated(true);
+        } else {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        setIsAuthenticated(false);
+      }
+    };
+
+    checkAuth();
   }, []);
 
   if (isAuthenticated === null) {

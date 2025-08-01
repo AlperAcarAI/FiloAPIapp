@@ -12,10 +12,10 @@ interface AuthResponse {
   success: boolean;
   message: string;
   data?: {
-    token: string;
+    accessToken: string;
     user: {
       id: number;
-      username: string;
+      email: string;
     };
   };
 }
@@ -23,7 +23,7 @@ interface AuthResponse {
 export default function Login() {
   const [, setLocation] = useLocation();
   const [loginData, setLoginData] = useState({ username: '', password: '' });
-  const [registerData, setRegisterData] = useState({ username: '', password: '', confirmPassword: '' });
+  const [registerData, setRegisterData] = useState({ username: '', password: '', confirmPassword: '', companyName: '', companyId: '' });
   const [loginLoading, setLoginLoading] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
   const { toast } = useToast();
@@ -97,6 +97,8 @@ export default function Login() {
         body: JSON.stringify({
           email: registerData.username,
           password: registerData.password,
+          companyName: registerData.companyName,
+          companyId: registerData.companyId ? parseInt(registerData.companyId) : undefined,
         }),
       });
 
@@ -109,7 +111,7 @@ export default function Login() {
         });
         
         // After successful registration, user needs to login
-        setRegisterData({ username: '', password: '', confirmPassword: '' });
+        setRegisterData({ username: '', password: '', confirmPassword: '', companyName: '', companyId: '' });
       } else {
         toast({
           title: "Kayıt Hatası",
@@ -241,6 +243,20 @@ export default function Login() {
                       minLength={6}
                     />
                   </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="register-company">Şirket</Label>
+                  <Input
+                    id="register-company"
+                    type="text"
+                    placeholder="Yeni şirket adı girin (boş bırakılırsa varsayılan şirket)"
+                    value={registerData.companyName}
+                    onChange={(e) => setRegisterData({ ...registerData, companyName: e.target.value })}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Boş bırakılırsa varsayılan şirkete (ID: 1) atanacaksınız
+                  </p>
                 </div>
                 
                 <Button 

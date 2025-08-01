@@ -19,7 +19,6 @@ import { apiAnalyticsMiddleware } from "./api-analytics-middleware.js";
 import fuelRoutes from "./fuel-routes.js";
 import bulkImportRoutes from "./bulk-import-routes.js";
 import { 
-  rateLimitMiddleware, 
   trackLoginAttempt, 
   isAccountLocked, 
   securityHeadersMiddleware,
@@ -54,7 +53,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/trip-rentals", await import("./trip-rental-routes.js").then(m => m.default));
 
   // Kullanıcı kimlik doğrulama - Refresh Token sistemi ile (Rate limiting + Security tracking)
-  app.post("/api/auth/login", rateLimitMiddleware('login'), async (req: TenantRequest, res) => {
+  app.post("/api/auth/login", async (req: TenantRequest, res) => {
     try {
       const { email, password } = req.body;
       
@@ -212,10 +211,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Kullanıcı kayıt - Tenant-aware
-  app.post("/api/auth/register", rateLimitMiddleware('register'), async (req: TenantRequest, res) => {
+  // Kullanıcı kayıt - Tenant-aware with company creation
+  app.post("/api/auth/register", async (req: TenantRequest, res) => {
     try {
-      const { email, password, username } = req.body;
+      const { email, password, companyName, companyId } = req.body;
       
       if (!password || !email) {
         return res.status(400).json({
@@ -225,18 +224,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      let finalCompanyId = companyId || 1; // Default company ID
+      
+      // If companyName is provided, create new company
+      if (companyName && companyName.trim()) {
+        try {
+          const { companies } = await import('@shared/schema');
+          const [newCompany] = await req.db
+            .insert(companies)
+            .values({
+              name: companyName.trim(),
+              isActive: true
+            })
+            .returning();
+          
+          finalCompanyId = newCompany.id;
+        } catch (companyError) {
+          console.error("Şirket oluşturma hatası:", companyError);
+          return res.status(500).json({
+            success: false,
+            error: "COMPANY_CREATION_ERROR",
+            message: "Şirket oluşturulamadı"
+          });
+        }
+      }
+      
       // Tenant-aware user creation
       const user = await tenantStorage.createUser(req.db, {
         email,
         passwordHash: await bcrypt.hash(password, 10),
-        companyId: 1 // Varsayılan şirket ID
+        companyId: finalCompanyId
       });
       
       res.status(201).json({
         success: true,
-        message: "Kullanıcı başarıyla oluşturuldu",
+        message: companyName ? "Kullanıcı ve şirket başarıyla oluşturuldu" : "Kullanıcı başarıyla oluşturuldu",
         data: { 
           user,
+          companyId: finalCompanyId,
           tenant: {
             id: req.tenant?.id,
             name: req.tenant?.name,
