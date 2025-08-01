@@ -61,7 +61,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Debug logging for production
+      console.log(`Login attempt for email: ${email}`);
+      
       const authenticatedUser = await storage.authenticateUser(email, password);
+      console.log(`Authentication result: ${!!authenticatedUser}`);
+      
       if (!authenticatedUser) {
         await trackLoginAttempt(email, false, req.ip || 'unknown', req.get('User-Agent'), 'invalid_password');
         return res.status(401).json({
@@ -115,10 +120,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ipAddress: req.ip,
         userAgent: req.get('User-Agent'),
       });
-      res.status(401).json({
+      res.status(500).json({
         success: false,
         error: "LOGIN_ERROR",
-        message: "Giriş başarısız"
+        message: "Giriş başarısız",
+        debug: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
@@ -277,6 +283,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         error: "TEST_ERROR",
         message: "Test başarısız"
+      });
+    }
+  });
+
+  // Production debug endpoint - fix admin user
+  app.post("/api/fix-admin", async (req: Request, res: Response) => {
+    try {
+      const bcrypt = require('bcryptjs');
+      const correctHash = await bcrypt.hash('Architect', 10);
+      
+      // First check if user exists
+      const existingUser = await storage.getUserByEmail('admin@example.com');
+      
+      if (!existingUser) {
+        // Create admin user
+        await storage.createUser({
+          email: 'admin@example.com',
+          passwordHash: correctHash,
+          companyId: 1
+        });
+        res.json({ success: true, message: 'Admin user created' });
+      } else {
+        // Update password hash directly in database
+        await db.update(users).set({ 
+          passwordHash: correctHash 
+        }).where(eq(users.email, 'admin@example.com'));
+        
+        res.json({ 
+          success: true, 
+          message: 'Admin password updated',
+          oldHashLength: existingUser.passwordHash?.length,
+          newHashLength: correctHash.length
+        });
+      }
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
