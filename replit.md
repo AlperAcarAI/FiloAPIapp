@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a full-stack API management system designed to manage API definitions, track their status, and monitor performance. It features a React frontend and an Express.js backend with PostgreSQL. The system integrates robust security features, including JWT authentication, role-based access control, API Key protection, rate limiting, and real-time monitoring. Its vision is to provide a comprehensive solution for managing and securing an enterprise's API landscape, enabling efficient operations and robust data protection.
+This is a full-stack API management system designed to manage API definitions, track their status, and monitor performance. It features a React frontend and an Express.js backend with PostgreSQL. The system integrates robust security features, including JWT authentication, role-based access control, API Key protection, rate limiting, and real-time monitoring. The multi-tenant system has been removed for simplicity, using a straightforward authentication approach instead. Its vision is to provide a comprehensive solution for managing and securing an enterprise's API landscape, enabling efficient operations and robust data protection.
 
 ## User Preferences
 
@@ -30,6 +30,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Key Design Decisions
 - **Component-Based UI**: Reusable UI components for consistent design.
+- **Simplified Authentication**: Basic JWT-based authentication without complex multi-tenant architecture for easier development and maintenance.
 - **Unified Document System**: Polymorphic `documents` table for various entity types (personnel, asset, company, work_area).
 - **Hybrid Audit System**: Centralized `audit_logs` table tracking all database changes with user and API client info.
 - **Domain-Based API Key Restrictions**: API keys are restricted to specified domains (including wildcard and subdomain support).

@@ -354,7 +354,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Kullanıcının kendi API key'lerini listele
   app.get("/api/user/api-keys", authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      const userId = req.user?.userId;
+      const userId = req.user?.id;
       if (!userId) {
         return res.status(401).json({
           success: false,
@@ -402,9 +402,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Yeni API key oluştur (Domain zorunlu)
-  app.post("/api/user/api-keys", authenticateToken, async (req: AuthRequest, res) => {
+  app.post("/api/user/api-keys", authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      const userId = req.user?.userId;
+      const userId = req.user?.id;
       const { name, permissions, allowedDomains } = req.body;
 
       if (!userId) {
@@ -483,9 +483,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // API key sil (soft delete)
-  app.delete("/api/user/api-keys/:keyId", authenticateToken, async (req: AuthRequest, res) => {
+  app.delete("/api/user/api-keys/:keyId", authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      const userId = req.user?.userId;
+      const userId = req.user?.id;
       const keyId = parseInt(req.params.keyId);
 
       if (!userId || !keyId) {
