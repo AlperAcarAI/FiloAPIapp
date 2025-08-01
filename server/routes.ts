@@ -1,13 +1,15 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { tenantStorage } from "./tenant-storage.js";
 import { authenticateToken, type AuthRequest } from "./auth";
 import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset, cities, type City } from "@shared/schema";
 import { generateTokenPair, validateRefreshToken, revokeRefreshToken, revokeAllUserRefreshTokens } from "./auth";
 import { z } from "zod";
 import { db } from "./db";
 import { assets } from "@shared/schema";
-import { eq, desc, asc, sql, like, ilike } from "drizzle-orm";
+import { eq, desc, asc, sql, like, ilike, and } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 import { registerApiManagementRoutes } from "./api-management-routes";
 import documentRoutes from "./document-routes.js";
 import companyRoutes from "./company-routes.js";
@@ -28,6 +30,8 @@ import {
 import { registerSecurityRoutes } from "./security-routes.js";
 import { generateApiKey, hashApiKey } from "./api-security.js";
 import { apiKeys, apiClients } from "@shared/schema";
+import { tenantMiddleware, tenantDatabaseMiddleware, type TenantRequest } from "./tenant-middleware.js";
+import tenantRoutes from "./tenant-routes.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Security headers - tüm isteklere uygula
@@ -36,19 +40,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Device fingerprinting middleware
   app.use(deviceFingerprintMiddleware);
 
+  // Tenant middleware - tüm API endpoint'leri için
+  app.use('/api', tenantMiddleware);
+  app.use('/api', tenantDatabaseMiddleware);
+
+  // Tenant management routes
+  app.use('/api/tenant', tenantRoutes);
+
   // API Analytics middleware - Geçici olarak devre dışı
 
-  // API route'larını kaydet
+  // API route'larını kaydet - artık tenant-aware
   app.use("/api/documents", documentRoutes);
   app.use("/api/trip-rentals", await import("./trip-rental-routes.js").then(m => m.default));
 
   // Kullanıcı kimlik doğrulama - Refresh Token sistemi ile (Rate limiting + Security tracking)
-  app.post("/api/auth/login", rateLimitMiddleware('login'), async (req: SecurityRequest, res) => {
+  app.post("/api/auth/login", rateLimitMiddleware('login'), async (req: TenantRequest, res) => {
     try {
       const { email, password } = req.body;
       
-      // Check if account is locked first  
-      const user = await storage.getUserByUsername(email);
+      // Check if account is locked first - tenant-aware
+      const user = await tenantStorage.getUserByUsername(req.db, email);
       if (user) {
         const locked = await isAccountLocked(user.id);
         if (locked) {
@@ -61,7 +72,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const authenticatedUser = await storage.authenticateUser(email, password);
+      const authenticatedUser = await tenantStorage.authenticateUser(req.db, email, password);
       if (!authenticatedUser) {
         await trackLoginAttempt(email, false, req.ip || 'unknown', req.get('User-Agent'), 'invalid_password');
         return res.status(401).json({
@@ -100,6 +111,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Giriş başarılı",
         data: { 
           user: authenticatedUser,
+          tenant: {
+            id: req.tenant?.id,
+            name: req.tenant?.name,
+            subdomain: req.tenant?.subdomain
+          },
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
           expiresIn: tokens.expiresIn,
@@ -196,29 +212,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/auth/register", async (req, res) => {
+  // Kullanıcı kayıt - Tenant-aware
+  app.post("/api/auth/register", rateLimitMiddleware('register'), async (req: TenantRequest, res) => {
     try {
-      const { email, password, name } = req.body;
-      console.log("Register request body:", req.body);
-      console.log("Password received:", password);
+      const { email, password, username } = req.body;
       
-      if (!password) {
+      if (!password || !email) {
         return res.status(400).json({
           success: false,
-          error: "MISSING_PASSWORD",
-          message: "Şifre gereklidir"
+          error: "MISSING_FIELDS",
+          message: "Email ve şifre gereklidir"
         });
       }
       
-      const user = await storage.createUser({
+      // Tenant-aware user creation
+      const user = await tenantStorage.createUser(req.db, {
         email,
-        passwordHash: password,
+        passwordHash: await bcrypt.hash(password, 10),
         companyId: 1 // Varsayılan şirket ID
       });
+      
       res.status(201).json({
         success: true,
         message: "Kullanıcı başarıyla oluşturuldu",
-        data: { user }
+        data: { 
+          user,
+          tenant: {
+            id: req.tenant?.id,
+            name: req.tenant?.name,
+            subdomain: req.tenant?.subdomain
+          }
+        }
       });
     } catch (error) {
       console.error("Kayıt hatası:", error);
