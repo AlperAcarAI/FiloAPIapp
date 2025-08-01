@@ -1,9 +1,8 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { tenantStorage } from "./tenant-storage.js";
+import { storage } from "./storage.js";
 import { authenticateToken, type AuthRequest } from "./auth";
-import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset, cities, type City } from "@shared/schema";
+import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset, cities, type City, companies, users } from "@shared/schema";
 import { generateTokenPair, validateRefreshToken, revokeRefreshToken, revokeAllUserRefreshTokens } from "./auth";
 import { z } from "zod";
 import { db } from "./db";
@@ -29,8 +28,6 @@ import {
 import { registerSecurityRoutes } from "./security-routes.js";
 import { generateApiKey, hashApiKey } from "./api-security.js";
 import { apiKeys, apiClients } from "@shared/schema";
-import { tenantMiddleware, tenantDatabaseMiddleware, type TenantRequest } from "./tenant-middleware.js";
-import tenantRoutes from "./tenant-routes.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Security headers - tüm isteklere uygula
@@ -39,26 +36,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Device fingerprinting middleware
   app.use(deviceFingerprintMiddleware);
 
-  // Tenant middleware - tüm API endpoint'leri için
-  app.use('/api', tenantMiddleware);
-  app.use('/api', tenantDatabaseMiddleware);
-
-  // Tenant management routes (before auth middleware)
-  app.use('/api/tenant', tenantRoutes);
-
   // API Analytics middleware - Geçici olarak devre dışı
 
-  // API route'larını kaydet - artık tenant-aware
+  // API route'larını kaydet
   app.use("/api/documents", documentRoutes);
   app.use("/api/trip-rentals", await import("./trip-rental-routes.js").then(m => m.default));
 
-  // Kullanıcı kimlik doğrulama - Refresh Token sistemi ile (Rate limiting + Security tracking)
-  app.post("/api/auth/login", async (req: TenantRequest, res) => {
+  // Kullanıcı kimlik doğrulama - Basitleştirilmiş sistem
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
       
-      // Check if account is locked first - tenant-aware
-      const user = await tenantStorage.getUserByUsername(req.db, email);
+      // Check if account is locked first
+      const user = await storage.getUserByUsername(email);
       if (user) {
         const locked = await isAccountLocked(user.id);
         if (locked) {
@@ -71,7 +61,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const authenticatedUser = await tenantStorage.authenticateUser(req.db, email, password);
+      const authenticatedUser = await storage.authenticateUser(email, password);
       if (!authenticatedUser) {
         await trackLoginAttempt(email, false, req.ip || 'unknown', req.get('User-Agent'), 'invalid_password');
         return res.status(401).json({
@@ -110,11 +100,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Giriş başarılı",
         data: { 
           user: authenticatedUser,
-          tenant: {
-            id: req.tenant?.id,
-            name: req.tenant?.name,
-            subdomain: req.tenant?.subdomain
-          },
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
           expiresIn: tokens.expiresIn,
@@ -211,8 +196,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Kullanıcı kayıt - Tenant-aware with company creation
-  app.post("/api/auth/register", async (req: TenantRequest, res) => {
+  // Kullanıcı kayıt - Basitleştirilmiş sistem with company creation
+  app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
       const { email, password, companyName, companyId } = req.body;
       
@@ -229,8 +214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If companyName is provided, create new company
       if (companyName && companyName.trim()) {
         try {
-          const { companies } = await import('@shared/schema');
-          const [newCompany] = await req.db
+          const [newCompany] = await db
             .insert(companies)
             .values({
               name: companyName.trim(),
@@ -249,8 +233,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Tenant-aware user creation
-      const user = await tenantStorage.createUser(req.db, {
+      // User creation
+      const user = await storage.createUser({
         email,
         passwordHash: await bcrypt.hash(password, 10),
         companyId: finalCompanyId
@@ -261,12 +245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: companyName ? "Kullanıcı ve şirket başarıyla oluşturuldu" : "Kullanıcı başarıyla oluşturuldu",
         data: { 
           user,
-          companyId: finalCompanyId,
-          tenant: {
-            id: req.tenant?.id,
-            name: req.tenant?.name,
-            subdomain: req.tenant?.subdomain
-          }
+          companyId: finalCompanyId
         }
       });
     } catch (error) {
@@ -281,19 +260,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
-  // Test endpoint - API güvenlik test için
-  app.get("/api/test-auth", async (req, res) => {
+  // Test endpoint - Protected (Token gerektirir)
+  app.get("/api/test-auth", authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       res.json({
         success: true,
-        message: "Test başarılı - güvenlik aktif değil",
-        headers: req.headers
+        message: "Test başarılı - güvenli endpoint'e erişim sağlandı",
+        data: {
+          user: req.user,
+          timestamp: new Date().toISOString()
+        }
       });
     } catch (error) {
+      console.error("Test auth hatası:", error);
       res.status(500).json({
         success: false,
         error: "TEST_ERROR",
-        message: "Test hatası"
+        message: "Test başarısız"
       });
     }
   });
@@ -369,7 +352,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========================
 
   // Kullanıcının kendi API key'lerini listele
-  app.get("/api/user/api-keys", authenticateToken, async (req: AuthRequest, res) => {
+  app.get("/api/user/api-keys", authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user?.userId;
       if (!userId) {
