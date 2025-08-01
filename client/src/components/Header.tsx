@@ -84,7 +84,7 @@ export function Header() {
                 </div>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Architect FiloApi</h1>
+                <h1 className="text-xl font-bold text-gray-900">Filoki Api</h1>
                 <p className="text-sm text-gray-500 hidden sm:block">API Management Platform</p>
               </div>
             </Link>
