@@ -43,13 +43,10 @@ export default function Navigation() {
 
   const navItems = [
     { href: '/', icon: Home, label: 'Ana Sayfa' },
-    { href: '/test', icon: Settings, label: 'Test Ortamı' },
     { href: '/dashboard', icon: BarChart3, label: 'Dashboard' },
-    { href: '/documents', icon: FolderOpen, label: 'Dökümanlar' },
-    { href: '/bulk-import', icon: Upload, label: 'Toplu Import' },
     { href: '/api-center', icon: Database, label: 'API Center' },
     { href: '/analytics', icon: BarChart3, label: 'Analytics' },
-    { href: '/admin/tenants', icon: Settings, label: 'Tenant Yönetimi' },
+    { href: '/documents', icon: FolderOpen, label: 'Dökümanlar' },
   ];
 
   return (

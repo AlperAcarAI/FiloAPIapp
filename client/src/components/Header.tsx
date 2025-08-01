@@ -9,19 +9,55 @@ import {
   Key, 
   TestTube,
   Menu,
-  X
+  X,
+  LogOut
 } from "lucide-react";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 export function Header() {
   const [location] = useLocation();
+  const [, setLocation] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      
+      if (token) {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+      }
+      
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+      
+      toast({
+        title: "Çıkış Başarılı",
+        description: "Güvenli bir şekilde çıkış yaptınız",
+      });
+      
+      setLocation('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+      setLocation('/login');
+    }
+  };
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const navigation = [
     { name: "Ana Sayfa", href: "/", icon: Home },
-    { name: "Login", href: "/login", icon: Key },
-    { name: "API Center", href: "/api-center", icon: TestTube },
-    { name: "Dashboard", href: "/dashboard", icon: Key },
+    { name: "Dashboard", href: "/dashboard", icon: BarChart3 },
+    { name: "API Center", href: "/api-center", icon: Database },
     { name: "Analytics", href: "/analytics", icon: BarChart3 },
     { name: "Dokümanlar", href: "/documents", icon: FileText },
   ];
@@ -61,29 +97,47 @@ export function Header() {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex space-x-1">
-            {navigation.map((item, index) => {
-              const Icon = item.icon;
-              const active = isActive(item.href);
-              
-              return (
-                <Link key={index} href={item.href}>
-                  <Button
-                    variant={active ? "default" : "ghost"}
-                    size="sm"
-                    className={`flex items-center space-x-2 transition-all duration-200 ${
-                      active 
-                        ? "bg-blue-600 text-white shadow-md" 
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span className="hidden lg:block">{item.name}</span>
-                  </Button>
-                </Link>
-              );
-            })}
-          </nav>
+          <div className="hidden md:flex items-center space-x-1">
+            <nav className="flex space-x-1">
+              {navigation.map((item, index) => {
+                const Icon = item.icon;
+                const active = isActive(item.href);
+                
+                return (
+                  <Link key={index} href={item.href}>
+                    <Button
+                      variant={active ? "default" : "ghost"}
+                      size="sm"
+                      className={`flex items-center space-x-2 transition-all duration-200 ${
+                        active 
+                          ? "bg-blue-600 text-white shadow-md" 
+                          : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span className="hidden lg:block">{item.name}</span>
+                    </Button>
+                  </Link>
+                );
+              })}
+            </nav>
+            
+            {/* User Info & Logout */}
+            <div className="flex items-center space-x-3 ml-4 pl-4 border-l border-gray-200">
+              <span className="text-sm text-gray-600 hidden lg:block">
+                {user.email || user.username || 'Kullanıcı'}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLogout}
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden lg:block">Çıkış</span>
+              </Button>
+            </div>
+          </div>
 
           {/* Mobile Menu Button */}
           <div className="md:hidden">
@@ -125,11 +179,25 @@ export function Header() {
                 );
               })}
               
-              {/* Mobile Status */}
-              <div className="pt-3 border-t border-gray-200">
+              {/* Mobile User & Logout */}
+              <div className="pt-3 border-t border-gray-200 space-y-2">
+                <div className="px-3 py-2 text-sm text-gray-600">
+                  {user.email || user.username || 'Kullanıcı'}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="w-full justify-start space-x-3 text-gray-600 hover:text-gray-900"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Çıkış</span>
+                </Button>
+                
+                {/* Mobile Status */}
                 <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                   <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                  75 API Aktif
+                  138+ API Aktif
                 </Badge>
               </div>
             </div>
