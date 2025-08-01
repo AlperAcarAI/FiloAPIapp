@@ -11,10 +11,11 @@
 - Production domain: https://filokiapi.architectaiagency.com
 - Development domains: http://localhost:5000, http://localhost:3000
 
-### Admin User Credentials
-- Email: admin@example.com
-- Password: Architect
-- Database ID: 11
+### Database Configuration
+- Database Name: fleet_db
+- Admin User Email: admin@example.com
+- Admin User Password: Architect
+- Admin Database ID: 11
 
 ### Production Checklist
 - ✅ JWT secrets configured

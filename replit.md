@@ -11,6 +11,7 @@ Preferred communication style: Simple, everyday language.
 ## Production Deployment
 
 - **Domain**: filokiapi.architectaiagency.com
+- **Database**: fleet_db
 - **Admin Credentials**: admin@example.com / Architect
 - **Status**: Configured for production with JWT secrets and CORS
 
