@@ -27,8 +27,8 @@ router.get('/info', tenantMiddleware, (req: TenantRequest, res) => {
   });
 });
 
-// Yeni tenant oluştur (sadece admin)
-router.post('/create', authenticateToken, async (req: TenantRequest, res) => {
+// Yeni tenant oluştur (public for setup)
+router.post('/create', async (req: TenantRequest, res) => {
   try {
     const { name, subdomain, databaseUrl } = req.body;
     
@@ -80,8 +80,8 @@ router.post('/create', authenticateToken, async (req: TenantRequest, res) => {
   }
 });
 
-// Aktif tenant'ları listele (sadmin admin)
-router.get('/list', authenticateToken, (req: TenantRequest, res) => {
+// Aktif tenant'ları listele (public for admin panel)
+router.get('/list', (req: TenantRequest, res) => {
   try {
     const tenants = tenantManager.getActiveTenants();
     res.json({

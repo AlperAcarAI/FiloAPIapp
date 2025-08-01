@@ -13,6 +13,7 @@ import Analytics from "@/pages/Analytics";
 import BulkImport from "@/pages/BulkImport";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
+import AdminTenants from "@/pages/AdminTenants";
 
 function Router() {
   return (
@@ -25,6 +26,7 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/bulk-import" component={BulkImport} />
+      <Route path="/admin/tenants" component={AdminTenants} />
       <Route path="/login" component={Login} />
       <Route component={NotFound} />
     </Switch>

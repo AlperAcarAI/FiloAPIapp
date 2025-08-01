@@ -44,7 +44,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api', tenantMiddleware);
   app.use('/api', tenantDatabaseMiddleware);
 
-  // Tenant management routes
+  // Tenant management routes (before auth middleware)
   app.use('/api/tenant', tenantRoutes);
 
   // API Analytics middleware - Geçici olarak devre dışı
