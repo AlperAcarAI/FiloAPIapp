@@ -8,6 +8,12 @@ This is a full-stack API management system designed to manage API definitions, t
 
 Preferred communication style: Simple, everyday language.
 
+## Production Deployment
+
+- **Domain**: filokiapi.architectaiagency.com
+- **Admin Credentials**: admin@example.com / Architect
+- **Status**: Configured for production with JWT secrets and CORS
+
 ## System Architecture
 
 ### Frontend Architecture

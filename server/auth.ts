@@ -7,6 +7,7 @@ import { users, refreshTokens } from '@shared/schema';
 import { eq, and, lt } from 'drizzle-orm';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key-change-this-in-production';
 const JWT_ACCESS_EXPIRES_IN = '30m'; // Access token: 30 dakika
 const REFRESH_TOKEN_EXPIRES_IN_DAYS = 30; // Refresh token: 30 gün
 
