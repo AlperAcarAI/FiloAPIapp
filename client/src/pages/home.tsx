@@ -9,7 +9,7 @@ import { SearchFilters } from "@/components/search-filters";
 import { StatsCards } from "@/components/stats-cards";
 import { FileCode, Activity, BarChart3, TestTube, Upload, FileText, Key, TrendingUp } from "lucide-react";
 import { Link } from "wouter";
-import { Header } from "@/components/Header";
+import Navigation from "@/components/Navigation";
 
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -26,7 +26,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
+      <Navigation />
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Search and Filters */}

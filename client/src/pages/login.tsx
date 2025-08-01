@@ -47,7 +47,7 @@ export default function Login() {
       const data: AuthResponse = await response.json();
 
       if (data.success && data.data) {
-        localStorage.setItem('authToken', data.data.token);
+        localStorage.setItem('authToken', data.data.accessToken);
         localStorage.setItem('user', JSON.stringify(data.data.user));
         
         toast({
@@ -55,7 +55,7 @@ export default function Login() {
           description: data.message,
         });
         
-        setLocation('/test');
+        setLocation('/');
       } else {
         toast({
           title: "Giriş Hatası",
@@ -95,7 +95,7 @@ export default function Login() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          username: registerData.username,
+          email: registerData.username,
           password: registerData.password,
         }),
       });
@@ -103,15 +103,13 @@ export default function Login() {
       const data: AuthResponse = await response.json();
 
       if (data.success && data.data) {
-        localStorage.setItem('authToken', data.data.token);
-        localStorage.setItem('user', JSON.stringify(data.data.user));
-        
         toast({
           title: "Kayıt Başarılı!",
           description: data.message,
         });
         
-        setLocation('/test');
+        // After successful registration, user needs to login
+        setRegisterData({ username: '', password: '', confirmPassword: '' });
       } else {
         toast({
           title: "Kayıt Hatası",
@@ -137,9 +135,9 @@ export default function Login() {
           <div className="flex justify-center mb-4">
             <Shield className="h-12 w-12 text-blue-600" />
           </div>
-          <CardTitle className="text-2xl">API Test Ortamı</CardTitle>
+          <CardTitle className="text-2xl">Filo Yönetim Sistemi</CardTitle>
           <CardDescription>
-            Güvenli API testleri için giriş yapın
+            Güvenli sistem erişimi için giriş yapın
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -256,13 +254,20 @@ export default function Login() {
             </TabsContent>
           </Tabs>
           
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h3 className="font-semibold text-sm text-blue-800 mb-2">Test API Key'i:</h3>
-            <code className="text-xs bg-white px-2 py-1 rounded border">
-              test-api-key-2025
-            </code>
-            <p className="text-xs text-blue-600 mt-2">
-              API test sayfasında bu key'i kullanabilirsiniz
+          <div className="mt-6 p-4 bg-green-50 rounded-lg">
+            <h3 className="font-semibold text-sm text-green-800 mb-2">Varsayılan Admin Girişi:</h3>
+            <div className="space-y-1">
+              <div className="text-xs">
+                <span className="font-medium">Kullanıcı Adı:</span>
+                <code className="ml-2 bg-white px-2 py-1 rounded border">Admin</code>
+              </div>
+              <div className="text-xs">
+                <span className="font-medium">Şifre:</span>
+                <code className="ml-2 bg-white px-2 py-1 rounded border">Architect</code>
+              </div>
+            </div>
+            <p className="text-xs text-green-600 mt-2">
+              İlk giriş için bu bilgileri kullanın
             </p>
           </div>
         </CardContent>
