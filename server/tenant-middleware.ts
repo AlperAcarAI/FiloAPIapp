@@ -22,6 +22,15 @@ export function tenantMiddleware(req: TenantRequest, res: Response, next: NextFu
     const subdomain = tenantManager.extractSubdomain(host);
     
     if (!subdomain) {
+      // If no subdomain found, default to 'demo' for development
+      const defaultSubdomain = 'demo';
+      const defaultTenant = tenantManager.getTenantFromSubdomain(defaultSubdomain);
+      if (defaultTenant) {
+        req.tenant = defaultTenant;
+        next();
+        return;
+      }
+      
       return res.status(400).json({
         success: false,
         error: 'INVALID_TENANT',

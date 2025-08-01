@@ -60,7 +60,12 @@ export class TenantManager {
    * Host header'dan subdomain'i extract et
    */
   public extractSubdomain(host: string): string | null {
-    if (!host) return null;
+    if (!host) return 'demo'; // Default to demo if no host
+    
+    // Replit environment check - always return demo for replit hosts
+    if (host.includes('replit.dev') || host.includes('repl.co') || host.includes('-00-')) {
+      return 'demo'; // Replit environment → demo (default)
+    }
     
     // subdomain.domain.com formatından subdomain'i al
     const parts = host.split('.');
