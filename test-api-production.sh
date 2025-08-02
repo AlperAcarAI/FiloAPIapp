@@ -1,232 +1,257 @@
 #!/bin/bash
 
-# ===================================
-# FİLOKİ API PRODUCTION TEST SCRIPT
+# ============================================
+# FILOKI API PRODUCTION TEST SCRIPT
 # Domain: filokiapi.architectaiagency.com
-# ===================================
+# Date: 2025-01-30
+# ============================================
 
-# Renkler
+# Colors
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-# API Bilgileri
+# Configuration
+API_BASE_URL="https://filokiapi.architectaiagency.com"
 API_KEY="ak_prod2025_rwba6dj1sw"
-BASE_URL="http://localhost:5000"
-ORIGIN="https://filokiapi.architectaiagency.com"
+ADMIN_EMAIL="admin@example.com"
+ADMIN_PASSWORD="Architect"
 
-# Test sayacı
+# Test counters
 TOTAL_TESTS=0
 PASSED_TESTS=0
 FAILED_TESTS=0
 
-# Test fonksiyonu
-run_test() {
-    local test_name="$1"
-    local method="$2"
-    local endpoint="$3"
-    local data="$4"
-    local expected_status="${5:-200}"
+# Function to print test results
+print_test() {
+    local test_name=$1
+    local status=$2
+    local response=$3
     
     TOTAL_TESTS=$((TOTAL_TESTS + 1))
     
-    echo -e "\n${YELLOW}[$TOTAL_TESTS] Test: $test_name${NC}"
-    echo "Method: $method"
-    echo "Endpoint: $endpoint"
-    
-    # Curl komutu
-    if [ "$method" = "GET" ] || [ "$method" = "DELETE" ]; then
-        response=$(curl -s -w "\n%{http_code}" -X $method "$BASE_URL$endpoint" \
-            -H "X-API-Key: $API_KEY" \
-            -H "Content-Type: application/json" \
-            -H "Origin: $ORIGIN")
-    else
-        response=$(curl -s -w "\n%{http_code}" -X $method "$BASE_URL$endpoint" \
-            -H "X-API-Key: $API_KEY" \
-            -H "Content-Type: application/json" \
-            -H "Origin: $ORIGIN" \
-            -d "$data")
-    fi
-    
-    # HTTP status kodu al
-    http_code=$(echo "$response" | tail -n1)
-    body=$(echo "$response" | sed '$d' | jq -r '.')
-    
-    # Başarı kontrolü
-    success=$(echo "$body" | jq -r '.success // false')
-    
-    if [ "$success" = "true" ] && [ "$http_code" = "$expected_status" ]; then
-        echo -e "${GREEN}✓ BAŞARILI${NC}"
+    if [ "$status" = "PASS" ]; then
+        echo -e "${GREEN}✓${NC} $test_name"
         PASSED_TESTS=$((PASSED_TESTS + 1))
-        
-        # Veri özetini göster
-        if [ "$method" = "GET" ]; then
-            count=$(echo "$body" | jq -r '.data.totalCount // .data | length // 0')
-            echo "Kayıt sayısı: $count"
-        else
-            message=$(echo "$body" | jq -r '.message // "Başarılı"')
-            echo "Mesaj: $message"
-        fi
     else
-        echo -e "${RED}✗ BAŞARISIZ${NC}"
+        echo -e "${RED}✗${NC} $test_name"
+        echo -e "  ${YELLOW}Response:${NC} $response"
         FAILED_TESTS=$((FAILED_TESTS + 1))
-        echo "HTTP Status: $http_code (Beklenen: $expected_status)"
-        error=$(echo "$body" | jq -r '.error // .message // "Bilinmeyen hata"')
-        echo "Hata: $error"
     fi
 }
 
-# ===================================
-# 1. AUTHENTICATION TESTLERİ
-# ===================================
-echo -e "\n${YELLOW}=== AUTHENTICATION TESTLERİ ===${NC}"
-
-# Login testi
-echo -e "\n${YELLOW}[AUTH] Admin Login Testi${NC}"
-login_response=$(curl -s -X POST "$BASE_URL/api/auth/login" \
-    -H "Content-Type: application/json" \
-    -d '{
-        "email": "admin@example.com",
-        "password": "Architect"
-    }' | jq -r '.')
-
-login_success=$(echo "$login_response" | jq -r '.success')
-if [ "$login_success" = "true" ]; then
-    echo -e "${GREEN}✓ Login başarılı${NC}"
-    access_token=$(echo "$login_response" | jq -r '.data.accessToken')
-    echo "Token alındı: ${access_token:0:50}..."
-else
-    echo -e "${RED}✗ Login başarısız${NC}"
-fi
-
-# ===================================
-# 2. ŞİRKET YÖNETİMİ TESTLERİ
-# ===================================
-echo -e "\n${YELLOW}=== ŞİRKET YÖNETİMİ TESTLERİ ===${NC}"
-
-# Şirket listesi
-run_test "Şirket Listesi" "GET" "/api/secure/companies" ""
-
-# Tek şirket detayı
-run_test "Şirket Detayı (ID:1)" "GET" "/api/secure/companies/1" ""
-
-# Yeni şirket ekle
-# run_test "Yeni Şirket Ekle" "POST" "/api/secure/companies" '{
-#     "name": "Test Firma Ltd. Şti.",
-#     "taxNo": "9876543210",
-#     "taxOffice": "Kadıköy Vergi Dairesi",
-#     "address": "Test Mahallesi, Test Sokak No:123",
-#     "phone": "+90 216 555 4444",
-#     "cityId": 34,
-#     "isActive": true
-# }' "201"
-
-# ===================================
-# 3. ARAÇ YÖNETİMİ TESTLERİ
-# ===================================
-echo -e "\n${YELLOW}=== ARAÇ YÖNETİMİ TESTLERİ ===${NC}"
-
-# Araç listesi
-run_test "Araç Listesi" "GET" "/api/secure/assets" ""
-
-# Aktif araçlar
-run_test "Aktif Araçlar" "GET" "/api/secure/assets?active=true" ""
-
-# Tek araç detayı
-run_test "Araç Detayı (ID:18)" "GET" "/api/secure/assets/18" ""
-
-# Plaka ile arama
-run_test "Plaka ile Arama" "GET" "/api/secure/assets?search=34ABC" ""
-
-# ===================================
-# 4. DOKÜMAN YÖNETİMİ TESTLERİ
-# ===================================
-echo -e "\n${YELLOW}=== DOKÜMAN YÖNETİMİ TESTLERİ ===${NC}"
-
-# Doküman listesi
-run_test "Doküman Listesi" "GET" "/api/secure/documents" ""
-
-# Araç dokümanları
-run_test "Araç Dokümanları" "GET" "/api/secure/documents?entityType=asset&entityId=18" ""
-
-# ===================================
-# 5. KİRALAMA YÖNETİMİ TESTLERİ
-# ===================================
-echo -e "\n${YELLOW}=== KİRALAMA YÖNETİMİ TESTLERİ ===${NC}"
-
-# Kiralama listesi
-run_test "Kiralama Listesi" "GET" "/api/trip-rentals" ""
-
-# Aktif kiralamalar
-run_test "Aktif Kiralamalar" "GET" "/api/trip-rentals?status=active" ""
-
-# ===================================
-# 6. FİNANSAL YÖNETİM TESTLERİ
-# ===================================
-echo -e "\n${YELLOW}=== FİNANSAL YÖNETİM TESTLERİ ===${NC}"
-
-# Finansal hesaplar
-run_test "Finansal Hesaplar" "GET" "/api/secure/financial/accounts" ""
-
-# ===================================
-# 7. API HEALTH CHECK
-# ===================================
-echo -e "\n${YELLOW}=== HEALTH CHECK ===${NC}"
-
-health_response=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/api/health")
-if [ "$health_response" = "200" ]; then
-    echo -e "${GREEN}✓ API Health Check başarılı${NC}"
-else
-    echo -e "${RED}✗ API Health Check başarısız (HTTP $health_response)${NC}"
-fi
-
-# ===================================
-# 8. API ANALYTİCS TESTLERİ
-# ===================================
-echo -e "\n${YELLOW}=== API ANALYTICS TESTLERİ ===${NC}"
-
-# API kullanım istatistikleri
-run_test "API İstatistikleri" "GET" "/api/analytics/stats" ""
-
-# ===================================
-# TEST SONUÇLARI
-# ===================================
-echo -e "\n${YELLOW}==============================${NC}"
-echo -e "${YELLOW}TEST SONUÇLARI${NC}"
-echo -e "${YELLOW}==============================${NC}"
-echo "Toplam Test: $TOTAL_TESTS"
-echo -e "${GREEN}Başarılı: $PASSED_TESTS${NC}"
-echo -e "${RED}Başarısız: $FAILED_TESTS${NC}"
-
-# Başarı oranı
-if [ $TOTAL_TESTS -gt 0 ]; then
-    success_rate=$((PASSED_TESTS * 100 / TOTAL_TESTS))
-    echo -e "\nBaşarı Oranı: ${success_rate}%"
+# Function to test endpoint
+test_endpoint() {
+    local method=$1
+    local endpoint=$2
+    local data=$3
+    local expected_status=$4
+    local test_name=$5
+    local use_token=$6
     
-    if [ $success_rate -eq 100 ]; then
-        echo -e "\n${GREEN}✅ TÜM TESTLER BAŞARILI!${NC}"
-    elif [ $success_rate -ge 80 ]; then
-        echo -e "\n${YELLOW}⚠️ Bazı testler başarısız, kontrol gerekli.${NC}"
+    # Build curl command
+    local curl_cmd="curl -s -w '\n%{http_code}' -X $method"
+    
+    # Add API key header
+    curl_cmd="$curl_cmd -H 'X-API-Key: $API_KEY'"
+    
+    # Add token if provided
+    if [ -n "$use_token" ] && [ -n "$AUTH_TOKEN" ]; then
+        curl_cmd="$curl_cmd -H 'Authorization: Bearer $AUTH_TOKEN'"
+    fi
+    
+    # Add data if provided
+    if [ -n "$data" ]; then
+        curl_cmd="$curl_cmd -H 'Content-Type: application/json' -d '$data'"
+    fi
+    
+    # Execute request
+    local response=$(eval "$curl_cmd '$API_BASE_URL$endpoint'")
+    local http_code=$(echo "$response" | tail -n1)
+    local body=$(echo "$response" | sed '$d')
+    
+    # Check result
+    if [ "$http_code" = "$expected_status" ]; then
+        print_test "$test_name" "PASS" "$body"
+        echo "$body" # Return response for further processing
     else
-        echo -e "\n${RED}❌ Çoğu test başarısız, acil müdahale gerekli!${NC}"
+        print_test "$test_name" "FAIL" "Expected: $expected_status, Got: $http_code, Body: $body"
+        echo ""
+    fi
+}
+
+# Start testing
+echo "============================================"
+echo "FILOKI API PRODUCTION TEST"
+echo "============================================"
+echo "API URL: $API_BASE_URL"
+echo "API Key: $API_KEY"
+echo ""
+
+# Test 1: Health Check
+echo -e "${BLUE}=== Health Check ===${NC}"
+test_endpoint "GET" "/api/health" "" "200" "Health check"
+
+# Test 2: Authentication
+echo -e "\n${BLUE}=== Authentication Tests ===${NC}"
+
+# Login
+login_response=$(test_endpoint "POST" "/api/auth/login" '{"email":"'$ADMIN_EMAIL'","password":"'$ADMIN_PASSWORD'"}' "200" "Admin login")
+
+# Extract token from response
+if [ -n "$login_response" ]; then
+    AUTH_TOKEN=$(echo "$login_response" | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+    if [ -n "$AUTH_TOKEN" ]; then
+        echo -e "${GREEN}Token obtained successfully${NC}"
+    else
+        echo -e "${RED}Failed to extract token${NC}"
     fi
 fi
 
-echo -e "\n${YELLOW}==============================${NC}"
-echo "Test tamamlandı: $(date)"
-echo -e "${YELLOW}==============================${NC}"
+# Test current user
+test_endpoint "GET" "/api/auth/me" "" "200" "Get current user" "true"
 
-# ===================================
-# PRODUCTION DEPLOYMENT İÇİN NOTLAR
-# ===================================
-echo -e "\n${YELLOW}📋 PRODUCTION DEPLOYMENT KONTROL LİSTESİ:${NC}"
-echo "✓ Domain: filokiapi.architectaiagency.com"
-echo "✓ API Key: ak_prod2025_rwba6dj1sw"
-echo "✓ Admin: admin@example.com / Architect"
-echo "✓ Database: fleetmanagement"
+# Test 3: Companies API
+echo -e "\n${BLUE}=== Companies API Tests ===${NC}"
+
+# List companies
+test_endpoint "GET" "/api/companies" "" "200" "List companies"
+
+# Get specific company
+test_endpoint "GET" "/api/companies/1" "" "200" "Get company by ID"
+
+# Create company (should work with API key)
+new_company=$(test_endpoint "POST" "/api/companies" '{"name":"Test Şirket A.Ş.","tax_no":"9876543210","address":"Test Adres","phone":"+90 212 555 0202","city_id":1}' "201" "Create company")
+
+# Extract new company ID
+if [ -n "$new_company" ]; then
+    NEW_COMPANY_ID=$(echo "$new_company" | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
+fi
+
+# Update company
+if [ -n "$NEW_COMPANY_ID" ]; then
+    test_endpoint "PUT" "/api/companies/$NEW_COMPANY_ID" '{"phone":"+90 212 555 0303"}' "200" "Update company"
+fi
+
+# Test 4: Personnel API
+echo -e "\n${BLUE}=== Personnel API Tests ===${NC}"
+
+# List personnel
+test_endpoint "GET" "/api/personnel" "" "200" "List personnel"
+
+# Create personnel
+test_endpoint "POST" "/api/personnel" '{"name":"Test","surname":"Personel","tc_no":12345678901,"phone_no":"+90 555 123 4567","nation_id":1,"birthplace_id":1}' "201" "Create personnel"
+
+# Test 5: Assets API
+echo -e "\n${BLUE}=== Assets API Tests ===${NC}"
+
+# List car brands
+test_endpoint "GET" "/api/assets/car-brands" "" "200" "List car brands"
+
+# List car models
+test_endpoint "GET" "/api/assets/car-models" "" "200" "List car models"
+
+# Test 6: Documents API
+echo -e "\n${BLUE}=== Documents API Tests ===${NC}"
+
+# List document types
+test_endpoint "GET" "/api/documents/types" "" "200" "List document types"
+
+# Test 7: Users API (requires auth)
+echo -e "\n${BLUE}=== Users API Tests ===${NC}"
+
+# List users
+test_endpoint "GET" "/api/users" "" "200" "List users" "true"
+
+# Test 8: API Analytics
+echo -e "\n${BLUE}=== API Analytics Tests ===${NC}"
+
+# Get API usage stats
+test_endpoint "GET" "/api/analytics/usage" "" "200" "API usage statistics" "true"
+
+# Get API performance
+test_endpoint "GET" "/api/analytics/performance" "" "200" "API performance metrics" "true"
+
+# Test 9: Search and Filtering
+echo -e "\n${BLUE}=== Search and Filter Tests ===${NC}"
+
+# Search companies
+test_endpoint "GET" "/api/companies?search=Demo" "" "200" "Search companies"
+
+# Pagination test
+test_endpoint "GET" "/api/companies?limit=5&offset=0" "" "200" "Pagination test"
+
+# Test 10: Error Handling
+echo -e "\n${BLUE}=== Error Handling Tests ===${NC}"
+
+# Invalid endpoint
+test_endpoint "GET" "/api/invalid-endpoint" "" "404" "Invalid endpoint (404)"
+
+# Missing required field
+test_endpoint "POST" "/api/companies" '{"tax_no":"1234"}' "400" "Missing required field (400)"
+
+# Invalid ID
+test_endpoint "GET" "/api/companies/99999" "" "404" "Non-existent resource (404)"
+
+# Test 11: API Key Validation
+echo -e "\n${BLUE}=== API Key Validation Tests ===${NC}"
+
+# Test with invalid API key
+curl_response=$(curl -s -w '\n%{http_code}' -X GET \
+    -H "X-API-Key: invalid_key_12345" \
+    "$API_BASE_URL/api/companies")
+http_code=$(echo "$curl_response" | tail -n1)
+
+if [ "$http_code" = "401" ]; then
+    print_test "Invalid API key rejection" "PASS" "Correctly rejected"
+else
+    print_test "Invalid API key rejection" "FAIL" "Expected: 401, Got: $http_code"
+fi
+
+# Test 12: CORS Headers
+echo -e "\n${BLUE}=== CORS Headers Test ===${NC}"
+
+cors_response=$(curl -s -I -X OPTIONS \
+    -H "Origin: https://filokiapi.architectaiagency.com" \
+    -H "Access-Control-Request-Method: GET" \
+    "$API_BASE_URL/api/companies")
+
+if echo "$cors_response" | grep -q "Access-Control-Allow-Origin"; then
+    print_test "CORS headers present" "PASS" "CORS configured"
+else
+    print_test "CORS headers present" "FAIL" "CORS headers missing"
+fi
+
+# Test 13: Swagger Documentation
+echo -e "\n${BLUE}=== API Documentation Test ===${NC}"
+
+swagger_response=$(curl -s -w '\n%{http_code}' "$API_BASE_URL/api-docs/")
+http_code=$(echo "$swagger_response" | tail -n1)
+
+if [ "$http_code" = "200" ]; then
+    print_test "Swagger documentation accessible" "PASS" "API docs available"
+else
+    print_test "Swagger documentation accessible" "FAIL" "Expected: 200, Got: $http_code"
+fi
+
+# Summary
 echo ""
-echo "Production'da test için:"
-echo "1. BASE_URL'yi https://filokiapi.architectaiagency.com olarak değiştir"
-echo "2. ./test-api-production.sh komutunu çalıştır"
-echo ""
+echo "============================================"
+echo "TEST SUMMARY"
+echo "============================================"
+echo -e "Total Tests: ${BLUE}$TOTAL_TESTS${NC}"
+echo -e "Passed: ${GREEN}$PASSED_TESTS${NC}"
+echo -e "Failed: ${RED}$FAILED_TESTS${NC}"
+echo -e "Success Rate: ${YELLOW}$(( PASSED_TESTS * 100 / TOTAL_TESTS ))%${NC}"
+echo "============================================"
+
+# Exit with appropriate code
+if [ $FAILED_TESTS -eq 0 ]; then
+    echo -e "\n${GREEN}All tests passed successfully!${NC}"
+    exit 0
+else
+    echo -e "\n${RED}Some tests failed. Please check the results above.${NC}"
+    exit 1
+fi
