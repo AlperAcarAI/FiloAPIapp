@@ -186,8 +186,47 @@ if [ "$confirm" != "y" ]; then
     exit 0
 fi
 
+# Install system dependencies
+print_header "STEP 2: INSTALL SYSTEM DEPENDENCIES"
+
+# Check if Node.js is installed
+if ! command -v node &> /dev/null; then
+    print_warning "Node.js not found. Installing..."
+    
+    # Install Node.js 20.x
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+    
+    print_success "Node.js installed: $(node --version)"
+else
+    print_success "Node.js already installed: $(node --version)"
+fi
+
+# Check if PM2 is installed
+if ! command -v pm2 &> /dev/null; then
+    print_warning "PM2 not found. Installing..."
+    sudo npm install -g pm2
+    print_success "PM2 installed"
+else
+    print_success "PM2 already installed"
+fi
+
+# Install other required packages
+print_status "Installing system packages..."
+sudo apt-get update
+sudo apt-get install -y \
+    git \
+    build-essential \
+    postgresql-client \
+    nginx \
+    certbot \
+    python3-certbot-nginx \
+    jq
+
+print_success "System dependencies installed"
+
 # Create installation directory
-print_header "STEP 2: PREPARE INSTALLATION"
+print_header "STEP 3: PREPARE INSTALLATION"
 INSTALL_DIR="$HOME/FiloAPIapp"
 print_status "Creating installation directory: $INSTALL_DIR"
 
@@ -200,19 +239,19 @@ mkdir -p "$INSTALL_DIR"
 cd "$INSTALL_DIR"
 
 # Clone repository
-print_header "STEP 3: CLONE REPOSITORY"
+print_header "STEP 4: CLONE REPOSITORY"
 print_status "Cloning from GitHub..."
 git clone https://github.com/AlperAcarAI/FiloAPIapp.git .
 print_success "Repository cloned successfully"
 
 # Install dependencies
-print_header "STEP 4: INSTALL DEPENDENCIES"
+print_header "STEP 5: INSTALL DEPENDENCIES"
 print_status "Installing Node.js dependencies..."
 npm install
 print_success "Dependencies installed"
 
 # Create .env file
-print_header "STEP 5: CREATE ENVIRONMENT FILE"
+print_header "STEP 6: CREATE ENVIRONMENT FILE"
 print_status "Creating .env file..."
 
 # Generate password hashes
@@ -294,12 +333,12 @@ mkdir -p uploads/{temp,assets,personnel,thumbnails}
 print_success "Upload directories created"
 
 # Build application
-print_header "STEP 6: BUILD APPLICATION"
+print_header "STEP 7: BUILD APPLICATION"
 print_status "Building production bundle..."
 npm run build || print_warning "Build failed, continuing..."
 
 # Setup database
-print_header "STEP 7: DATABASE SETUP"
+print_header "STEP 8: DATABASE SETUP"
 print_status "Setting up database..."
 
 # Create database if not exists
@@ -321,7 +360,7 @@ else
 fi
 
 # Setup PM2
-print_header "STEP 8: SETUP PM2"
+print_header "STEP 9: SETUP PM2"
 print_status "Configuring PM2..."
 
 # Create ecosystem file
@@ -358,7 +397,7 @@ pm2 startup systemd -u $USER --hp $HOME
 print_success "PM2 configured and application started"
 
 # Setup Nginx
-print_header "STEP 9: NGINX CONFIGURATION"
+print_header "STEP 10: NGINX CONFIGURATION"
 print_status "Creating Nginx configuration..."
 
 # Create nginx config
@@ -407,7 +446,7 @@ sudo nginx -t && sudo systemctl reload nginx
 print_success "Nginx configured"
 
 # Setup SSL
-print_header "STEP 10: SSL CERTIFICATE"
+print_header "STEP 11: SSL CERTIFICATE"
 print_status "Setting up Let's Encrypt SSL certificate..."
 
 sudo certbot --nginx -d $DOMAIN_NAME --non-interactive --agree-tos -m $SSL_EMAIL
@@ -415,7 +454,7 @@ sudo certbot --nginx -d $DOMAIN_NAME --non-interactive --agree-tos -m $SSL_EMAIL
 print_success "SSL certificate installed"
 
 # Create test script
-print_header "STEP 11: CREATE TEST SCRIPT"
+print_header "STEP 12: CREATE TEST SCRIPT"
 cat > test-api.sh << 'EOF'
 #!/bin/bash
 
