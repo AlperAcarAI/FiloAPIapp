@@ -1,21 +1,25 @@
+#!/usr/bin/env node
 import bcrypt from 'bcryptjs';
 
-// Test API key
-const apiKey = 'ak_prod2025_rwba6dj1sw';
+const args = process.argv.slice(2);
 
-// Generate hash
-const saltRounds = 10;
-const hash = bcrypt.hashSync(apiKey, saltRounds);
+if (args.length === 0) {
+    console.log('Usage: node generate-api-key-hash.mjs <password_or_api_key>');
+    console.log('Example: node generate-api-key-hash.mjs MySecurePassword123');
+    process.exit(1);
+}
 
-console.log('API Key:', apiKey);
-console.log('Hash:', hash);
-console.log('\nProduction SQL:');
-console.log(`
--- Production'da çalıştırılacak SQL
-UPDATE api_keys 
-SET key_hash = '${hash}' 
-WHERE client_id = (SELECT id FROM api_clients WHERE name = 'Production Main API');
-`);
+const textToHash = args[0];
 
-// Verify
-console.log('Verification:', bcrypt.compareSync(apiKey, hash));
+async function generateHash() {
+    try {
+        const hash = await bcrypt.hash(textToHash, 10);
+        console.log('\nOriginal text:', textToHash);
+        console.log('Generated hash:', hash);
+        console.log('\nYou can use this hash in your .env file');
+    } catch (error) {
+        console.error('Error generating hash:', error);
+    }
+}
+
+generateHash();

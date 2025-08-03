@@ -257,7 +257,7 @@ print_status "Creating .env file..."
 # Generate password hashes
 print_status "Generating password hashes..."
 cat > generate-hashes.js << EOF
-const bcrypt = require('bcryptjs');
+import bcrypt from 'bcryptjs';
 
 const adminPass = '$ADMIN_PASS';
 const apiKey = '$API_KEY';
