@@ -11,9 +11,11 @@ Preferred communication style: Simple, everyday language.
 ## Production Deployment
 
 - **Domain**: filokiapi.architectaiagency.com
-- **Database**: fleet_db
-- **Admin Credentials**: admin@example.com / Architect
-- **Status**: Configured for production with JWT secrets and CORS
+- **Database**: filoki_db
+- **Admin Credentials**: alper.acar@architectaiagency.com / Acar
+- **Status**: Production deployment active with PM2, Nginx, SSL
+- **API Keys**: test-api-key-2025, fleet-management-api-key, demo-api-access-key
+- **Authentication**: JWT-based with refresh tokens (login endpoint is public, no API key required)
 
 ## System Architecture
 
