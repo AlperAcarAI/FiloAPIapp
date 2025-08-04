@@ -485,10 +485,18 @@ if [ -f "production-full-database-setup.sql" ]; then
     
     # SQL dosyasını güncelle
     cp production-full-database-setup.sql temp_setup.sql
+    
+    # Email güncelle
     sed -i "s/admin@example.com/$ADMIN_EMAIL/g" temp_setup.sql
-    sed -i "s/\$2b\$10\$Em9d/.mW\/ruoBLXiul6Tq.mACIqmDMIY7p\/C9dA4\/xtAKW4FD5jGK/$ADMIN_PASS_HASH/g" temp_setup.sql
+    
+    # Admin password hash güncelle (| delimiter kullan)
+    sed -i "s|\$2b\$10\$Em9d/.mW/ruoBLXiul6Tq.mACIqmDMIY7p/C9dA4/xtAKW4FD5jGK|$ADMIN_PASS_HASH|g" temp_setup.sql
+    
+    # API key güncelle
     sed -i "s/ak_prod2025_rwba6dj1sw/$API_KEY/g" temp_setup.sql
-    sed -i "s/\$2b\$10\$EbPHkGCd\/.4KM.OVdd1Hp.51vqCBEu67A\/lpLzS6yFdFQA3Hep9AW/$API_KEY_HASH/g" temp_setup.sql
+    
+    # API key hash güncelle (| delimiter kullan)
+    sed -i "s|\$2b\$10\$EbPHkGCd/.4KM.OVdd1Hp.51vqCBEu67A/lpLzS6yFdFQA3Hep9AW|$API_KEY_HASH|g" temp_setup.sql
     
     # Schema uygula
     PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f temp_setup.sql || handle_error "Veritabanı şeması uygulama"
