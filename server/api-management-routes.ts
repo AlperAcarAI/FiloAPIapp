@@ -129,13 +129,7 @@ export function registerApiManagementRoutes(app: Express) {
             error: { type: 'string' }
           }
         },
-        City: {
-          type: 'object',
-          properties: {
-            id: { type: 'integer', example: 1 },
-            name: { type: 'string', example: 'Istanbul' }
-          }
-        },
+
         Asset: {
           type: 'object',
           properties: {
@@ -3625,15 +3619,10 @@ export function registerApiManagementRoutes(app: Express) {
     }
   };
 
-  // Swagger UI Configuration
-  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
-    customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: "Fleet Management API",
-    swaggerOptions: {
-      persistAuthorization: true,
-      displayRequestDuration: true
-    }
-  }));
+  // Swagger JSON Documentation endpoint
+  app.get('/api/docs', (req, res) => {
+    res.json(swaggerDocument);
+  });
 
   // JSON Documentation endpoint
   app.get('/api/docs/json', (req, res) => {
