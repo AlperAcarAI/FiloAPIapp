@@ -14,7 +14,7 @@ Preferred communication style: Simple, everyday language.
 - **Database**: filoki_db
 - **Admin Credentials**: alper.acar@architectaiagency.com / Acar
 - **Status**: Production deployment active with PM2, Nginx, SSL
-- **API Keys**: test-api-key-2025, fleet-management-api-key, demo-api-access-key
+- **API Key**: filoki-api-master-key-2025 (single master key for all protected endpoints)
 - **Authentication**: JWT-based with refresh tokens (login endpoint is public, no API key required)
 
 ## System Architecture

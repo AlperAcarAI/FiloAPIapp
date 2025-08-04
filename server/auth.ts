@@ -216,7 +216,7 @@ export const cleanupExpiredTokens = async () => {
   return result;
 };
 
-// API key tabanlı basit auth (test ortamı için)
+// API key tabanlı basit auth
 export const authenticateApiKey = (
   req: Request,
   res: Response,
@@ -231,14 +231,10 @@ export const authenticateApiKey = (
     });
   }
 
-  // Basit API key kontrolü (production'da daha güvenli olmalı)
-  const validApiKeys = [
-    'test-api-key-2025',
-    'fleet-management-api-key',
-    'demo-api-access-key'
-  ];
+  // Manuel API key kontrolü
+  const MANUAL_API_KEY = 'filoki-api-master-key-2025';
 
-  if (!validApiKeys.includes(apiKey as string)) {
+  if (apiKey !== MANUAL_API_KEY) {
     return res.status(401).json({
       success: false,
       message: 'Geçersiz API key.'
