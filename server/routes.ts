@@ -44,7 +44,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/trip-rentals", await import("./trip-rental-routes.js").then(m => m.default));
 
   // Kullanıcı kimlik doğrulama - Basitleştirilmiş sistem
-  app.post("/api/auth/login", async (req: Request, res: Response) => {
+  app.post("/api/auth/login", async (req: SecurityRequest, res: Response) => {
     try {
       const { email, password } = req.body;
       
@@ -361,14 +361,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const citiesList = await query;
+      const citiesList = await query.execute();
       
       // Toplam sayı (filtreleme dahil)
       let totalQuery = db.select({ count: sql`count(*)` }).from(cities);
       if (search) {
         totalQuery = totalQuery.where(ilike(cities.name, `%${search}%`));
       }
-      const totalResult = await totalQuery;
+      const totalResult = await totalQuery.execute();
       const totalCount = Number(totalResult[0].count);
       
       res.json({
