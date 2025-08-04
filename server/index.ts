@@ -4,21 +4,34 @@ import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 
-// CORS ayarları - Production domain için
+// Domain filtering middleware - Sadece belirli URL'den gelen istekleri kabul et
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  const allowedOrigins = [
-    'https://filokiapi.architectaiagency.com',
-    'http://localhost:5000',
-    'http://localhost:3000'
-  ];
+  const referer = req.headers.referer;
+  const host = req.headers.host;
   
-  if (allowedOrigins.includes(origin || '')) {
-    res.setHeader('Access-Control-Allow-Origin', origin || '');
+  // İzin verilen domain
+  const allowedDomain = 'filokiapi.architectaiagency.com';
+  
+  // Sadece production ortamında domain kontrolü yap
+  if (process.env.NODE_ENV === 'production') {
+    // Origin veya referer kontrolü
+    const isAllowed = (origin && origin.includes(allowedDomain)) || 
+                     (referer && referer.includes(allowedDomain));
+    
+    if (!isAllowed) {
+      return res.status(403).json({
+        success: false,
+        error: 'FORBIDDEN',
+        message: 'Bu API sadece yetkili domainlerden erişilebilir'
+      });
+    }
   }
   
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', origin || '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   
   if (req.method === 'OPTIONS') {

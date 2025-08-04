@@ -1,9 +1,9 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
-import { authenticateToken, type AuthRequest } from "./auth";
+// Authentication removed
 import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset, cities, type City, companies, users } from "@shared/schema";
-import { generateTokenPair, validateRefreshToken, revokeRefreshToken, revokeAllUserRefreshTokens } from "./auth";
+// Token management imports removed
 import { z } from "zod";
 import { db } from "./db";
 import { assets } from "@shared/schema";
@@ -43,332 +43,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/documents", documentRoutes);
   app.use("/api/trip-rentals", await import("./trip-rental-routes.js").then(m => m.default));
 
-  // Kullanıcı kimlik doğrulama - Basitleştirilmiş sistem
-  app.post("/api/auth/login", async (req: SecurityRequest, res: Response) => {
-    try {
-      const { email, password } = req.body;
-      
-      // Check if account is locked first
-      const user = await storage.getUserByUsername(email);
-      if (user) {
-        const locked = await isAccountLocked(user.id);
-        if (locked) {
-          await trackLoginAttempt(email, false, req.ip || 'unknown', req.get('User-Agent'), 'account_locked');
-          return res.status(423).json({
-            success: false,
-            error: "ACCOUNT_LOCKED",
-            message: "Hesabınız güvenlik nedeniyle kilitlenmiştir. Lütfen daha sonra tekrar deneyin."
-          });
-        }
-      }
-      
-      // Debug logging for production
-      console.log(`Login attempt for email: ${email}`);
-      
-      const authenticatedUser = await storage.authenticateUser(email, password);
-      console.log(`Authentication result: ${!!authenticatedUser}`);
-      
-      if (!authenticatedUser) {
-        await trackLoginAttempt(email, false, req.ip || 'unknown', req.get('User-Agent'), 'invalid_password');
-        return res.status(401).json({
-          success: false,
-          error: "INVALID_CREDENTIALS",
-          message: "Geçersiz email veya şifre"
-        });
-      }
-      
-      // IP ve User-Agent bilgilerini al
-      const ipAddress = req.ip || req.connection.remoteAddress;
-      const userAgent = req.get('User-Agent');
-      
-      // Successful login tracking
-      await trackLoginAttempt(email, true, req.ip || 'unknown', req.get('User-Agent'));
-      
-      // Log security event
-      await logSecurityEvent('login', {
-        userId: authenticatedUser.id,
-        severity: 'low',
-        description: 'Successful user login',
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent'),
-        deviceFingerprint: req.security?.deviceFingerprint,
-      });
-      
-      // Token çifti oluştur (access + refresh)
-      const tokens = await generateTokenPair(
-        { id: authenticatedUser.id, username: authenticatedUser.email },
-        ipAddress,
-        userAgent
-      );
-      
-      res.json({
-        success: true,
-        message: "Giriş başarılı",
-        data: { 
-          user: authenticatedUser,
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-          expiresIn: tokens.expiresIn,
-          refreshExpiresIn: tokens.refreshExpiresIn,
-          tokenType: "Bearer"
-        }
-      });
-    } catch (error) {
-      console.error("Giriş hatası:", error);
-      try {
-        await logSecurityEvent('login_error', {
-          severity: 'medium',
-          description: `Login error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          ipAddress: req.ip,
-          userAgent: req.get('User-Agent'),
-        });
-      } catch (logError) {
-        console.error("Log error:", logError);
-      }
-      
-      res.status(500).json({
-        success: false,
-        error: "LOGIN_ERROR", 
-        message: "Sunucu hatası - giriş işlemi başarısız",
-        debug: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Unknown error') : undefined
-      });
-    }
-  });
-
-  // Refresh Token endpoint - Token yenileme
-  app.post("/api/auth/refresh", async (req, res) => {
-    try {
-      const { refreshToken } = req.body;
-      
-      if (!refreshToken) {
-        return res.status(400).json({
-          success: false,
-          error: "MISSING_REFRESH_TOKEN",
-          message: "Refresh token gereklidir"
-        });
-      }
-
-      // Refresh token'ı doğrula
-      const tokenData = await validateRefreshToken(refreshToken);
-      
-      // IP ve User-Agent bilgilerini al
-      const ipAddress = req.ip || req.connection.remoteAddress;
-      const userAgent = req.get('User-Agent');
-      
-      // Eski refresh token'ı iptal et (token rotation güvenliği)
-      await revokeRefreshToken(tokenData.id);
-      
-      // Yeni token çifti oluştur
-      const tokens = await generateTokenPair(
-        { id: tokenData.userId, username: tokenData.username },
-        ipAddress,
-        userAgent
-      );
-      
-      res.json({
-        success: true,
-        message: "Token başarıyla yenilendi",
-        data: {
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-          expiresIn: tokens.expiresIn,
-          refreshExpiresIn: tokens.refreshExpiresIn,
-          tokenType: "Bearer"
-        }
-      });
-    } catch (error) {
-      console.error("Token yenileme hatası:", error);
-      res.status(401).json({
-        success: false,
-        error: "INVALID_REFRESH_TOKEN",
-        message: error instanceof Error ? error.message : "Geçersiz refresh token"
-      });
-    }
-  });
-
-  // Logout endpoint - Tüm refresh token'ları iptal et
-  app.post("/api/auth/logout", authenticateToken, async (req: AuthRequest, res) => {
-    try {
-      if (req.user?.userId) {
-        // Kullanıcının tüm refresh token'larını iptal et
-        await revokeAllUserRefreshTokens(req.user.userId);
-      }
-      
-      res.json({
-        success: true,
-        message: "Başarıyla çıkış yapıldı"
-      });
-    } catch (error) {
-      console.error("Çıkış hatası:", error);
-      res.status(500).json({
-        success: false,
-        error: "LOGOUT_ERROR",
-        message: "Çıkış işlemi başarısız"
-      });
-    }
-  });
-
-  // Kullanıcı kayıt - Basitleştirilmiş sistem with company creation
-  app.post("/api/auth/register", async (req: Request, res: Response) => {
-    try {
-      const { email, password, companyName, companyId } = req.body;
-      
-      if (!password || !email) {
-        return res.status(400).json({
-          success: false,
-          error: "MISSING_FIELDS",
-          message: "Email ve şifre gereklidir"
-        });
-      }
-      
-      let finalCompanyId = companyId || 1; // Default company ID
-      
-      // If companyName is provided, create new company
-      if (companyName && companyName.trim()) {
-        try {
-          const [newCompany] = await db
-            .insert(companies)
-            .values({
-              name: companyName.trim(),
-              isActive: true
-            })
-            .returning();
-          
-          finalCompanyId = newCompany.id;
-        } catch (companyError) {
-          console.error("Şirket oluşturma hatası:", companyError);
-          return res.status(500).json({
-            success: false,
-            error: "COMPANY_CREATION_ERROR",
-            message: "Şirket oluşturulamadı"
-          });
-        }
-      }
-      
-      // User creation
-      const user = await storage.createUser({
-        email,
-        passwordHash: await bcrypt.hash(password, 10),
-        companyId: finalCompanyId
-      });
-      
-      res.status(201).json({
-        success: true,
-        message: companyName ? "Kullanıcı ve şirket başarıyla oluşturuldu" : "Kullanıcı başarıyla oluşturuldu",
-        data: { 
-          user,
-          companyId: finalCompanyId
-        }
-      });
-    } catch (error) {
-      console.error("Kayıt hatası:", error);
-      res.status(500).json({
-        success: false,
-        error: "REGISTRATION_ERROR",
-        message: "Kullanıcı oluşturulamadı"
-      });
-    }
-  });
+  // Tüm authentication endpoint'leri kaldırıldı
+  // API'ler artık doğrudan erişilebilir durumda
 
 
-
-  // Test endpoint - Protected (Token gerektirir)
-  app.get("/api/test-auth", authenticateToken, async (req: AuthRequest, res: Response) => {
-    try {
-      res.json({
-        success: true,
-        message: "Test başarılı - güvenli endpoint'e erişim sağlandı",
-        data: {
-          user: req.user,
-          timestamp: new Date().toISOString()
-        }
-      });
-    } catch (error) {
-      console.error("Test auth hatası:", error);
-      res.status(500).json({
-        success: false,
-        error: "TEST_ERROR",
-        message: "Test başarısız"
-      });
-    }
-  });
-
-  // Simple login endpoint for production debugging
-  app.post("/api/simple-login", async (req: Request, res: Response) => {
-    try {
-      const { email, password } = req.body;
-      
-      if (email === 'admin@example.com' && password === 'Architect') {
-        const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret';
-        
-        // Create a simple token without complex auth system
-        const simpleToken = jwt.sign(
-          { id: 11, email: 'admin@example.com', username: 'admin@example.com' },
-          JWT_SECRET,
-          { expiresIn: '1h' }
-        );
-        
-        res.json({
-          success: true,
-          message: "Giriş başarılı",
-          data: {
-            user: { id: 11, email: 'admin@example.com' },
-            accessToken: simpleToken,
-            tokenType: "Bearer"
-          }
-        });
-      } else {
-        res.status(401).json({
-          success: false,
-          error: "INVALID_CREDENTIALS",
-          message: "Geçersiz email veya şifre"
-        });
-      }
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        error: "LOGIN_ERROR",
-        message: "Giriş başarısız"
-      });
-    }
-  });
 
   // Cities API - getCities endpoint - Filtreleme desteği ile
   app.get("/api/getCities", async (req, res) => {
     try {
       const { search, limit, offset, sortBy = 'name', sortOrder = 'asc' } = req.query;
       
-      let query = db.select({
-        id: cities.id,
-        name: cities.name
-      }).from(cities);
-
-      // Search filtrelemesi
-      if (search) {
-        query = query.where(ilike(cities.name, `%${search}%`));
-      }
-
-      // Sıralama
+      // Build the query with proper chaining
       const orderColumn = sortBy === 'id' ? cities.id : cities.name;
       const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
-      query = query.orderBy(orderDirection);
-
-      // Sayfalama
-      if (limit) {
-        query = query.limit(Number(limit));
-        if (offset) {
-          query = query.offset(Number(offset));
-        }
-      }
-
-      const citiesList = await query.execute();
       
-      // Toplam sayı (filtreleme dahil)
-      let totalQuery = db.select({ count: sql`count(*)` }).from(cities);
+      let citiesQuery = db.select({
+        id: cities.id,
+        name: cities.name
+      })
+      .from(cities);
+      
+      // Apply search filter if provided
       if (search) {
-        totalQuery = totalQuery.where(ilike(cities.name, `%${search}%`));
+        citiesQuery = citiesQuery.where(ilike(cities.name, `%${search}%`));
       }
-      const totalResult = await totalQuery.execute();
+      
+      // Apply ordering
+      citiesQuery = citiesQuery.orderBy(orderDirection);
+      
+      // Apply pagination
+      if (limit) {
+        citiesQuery = citiesQuery.limit(Number(limit));
+      }
+      if (offset) {
+        citiesQuery = citiesQuery.offset(Number(offset));
+      }
+      
+      const citiesList = await citiesQuery;
+      
+      // Get total count
+      const countQuery = db.select({ count: sql`count(*)` })
+        .from(cities);
+        
+      let countQueryWithFilter = countQuery;
+      if (search) {
+        countQueryWithFilter = countQuery.where(ilike(cities.name, `%${search}%`));
+      }
+      
+      const totalResult = await countQueryWithFilter;
       const totalCount = Number(totalResult[0].count);
       
       res.json({
@@ -400,21 +122,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========================
-  // API KEY YÖNETİMİ (JWT ile korunuyor)
+  // API KEY YÖNETİMİ (Artık authentication gerektirmiyor)
   // ========================
 
-  // Kullanıcının kendi API key'lerini listele
-  app.get("/api/user/api-keys", authenticateToken, async (req: AuthRequest, res: Response) => {
+  // API key'lerini listele (authentication yok)
+  app.get("/api/user/api-keys", async (req: Request, res: Response) => {
     try {
-      const userId = req.user?.id;
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          error: 'UNAUTHORIZED',
-          message: 'Kullanıcı kimliği bulunamadı'
-        });
-      }
-      
       const userApiKeys = await db
         .select({
           id: apiKeys.id,
@@ -428,7 +141,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(apiKeys)
         .leftJoin(apiClients, eq(apiKeys.clientId, apiClients.id))
         .where(and(
-          eq(apiClients.userId, userId),
           eq(apiKeys.isActive, true),
           eq(apiClients.isActive, true)
         ));
@@ -453,19 +165,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Yeni API key oluştur (Domain zorunlu)
-  app.post("/api/user/api-keys", authenticateToken, async (req: AuthRequest, res: Response) => {
+  // Yeni API key oluştur (Domain zorunlu) - authentication yok
+  app.post("/api/user/api-keys", async (req: Request, res: Response) => {
     try {
-      const userId = req.user?.id;
-      const { name, permissions, allowedDomains } = req.body;
-
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          error: 'UNAUTHORIZED', 
-          message: 'Kullanıcı kimliği bulunamadı'
-        });
-      }
+      const { name, permissions, allowedDomains, userId = 1 } = req.body; // Default userId
 
       if (!name || !permissions || !allowedDomains) {
         return res.status(400).json({
@@ -534,13 +237,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // API key sil (soft delete)
-  app.delete("/api/user/api-keys/:keyId", authenticateToken, async (req: AuthRequest, res: Response) => {
+  // API key sil (soft delete) - authentication yok
+  app.delete("/api/user/api-keys/:keyId", async (req: Request, res: Response) => {
     try {
-      const userId = req.user?.id;
       const keyId = parseInt(req.params.keyId);
 
-      if (!userId || !keyId) {
+      if (!keyId) {
         return res.status(400).json({
           success: false,
           error: 'INVALID_REQUEST',
@@ -548,12 +250,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Kullanıcının key'ine sahip olduğunu doğrula
+      // Key'in varlığını kontrol et
       const [existingKey] = await db
         .select()
         .from(apiKeys)
         .leftJoin(apiClients, eq(apiKeys.clientId, apiClients.id))
-        .where(and(eq(apiKeys.id, keyId), eq(apiClients.userId, userId)));
+        .where(eq(apiKeys.id, keyId));
 
       if (!existingKey) {
         return res.status(404).json({

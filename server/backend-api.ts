@@ -7,116 +7,22 @@ import {
   accessLevels, userAccessRights
 } from '@shared/schema';
 import { eq, and, inArray, or, like, desc, sql } from 'drizzle-orm';
-import { 
-  authenticateJWT, 
-  requirePermission, 
-  filterByWorkArea, 
-  loadUserContext, 
-  generateJWTToken,
-  type AuthRequest 
-} from './hierarchical-auth';
+// Authentication imports removed - no longer needed
+import { Request, Response } from 'express';
 
 const router = express.Router();
 
 // ========================
-// AUTHENTICATION ENDPOINTS
+// TÜM AUTHENTICATION KALDIRILDI
 // ========================
-
-// Login endpoint
-router.post('/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        error: 'MISSING_CREDENTIALS',
-        message: 'Email ve şifre gerekli'
-      });
-    }
-
-    // Kullanıcıyı bul
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        error: 'INVALID_CREDENTIALS',
-        message: 'Geçersiz email veya şifre'
-      });
-    }
-
-    // Şifre kontrolü
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        success: false,
-        error: 'INVALID_CREDENTIALS',
-        message: 'Geçersiz email veya şifre'
-      });
-    }
-
-    // Kullanıcı aktif mi kontrol et
-    if (!user.isActive) {
-      return res.status(401).json({
-        success: false,
-        error: 'ACCOUNT_DISABLED',
-        message: 'Hesabınız pasif durumda. Yöneticinizle iletişime geçin.'
-      });
-    }
-
-    // User context yükle
-    const userContext = await loadUserContext(user.id);
-
-    if (!userContext) {
-      return res.status(500).json({
-        success: false,
-        error: 'CONTEXT_LOAD_ERROR',
-        message: 'Kullanıcı bilgileri yüklenemedi'
-      });
-    }
-
-    // JWT token oluştur
-    const token = generateJWTToken(userContext);
-
-    res.json({
-      success: true,
-      data: {
-        token,
-        expiresIn: 28800, // 8 hours in seconds
-        userContext
-      },
-      message: 'Başarıyla giriş yapıldı'
-    });
-
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'LOGIN_ERROR',
-      message: 'Giriş işlemi sırasında hata oluştu'
-    });
-  }
-});
-
-// Get current user context
-router.get('/auth/me', authenticateJWT, (req: AuthRequest, res) => {
-  res.json({
-    success: true,
-    data: req.userContext,
-    message: 'Kullanıcı bilgileri alındı'
-  });
-});
 
 // ========================
 // PERSONNEL ENDPOINTS
 // ========================
 
-// Get personnel list
+// Get personnel list (authentication removed)
 router.get('/personnel', 
-  authenticateJWT, 
-  requirePermission('personnel:read'), 
-  async (req: AuthRequest, res) => {
+  async (req: Request, res) => {
     try {
       const { 
         page = 1, 
@@ -128,7 +34,7 @@ router.get('/personnel',
       } = req.query;
 
       const offset = (Number(page) - 1) * Number(limit);
-      const { allowedWorkAreaIds } = req.userContext!;
+      const allowedWorkAreaIds = null; // No filtering
 
       let query = db.select({
         id: personnel.id,
@@ -216,10 +122,6 @@ router.get('/personnel',
           totalRecords,
           hasNext: offset + Number(limit) < totalRecords,
           hasPrev: Number(page) > 1
-        },
-        userContext: {
-          accessLevel: req.userContext!.accessLevel,
-          filteredByWorkAreas: allowedWorkAreaIds
         }
       });
 
@@ -234,14 +136,12 @@ router.get('/personnel',
   }
 );
 
-// Get personnel by ID
+// Get personnel by ID (authentication removed)
 router.get('/personnel/:id', 
-  authenticateJWT, 
-  requirePermission('personnel:read'),
-  async (req: AuthRequest, res) => {
+  async (req: Request, res) => {
     try {
       const { id } = req.params;
-      const { allowedWorkAreaIds } = req.userContext!;
+      const allowedWorkAreaIds = null; // No filtering
 
       let query = db.select({
         id: personnel.id,
@@ -305,11 +205,9 @@ router.get('/personnel/:id',
 // ASSETS ENDPOINTS  
 // ========================
 
-// Get assets list 
+// Get assets list (authentication removed)
 router.get('/assets',
-  authenticateJWT,
-  requirePermission('fleet:read'),
-  async (req: AuthRequest, res) => {
+  async (req: Request, res) => {
     try {
       const {
         page = 1,
@@ -322,7 +220,8 @@ router.get('/assets',
       } = req.query;
 
       const offset = (Number(page) - 1) * Number(limit);
-      const { allowedWorkAreaIds, personnelId } = req.userContext!;
+      const allowedWorkAreaIds = null; // No filtering
+      const personnelId = null; // No user context
 
       let query = db.select({
         id: assets.id,
@@ -438,9 +337,7 @@ router.get('/assets',
 
 // Get fuel records
 router.get('/fuel-records',
-  authenticateJWT,
-  requirePermission('fuel:read'),
-  async (req: AuthRequest, res) => {
+  async (req: Request, res) => {
     try {
       const {
         page = 1,
@@ -452,7 +349,8 @@ router.get('/fuel-records',
       } = req.query;
 
       const offset = (Number(page) - 1) * Number(limit);
-      const { allowedWorkAreaIds, personnelId } = req.userContext!;
+      const allowedWorkAreaIds = null; // No filtering
+      const personnelId = null; // No user context
 
       let query = db.select({
         id: fuelRecords.id,
@@ -568,9 +466,7 @@ router.get('/fuel-records',
 
 // Create fuel record
 router.post('/fuel-records',
-  authenticateJWT,
-  requirePermission('fuel:write'),
-  async (req: AuthRequest, res) => {
+  async (req: Request, res) => {
     try {
       const {
         assetId,
@@ -583,7 +479,8 @@ router.post('/fuel-records',
         receiptNumber
       } = req.body;
 
-      const { personnelId, allowedWorkAreaIds } = req.userContext!;
+      const personnelId = 1; // Default personnel ID
+      const allowedWorkAreaIds = null; // No filtering
 
       // Validate required fields
       if (!assetId || !recordDate || !currentKilometers || !fuelAmount || !fuelCostCents) {
@@ -645,13 +542,12 @@ router.post('/fuel-records',
 // WORK AREAS ENDPOINTS
 // ========================
 
-// Get work areas
+// Get work areas (authentication removed)
 router.get('/work-areas',
-  authenticateJWT,
-  requirePermission('data:read'),
-  async (req: AuthRequest, res) => {
+  async (req: Request, res) => {
     try {
-      const { allowedWorkAreaIds, currentWorkAreaId } = req.userContext!;
+      const allowedWorkAreaIds = null; // No filtering
+      const currentWorkAreaId = null; // No user context
 
       // Simplified work areas query
       let baseQuery = db.select({
@@ -681,11 +577,7 @@ router.get('/work-areas',
 
       res.json({
         success: true,
-        data: workAreasList,
-        userContext: {
-          accessLevel: req.userContext!.accessLevel,
-          allowedWorkAreaIds
-        }
+        data: workAreasList
       });
 
     } catch (error) {

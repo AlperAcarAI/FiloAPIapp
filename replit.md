@@ -1,66 +1,47 @@
-# Filoki API Management System
+# Filo Yönetim Sistemi
 
-## Overview
+## Repository Description
+A fleet management platform designed for multi-tenant operations. All authentication has been removed and the system now only accepts requests from a specific domain.
 
-This is a full-stack API management system designed to manage API definitions, track their status, and monitor performance. It features a React frontend and an Express.js backend with PostgreSQL. The system integrates robust security features, including JWT authentication, role-based access control, API Key protection, rate limiting, and real-time monitoring. The multi-tenant system has been removed for simplicity, using a straightforward authentication approach instead. Its vision is to provide a comprehensive solution for managing and securing an enterprise's API landscape, enabling efficient operations and robust data protection.
+## Recent Changes (January 2025)
+- **Authentication Removal**: Removed all authentication protocols (JWT tokens, bearer tokens, API keys)
+- **Domain Filtering**: Set up URL filtering to only accept requests from `filokiapi.architectaiagency.com`
+- **UI Updates**: Removed login functionality and authentication UI components
+- **API Access**: All APIs are now directly accessible without authentication
+- **JSON Responses**: All API endpoints return data in JSON format
+
+## Project Architecture
+
+### Frontend
+- React with TypeScript
+- Wouter for routing (no protected routes)
+- Shadcn UI components
+- TanStack Query for data fetching
+- All pages are publicly accessible
+
+### Backend
+- Express.js server
+- PostgreSQL database with Drizzle ORM
+- Domain-based request filtering (only accepts from filokiapi.architectaiagency.com)
+- All endpoints return JSON format responses
+- No authentication middleware
+
+### Security Configuration
+- Domain filtering active in production (requests only accepted from filokiapi.architectaiagency.com)
+- CORS configured to work with the allowed domain
+- No API tokens or authentication required
+
+## API Structure
+All APIs are accessible at `/api/*` and return responses in this format:
+```json
+{
+  "success": true/false,
+  "data": {},
+  "message": "Response message"
+}
+```
 
 ## User Preferences
-
-Preferred communication style: Simple, everyday language.
-
-## Production Deployment
-
-- **Domain**: filokiapi.architectaiagency.com
-- **Database**: filoki_db
-- **Admin Credentials**: alper.acar@architectaiagency.com / Acar
-- **Status**: Production deployment active with PM2, Nginx, SSL
-- **API Key**: filoki-api-master-key-2025 (single master key for all protected endpoints)
-- **Authentication**: JWT-based with refresh tokens (login endpoint is public, no API key required)
-- **Deployment**: Automated with `deploy.sh` script - pulls from GitHub and updates production
-
-## System Architecture
-
-### Frontend Architecture
-- **Framework**: React with TypeScript
-- **Build Tool**: Vite
-- **Routing**: Wouter
-- **State Management**: TanStack Query
-- **UI Components**: shadcn/ui (built on Radix UI)
-- **Styling**: Tailwind CSS
-- **Form Handling**: React Hook Form with Zod validation
-
-### Backend Architecture
-- **Runtime**: Node.js with Express.js
-- **Language**: TypeScript with ES modules
-- **Database**: PostgreSQL with Drizzle ORM (Neon serverless)
-- **API Documentation**: Swagger/OpenAPI integration
-- **Security**: JWT authentication, bcrypt password hashing, API Key middleware
-- **Monorepo Structure**: Shared types and schemas across frontend and backend
-- **Type Safety**: Full TypeScript coverage with shared schema definitions
-
-### Key Design Decisions
-- **Component-Based UI**: Reusable UI components for consistent design.
-- **Simplified Authentication**: Basic JWT-based authentication without complex multi-tenant architecture for easier development and maintenance.
-- **Unified Document System**: Polymorphic `documents` table for various entity types (personnel, asset, company, work_area).
-- **Hybrid Audit System**: Centralized `audit_logs` table tracking all database changes with user and API client info.
-- **Domain-Based API Key Restrictions**: API keys are restricted to specified domains (including wildcard and subdomain support).
-- **Hierarchical Authorization System**: Session-based access control with JSON-based `access_scope` for flexible, multi-level hierarchy (Site, Region, HQ, Department).
-- **Soft Delete**: Instead of hard deletion, records are marked as `isActive = false` to preserve data integrity and audit trails.
-- **Type-Based Financial System**: A single `fin_current_accounts` table with JSON metadata for flexible handling of different payment types (damage, policy, maintenance, general).
-- **Advanced API Filtering**: All GET endpoints support common filtering parameters (`search`, `limit`, `offset`, `sortBy`, `sortOrder`, `activeOnly`) and specific filters for relevant entities.
-- **Bulk CSV Import**: Optimized for large data imports with micro-batching, duplicate prevention, progress tracking, and error handling for entities like vehicle brands and models.
-
-## External Dependencies
-
-### Core Technologies
-- **@neondatabase/serverless**: Serverless PostgreSQL connection
-- **drizzle-orm**: Type-safe database operations
-- **@tanstack/react-query**: Server state management
-- **@radix-ui/***: Accessible UI primitives
-- **swagger-ui-express**: API documentation
-- **jsonwebtoken**: JWT token generation and validation
-- **bcryptjs**: Password hashing and comparison
-
-### Development Tools
-- **tsx**: TypeScript execution for development
-- **esbuild**: Fast bundling for production
+- Language: Turkish (maintain Turkish in API responses and messages)
+- Authentication: None (removed per request)
+- Domain restriction: filokiapi.architectaiagency.com only
