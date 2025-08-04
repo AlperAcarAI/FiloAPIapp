@@ -1,0 +1,87 @@
+root@FiloApiAppArchitect:/home/root/FiloAPIapp# cd /home/root/FiloAPIapp
+
+# Önce hash oluşturun
+HASH=$(node -e "import('bcryptjs').then(b => b.hash('Acar', 10).then(h => console.log(h)))")
+
+# Sonra güncelleyin
+source .env
+PGPASSWORD="$DB_PASS" psql -h localhost -U postgres -d filoki_db -c "UPDATE users SET password_hash='$HASH' WHERE email='alper.acar@architectaiagency.com';"
+
+# PM2'yi yeniden başlatın
+pm2 restart filoki-api
+
+# Test edin
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alper.acar@architectaiagency.com","password":"Acar"}'
+Password for user postgres: 
+UPDATE 1
+Use --update-env to update environment variables
+[PM2] Applying action restartProcessId on app [filoki-api](ids: [ 0 ])
+[PM2] [filoki-api](0) ✓
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 0  │ filoki-api         │ fork     │ 1    │ online    │ 0%       │ 4.1mb    │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+curl: (7) Failed to connect to localhost port 5000 after 0 ms: Could not connect to server
+root@FiloApiAppArchitect:/home/root/FiloAPIapp# # Health check
+curl http://localhost:5000/api/health
+
+# Login testi
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alper.acar@architectaiagency.com","password":"Acar"}'
+
+# Domain üzerinden test
+curl https://filokiapi.architectaiagency.com/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alper.acar@architectaiagency.com","password":"Acar"}'
+{"success":true,"status":"healthy","timestamp":"2025-08-04T12:00:31.500Z","version":"3.0.0","services":{"database":"connected","authentication":"active","swagger":"available"}}{"success":false,"error":"LOGIN_ERROR","message":"Sunucu hatası - giriş işlemi başarısız"}{"success":false,"error":"LOGIN_ERROR","message":"Sunucu hatası - giriş işlemi başarısız"}root@FiloApiAppArchitect:/home/root/FiloAPIapp# pm2 status
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 0  │ filoki-api         │ fork     │ 1    │ online    │ 0%       │ 93.9mb   │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+root@FiloApiAppArchitect:/home/root/FiloAPIapp# {"success":true,"status":"healthy","timestamp":"2025-08-04T12:00:31.500Z","version":"3.0.0","services":{"database":"connected","authentication":"active","swagger":"available"}}{"success":false,"error":"LOGIN_ERROR","message":"Sunucu hatası - giriş işlemi başarısız"}{"success":false,"error":"LOGIN_ERROR","message":"Sunucu hatası - giriş işlemi başarısız"}root@FiloApiAppArchitect:/home/root/FiloAPIapp# 
+-bash: success:truesuccess:falsesuccess:falseroot@FiloApiAppArchitect:/home/root/FiloAPIapp#: No such file or directory
+root@FiloApiAppArchitect:/home/root/FiloAPIapp# pm2 logs filoki-api --lines 20
+[TAILING] Tailing last 20 lines for [filoki-api] process (change the value with --lines option)
+/root/.pm2/logs/filoki-api-out.log last 20 lines:
+0|filoki-a | 11:21:56 AM [express] serving on port 5000
+0|filoki-a | 11:22:17 AM [express] GET /api/health 200 in 82ms :: {"success":true,"status":"healthy","timestamp":"…
+0|filoki-a | 11:24:06 AM [express] POST /api/auth/login 500 in 125ms :: {"success":false,"error":"LOGIN_ERROR","me…
+0|filoki-a | 11:24:21 AM [express] POST /api/auth/login 500 in 47ms :: {"success":false,"error":"LOGIN_ERROR","mes…
+0|filoki-a | 11:28:05 AM [express] POST /api/auth/login 500 in 83ms :: {"success":false,"error":"LOGIN_ERROR","mes…
+0|filoki-a | 11:42:24 AM [express] POST /api/auth/login 500 in 50ms :: {"success":false,"error":"LOGIN_ERROR","mes…
+0|filoki-a | 11:44:23 AM [express] POST /api/auth/login 500 in 47ms :: {"success":false,"error":"LOGIN_ERROR","mes…
+0|filoki-a | 11:54:16 AM [express] POST /api/auth/login 500 in 48ms :: {"success":false,"error":"LOGIN_ERROR","mes…
+0|filoki-a | 11:59:40 AM [express] serving on port 5000
+0|filoki-a | 12:00:31 PM [express] GET /api/health 200 in 58ms :: {"success":true,"status":"healthy","timestamp":"…
+0|filoki-a | 12:00:31 PM [express] POST /api/auth/login 500 in 144ms :: {"success":false,"error":"LOGIN_ERROR","me…
+0|filoki-a | 12:00:31 PM [express] POST /api/auth/login 500 in 61ms :: {"success":false,"error":"LOGIN_ERROR","mes…
+
+/root/.pm2/logs/filoki-api-error.log last 20 lines:
+0|filoki-a |       subjectaltname: 'DNS:filokiapi.architectaiagency.com',
+0|filoki-a |       infoAccess: [Object: null prototype],
+0|filoki-a |       ca: false,
+0|filoki-a |       bits: 256,
+0|filoki-a |       pubkey: <Buffer 04 6c 2a fa 2f e8 e5 52 0d 38 37 4c 40 82 9f 32 c4 49 77 c9 88 bf 03 91 0e 1b a8 c1 d0 b9 dd a6 31 f2 3f b6 34 3e 62 0f 27 3a 72 04 29 19 15 61 f9 41 ... 15 more bytes>,
+0|filoki-a |       asn1Curve: 'prime256v1',
+0|filoki-a |       nistCurve: 'P-256',
+0|filoki-a |       valid_from: 'Aug  4 07:58:57 2025 GMT',
+0|filoki-a |       valid_to: 'Nov  2 07:58:56 2025 GMT',
+0|filoki-a |       fingerprint: '37:87:04:83:E1:46:BB:D4:F3:4E:26:6E:BC:AC:F4:32:4E:0C:3F:DE',
+0|filoki-a |       fingerprint256: 'F5:89:08:0C:AD:EA:E4:C2:64:B2:36:99:9B:43:C1:7C:73:1D:54:F4:F7:B3:1B:1B:9C:2A:01:27:34:41:22:89',
+0|filoki-a |       fingerprint512: 'B9:74:28:C6:BF:18:BF:47:C3:BC:93:D8:D6:93:99:0D:2D:1E:96:1C:94:20:A4:3E:BE:BA:17:A5:9C:7D:7A:A5:16:09:1D:52:45:19:A9:F8:C4:79:E7:4A:2B:ED:3B:3C:DC:99:CD:C1:ED:0D:0A:F5:C3:47:06:80:9E:67:8B:54',
+0|filoki-a |       ext_key_usage: [Array],
+0|filoki-a |       serialNumber: '06543EDF6DB5DA892D3194993D75CE94F87C',
+0|filoki-a |       raw: <Buffer 30 82 03 ab 30 82 03 32 a0 03 02 01 02 02 12 06 54 3e df 6d b5 da 89 2d 31 94 99 3d 75 ce 94 f8 7c 30 0a 06 08 2a 86 48 ce 3d 04 03 03 30 32 31 0b 30 ... 893 more bytes>,
+0|filoki-a |       issuerCertificate: [Object]
+0|filoki-a |     }
+0|filoki-a |   },
+0|filoki-a |   [Symbol(kMessage)]: "Hostname/IP does not match certificate's altnames: Host: localhost. is not in the cert's altnames: DNS:filokiapi.architectaiagency.com"
+0|filoki-a | }
+
+netstat -tlnp | grep :5000
+
