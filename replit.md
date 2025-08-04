@@ -16,6 +16,7 @@ Preferred communication style: Simple, everyday language.
 - **Status**: Production deployment active with PM2, Nginx, SSL
 - **API Key**: filoki-api-master-key-2025 (single master key for all protected endpoints)
 - **Authentication**: JWT-based with refresh tokens (login endpoint is public, no API key required)
+- **Deployment**: Automated with `deploy.sh` script - pulls from GitHub and updates production
 
 ## System Architecture
 
