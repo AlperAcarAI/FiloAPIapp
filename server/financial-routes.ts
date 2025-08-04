@@ -10,7 +10,7 @@ import {
   type FinAccountsDetail,
   type PaymentType
 } from "@shared/schema";
-import { authenticateApiKey, authorizeEndpoint } from "./api-security";
+// Authentication removed - no longer needed
 import { eq, and, desc, asc, like, ilike, sql } from "drizzle-orm";
 import { auditableInsert, auditableUpdate, auditableDelete, captureAuditInfo } from "./audit-middleware";
 import type { Request, Response } from "express";
@@ -22,7 +22,7 @@ const router = Router();
 // ========================
 
 // GET /api/secure/financial/payment-types - Ödeme türleri listesi
-router.get("/payment-types", authenticateApiKey, authorizeEndpoint(['data:read']), async (req: Request, res: Response) => {
+router.get("/payment-types", async (req: Request, res: Response) => {
   try {
     const types = await db.select().from(paymentTypes)
       .where(eq(paymentTypes.isActive, true))
@@ -48,7 +48,7 @@ router.get("/payment-types", authenticateApiKey, authorizeEndpoint(['data:read']
 // ========================
 
 // GET /api/secure/financial/current-accounts - Ana finansal işlemler listesi
-router.get("/current-accounts", authenticateApiKey, authorizeEndpoint(['data:read']), async (req: Request, res: Response) => {
+router.get("/current-accounts", async (req: Request, res: Response) => {
   try {
     const { page = 1, limit = 20, status, search } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
@@ -116,7 +116,7 @@ router.get("/current-accounts", authenticateApiKey, authorizeEndpoint(['data:rea
 });
 
 // POST /api/secure/financial/current-accounts - Yeni finansal işlem
-router.post("/current-accounts", authenticateApiKey, authorizeEndpoint(['data:write']), async (req: Request, res: Response) => {
+router.post("/current-accounts", async (req: Request, res: Response) => {
   try {
     const auditInfo = captureAuditInfo(req);
     const { description, payerCompanyId, payeeCompanyId, amountCents, transactionDate, paymentMethodId, paymentStatus, paymentReference, notes } = req.body;
@@ -160,7 +160,7 @@ router.post("/current-accounts", authenticateApiKey, authorizeEndpoint(['data:wr
 // ========================
 
 // GET /api/secure/financial/accounts-details - Detay kayıtları listesi
-router.get("/accounts-details", authenticateApiKey, authorizeEndpoint(['data:read']), async (req: Request, res: Response) => {
+router.get("/accounts-details", async (req: Request, res: Response) => {
   try {
     const { page = 1, limit = 20, current_account_id } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
@@ -209,7 +209,7 @@ router.get("/accounts-details", authenticateApiKey, authorizeEndpoint(['data:rea
 });
 
 // POST /api/secure/financial/accounts-details - Yeni detay kayıt
-router.post("/accounts-details", authenticateApiKey, authorizeEndpoint(['data:write']), async (req: Request, res: Response) => {
+router.post("/accounts-details", async (req: Request, res: Response) => {
   try {
     const auditInfo = captureAuditInfo(req);
     const { finCurAcId, amount, date, paymentTypeId } = req.body;

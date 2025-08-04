@@ -301,13 +301,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/analytics', apiAnalyticsRoutes);
 
   // Document Management Route'larını kaydet  
-  app.use('/api/secure/documents', documentRoutes);
+  app.use('/api/documents', documentRoutes);
   
   // Company Management Route'larını kaydet
-  app.use('/api/secure', companyRoutes);
+  app.use('/api', companyRoutes);
 
   // Asset Management Route'larını kaydet
-  app.use('/api/secure', assetRoutes);
+  app.use('/api', assetRoutes);
 
   // Audit Route'larını kaydet
   const { registerAuditRoutes } = await import("./audit-routes");
@@ -315,13 +315,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Financial Route'larını kaydet
   const financialRoutes = await import("./financial-routes.js");
-  app.use("/api/secure/financial", financialRoutes.default);
+  app.use("/api/financial", financialRoutes.default);
 
   // Fuel Management Route'larını kaydet
-  app.use('/api/secure', fuelRoutes);
+  app.use('/api', fuelRoutes);
 
   // Bulk Import Route'larını kaydet
-  app.use('/api/secure', bulkImportRoutes);
+  app.use('/api', bulkImportRoutes);
 
   // Backend API Route'larını kaydet (Hiyerarşik sistem)
   const backendApiRoutes = await import("./backend-api.js");

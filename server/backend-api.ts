@@ -36,7 +36,8 @@ router.get('/personnel',
       const offset = (Number(page) - 1) * Number(limit);
       const allowedWorkAreaIds = null; // No filtering
 
-      let query = db.select({
+      // Build base query
+      const baseQuery = db.select({
         id: personnel.id,
         name: personnel.name,
         surname: personnel.surname,
@@ -90,15 +91,17 @@ router.get('/personnel',
         conditions.push(inArray(workAreas.id, allowedWorkAreaIds));
       }
 
-      if (conditions.length > 0) {
-        query = query.where(and(...conditions));
-      }
+      // Build final query
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+      const query = whereClause 
+        ? baseQuery.where(whereClause).limit(Number(limit)).offset(offset)
+        : baseQuery.limit(Number(limit)).offset(offset);
 
       // Execute query with pagination
-      const personnelList = await query.limit(Number(limit)).offset(offset);
+      const personnelList = await query;
 
       // Get total count
-      let countQuery = db.select({ count: sql<number>`count(*)` })
+      const baseCountQuery = db.select({ count: sql<number>`count(*)` })
         .from(personnel)
         .leftJoin(personnelWorkAreas, and(
           eq(personnel.id, personnelWorkAreas.personnelId),
@@ -107,9 +110,9 @@ router.get('/personnel',
         .leftJoin(workAreas, eq(personnelWorkAreas.workAreaId, workAreas.id))
         .leftJoin(personnelPositions, eq(personnelWorkAreas.positionId, personnelPositions.id));
 
-      if (conditions.length > 0) {
-        countQuery = countQuery.where(and(...conditions));
-      }
+      const countQuery = whereClause 
+        ? baseCountQuery.where(whereClause)
+        : baseCountQuery;
 
       const [{ count: totalRecords }] = await countQuery;
 
@@ -254,13 +257,14 @@ router.get('/assets',
       const conditions = [eq(assets.isActive, true)];
 
       if (search) {
-        conditions.push(
-          or(
-            like(assets.plateNumber, `%${search}%`),
-            like(carBrands.name, `%${search}%`),
-            like(carModels.name, `%${search}%`)
-          )
+        const searchCondition = or(
+          like(assets.plateNumber, `%${search}%`),
+          like(carBrands.name, `%${search}%`),
+          like(carModels.name, `%${search}%`)
         );
+        if (searchCondition) {
+          conditions.push(searchCondition);
+        }
       }
 
       // assignedToMe filtresini kaldır (table mevcut değil)
@@ -325,7 +329,7 @@ router.get('/assets',
         success: false,
         error: 'FETCH_ERROR',
         message: 'Araç listesi alınamadı',
-        debug: error.message
+        debug: error instanceof Error ? error.message : 'Bilinmeyen hata'
       });
     }
   }
@@ -458,7 +462,7 @@ router.get('/fuel-records',
         success: false,
         error: 'FETCH_ERROR',
         message: 'Yakıt kayıtları alınamadı',
-        debug: error.message
+        debug: error instanceof Error ? error.message : 'Bilinmeyen hata'
       });
     }
   }
@@ -565,13 +569,7 @@ router.get('/work-areas',
       .from(workAreas)
       .where(eq(workAreas.isActive, true));
 
-      // Apply hierarchical filtering if needed
-      if (allowedWorkAreaIds !== null && allowedWorkAreaIds.length > 0) {
-        baseQuery = baseQuery.where(and(
-          eq(workAreas.isActive, true),
-          inArray(workAreas.id, allowedWorkAreaIds)
-        ));
-      }
+      // No hierarchical filtering needed since authentication is removed
 
       const workAreasList = await baseQuery;
 
@@ -586,7 +584,7 @@ router.get('/work-areas',
         success: false,
         error: 'FETCH_ERROR',
         message: 'Çalışma alanları alınamadı',
-        debug: error.message
+        debug: error instanceof Error ? error.message : 'Bilinmeyen hata'
       });
     }
   }

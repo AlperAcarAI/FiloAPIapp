@@ -3,12 +3,12 @@ import { z } from "zod";
 import { db } from "./db";
 import { fuelRecords, insertFuelRecordSchema, updateFuelRecordSchema, type InsertFuelRecord, type UpdateFuelRecord, type FuelRecord } from "@shared/schema";
 import { eq, desc, asc, sql, ilike, and, gte, lte } from "drizzle-orm";
-import { authenticateApiKey, authorizeEndpoint } from "./api-security.js";
+// Authentication removed - no longer needed
 
 const router = Router();
 
 // GET /api/secure/fuel-records - Yakıt kayıtları listesi (basit versiyon)
-router.get('/fuel-records', authenticateApiKey, authorizeEndpoint(['data:read']), async (req, res) => {
+router.get('/fuel-records', async (req, res) => {
   try {
     const {
       search,
@@ -110,7 +110,7 @@ router.get('/fuel-records', authenticateApiKey, authorizeEndpoint(['data:read'])
 });
 
 // GET /api/secure/fuel-records/:id - Yakıt kaydı detayı
-router.get('/fuel-records/:id', authenticateApiKey, authorizeEndpoint(['data:read']), async (req, res) => {
+router.get('/fuel-records/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -151,7 +151,7 @@ router.get('/fuel-records/:id', authenticateApiKey, authorizeEndpoint(['data:rea
 });
 
 // POST /api/secure/fuel-records - Yeni yakıt kaydı oluştur
-router.post('/fuel-records', authenticateApiKey, authorizeEndpoint(['data:write']), async (req, res) => {
+router.post('/fuel-records', async (req, res) => {
   try {
     // Zod validation
     const validatedData = insertFuelRecordSchema.parse(req.body);
@@ -191,7 +191,7 @@ router.post('/fuel-records', authenticateApiKey, authorizeEndpoint(['data:write'
 });
 
 // PUT /api/secure/fuel-records/:id - Yakıt kaydını güncelle
-router.put('/fuel-records/:id', authenticateApiKey, authorizeEndpoint(['data:write']), async (req, res) => {
+router.put('/fuel-records/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -249,7 +249,7 @@ router.put('/fuel-records/:id', authenticateApiKey, authorizeEndpoint(['data:wri
 });
 
 // DELETE /api/secure/fuel-records/:id - Yakıt kaydını sil (soft delete)
-router.delete('/fuel-records/:id', authenticateApiKey, authorizeEndpoint(['data:delete']), async (req, res) => {
+router.delete('/fuel-records/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
