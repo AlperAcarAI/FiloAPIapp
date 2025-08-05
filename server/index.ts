@@ -13,19 +13,43 @@ app.use((req, res, next) => {
   // İzin verilen domain
   const allowedDomain = 'filokiapi.architectaiagency.com';
   
+  // Domain kontrolünü devre dışı bırakmak için DISABLE_DOMAIN_CHECK=true kullanın
+  if (process.env.DISABLE_DOMAIN_CHECK === 'true') {
+    console.log('[Domain Check] Disabled via environment variable');
+    next();
+    return;
+  }
+  
   // Sadece production ortamında domain kontrolü yap
   if (process.env.NODE_ENV === 'production') {
+    // Debug için header'ları logla
+    console.log('[Domain Check] Headers:', {
+      origin: origin || 'none',
+      referer: referer || 'none',
+      host: host || 'none'
+    });
+    
     // Origin veya referer kontrolü
     const isAllowed = (origin && origin.includes(allowedDomain)) || 
-                     (referer && referer.includes(allowedDomain));
+                     (referer && referer.includes(allowedDomain)) ||
+                     (host && host.includes(allowedDomain));
     
     if (!isAllowed) {
+      console.log('[Domain Check] Request blocked from:', origin || referer || host || 'unknown');
       return res.status(403).json({
         success: false,
         error: 'FORBIDDEN',
-        message: 'Bu API sadece yetkili domainlerden erişilebilir'
+        message: 'Bu API sadece yetkili domainlerden erişilebilir',
+        debug: {
+          origin: origin || 'none',
+          referer: referer || 'none',
+          host: host || 'none',
+          allowedDomain: allowedDomain
+        }
       });
     }
+    
+    console.log('[Domain Check] Request allowed');
   }
   
   // CORS headers
