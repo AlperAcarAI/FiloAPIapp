@@ -11,7 +11,7 @@ app.use((req, res, next) => {
   const host = req.headers.host;
   
   // İzin verilen domain
-  const allowedDomain = 'filokiapi.architectaiagency.com';
+  const allowedDomain = 'architectaiagency';
   
   // Domain kontrolünü devre dışı bırakmak için DISABLE_DOMAIN_CHECK=true kullanın
   if (process.env.DISABLE_DOMAIN_CHECK === 'true') {
@@ -35,16 +35,25 @@ app.use((req, res, next) => {
                      (host && host.includes(allowedDomain));
     
     if (!isAllowed) {
-      console.log('[Domain Check] Request blocked from:', origin || referer || host || 'unknown');
+      const requestedUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+      const requestSource = origin || referer || host || 'unknown';
+      
+      console.log('[Domain Check] Request blocked from:', requestSource);
+      console.log('[Domain Check] Requested URL:', requestedUrl);
+      
       return res.status(403).json({
         success: false,
         error: 'FORBIDDEN',
-        message: 'Bu API sadece yetkili domainlerden erişilebilir',
+        message: `Bu API sadece yetkili domainlerden erişilebilir. İstek yapılan URL: ${requestedUrl}. İzin verilen domain: ${allowedDomain}`,
         debug: {
-          origin: origin || 'none',
-          referer: referer || 'none',
-          host: host || 'none',
-          allowedDomain: allowedDomain
+          istekYapilanUrl: requestedUrl,
+          istekKaynagi: requestSource,
+          izinVerilenDomain: allowedDomain,
+          headers: {
+            origin: origin || 'none',
+            referer: referer || 'none',
+            host: host || 'none'
+          }
         }
       });
     }
