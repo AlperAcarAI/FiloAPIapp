@@ -828,11 +828,28 @@ export default function ApiCenter() {
       // URL'yi oluştur
       let url = selectedApi.endpoint;
       
-      // URL parametrelerini ekle
-      if (selectedApi.method === 'GET' && Object.keys(urlParams).length > 0) {
+      // Path parametrelerini değiştir (örn: /api/assets/{id} -> /api/assets/123)
+      if (selectedApi.parameters) {
+        selectedApi.parameters.forEach(param => {
+          if (url.includes(`{${param.name}}`)) {
+            const value = urlParams[param.name];
+            if (!value && param.required) {
+              throw new Error(`Zorunlu parametre eksik: ${param.name}`);
+            }
+            url = url.replace(`{${param.name}}`, value || '');
+          }
+        });
+      }
+      
+      // Query parametrelerini ekle (GET için)
+      if (selectedApi.method === 'GET' && selectedApi.parameters) {
+        const queryParams = selectedApi.parameters.filter(p => !url.includes(p.name));
         const params = new URLSearchParams();
-        Object.entries(urlParams).forEach(([key, value]) => {
-          if (value) params.append(key, value);
+        queryParams.forEach(param => {
+          const value = urlParams[param.name];
+          if (value) {
+            params.append(param.name, value);
+          }
         });
         if (params.toString()) {
           url += '?' + params.toString();
@@ -843,26 +860,42 @@ export default function ApiCenter() {
         method: selectedApi.method,
         headers: {
           'X-API-Key': apiKey,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         }
       };
 
       // POST/PUT için body ekle
       if (['POST', 'PUT'].includes(selectedApi.method)) {
         try {
+          // JSON'ı validate et
+          JSON.parse(requestBody);
           options.body = requestBody;
         } catch (error) {
-          throw new Error('Geçersiz JSON formatı');
+          throw new Error('Geçersiz JSON formatı. Lütfen JSON syntax\'ını kontrol edin.');
         }
       }
 
-      const response = await fetch(url, options);
-      const data = await response.json();
+      // Base URL ekle
+      const baseUrl = window.location.origin;
+      const fullUrl = `${baseUrl}${url}`;
+
+      const response = await fetch(fullUrl, options);
+      
+      let data;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        data = await response.text();
+      }
       
       setTestResponse({
         status: response.status,
         statusText: response.statusText,
-        data: data
+        headers: Object.fromEntries(response.headers.entries()),
+        data: data,
+        url: fullUrl
       });
 
       toast({
@@ -1197,13 +1230,18 @@ export default function ApiCenter() {
                   {/* API Key */}
                   <div>
                     <label className="block text-sm font-medium mb-2">API Anahtarı</label>
-                    <Input
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="ak_prod2025_rwba6dj1sw"
-                      className="font-mono text-sm"
-                      type="password"
-                    />
+                    <div className="space-y-1">
+                      <Input
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        placeholder="ak_prod2025_rwba6dj1sw"
+                        className="font-mono text-sm"
+                        type="password"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Format: ak_[env][year]_[random] (örn: ak_prod2025_rwba6dj1sw)
+                      </p>
+                    </div>
                   </div>
 
                   {/* API Seçimi */}
@@ -1241,24 +1279,39 @@ export default function ApiCenter() {
                     </Select>
                   </div>
 
-                  {/* URL Parametreleri (GET için) */}
-                  {selectedApi?.method === 'GET' && selectedApi.parameters && (
+                  {/* Parametreler (Path ve Query) */}
+                  {selectedApi?.parameters && selectedApi.parameters.length > 0 && (
                     <div>
-                      <label className="block text-sm font-medium mb-2">URL Parametreleri</label>
+                      <label className="block text-sm font-medium mb-2">
+                        {selectedApi.endpoint.includes('{') ? 'Path ve Query Parametreleri' : 'Parametreler'}
+                      </label>
                       <div className="space-y-2">
-                        {selectedApi.parameters.map((param) => (
-                          <div key={param.name}>
-                            <label className="block text-xs text-gray-600 mb-1">
-                              {param.name} ({param.type}) {param.required && <span className="text-red-500">*</span>}
-                            </label>
-                            <Input
-                              placeholder={param.description}
-                              value={urlParams[param.name] || ''}
-                              onChange={(e) => setUrlParams({...urlParams, [param.name]: e.target.value})}
-                              className="text-sm"
-                            />
-                          </div>
-                        ))}
+                        {selectedApi.parameters.map((param) => {
+                          const isPathParam = selectedApi.endpoint.includes(`{${param.name}}`);
+                          return (
+                            <div key={param.name}>
+                              <label className="block text-xs text-gray-600 mb-1">
+                                {param.name} 
+                                <Badge variant="outline" className="ml-2 text-xs">
+                                  {param.type}
+                                </Badge>
+                                {isPathParam && (
+                                  <Badge variant="secondary" className="ml-1 text-xs">
+                                    Path
+                                  </Badge>
+                                )}
+                                {param.required && <span className="text-red-500 ml-1">*</span>}
+                              </label>
+                              <Input
+                                placeholder={param.description}
+                                value={urlParams[param.name] || ''}
+                                onChange={(e) => setUrlParams({...urlParams, [param.name]: e.target.value})}
+                                className="text-sm"
+                                required={param.required}
+                              />
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -1355,7 +1408,7 @@ export default function ApiCenter() {
                       {/* Status */}
                       <div className="flex items-center gap-2">
                         <Badge 
-                          variant={testResponse.status === 200 ? "default" : "destructive"}
+                          variant={testResponse.status === 200 ? "default" : testResponse.status === 'ERROR' ? "destructive" : "secondary"}
                           className="text-sm"
                         >
                           {testResponse.status} {testResponse.statusText}
@@ -1367,6 +1420,45 @@ export default function ApiCenter() {
                         )}
                       </div>
 
+                      {/* Test URL */}
+                      {testResponse.url && (
+                        <div>
+                          <label className="text-sm font-medium mb-1 block">Test URL'si</label>
+                          <div className="flex items-center gap-2">
+                            <code className="flex-1 bg-gray-100 p-2 rounded text-xs font-mono truncate">
+                              {testResponse.url}
+                            </code>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => copyToClipboard(testResponse.url)}
+                            >
+                              <Copy size={12} />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Response Headers */}
+                      {testResponse.headers && (
+                        <Collapsible>
+                          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium hover:text-blue-600">
+                            <ChevronRight size={16} />
+                            Response Headers
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="mt-2 bg-gray-50 p-3 rounded text-xs font-mono">
+                              {Object.entries(testResponse.headers).map(([key, value]) => (
+                                <div key={key} className="flex gap-2">
+                                  <span className="font-semibold">{key}:</span>
+                                  <span className="text-gray-600">{value as string}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
+
                       {/* Response Data */}
                       <div>
                         <div className="flex items-center justify-between mb-2">
@@ -1374,13 +1466,19 @@ export default function ApiCenter() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => copyToClipboard(JSON.stringify(testResponse.data, null, 2))}
+                            onClick={() => copyToClipboard(
+                              typeof testResponse.data === 'string' 
+                                ? testResponse.data 
+                                : JSON.stringify(testResponse.data, null, 2)
+                            )}
                           >
                             <Copy size={14} />
                           </Button>
                         </div>
                         <pre className="bg-gray-100 p-3 rounded text-xs overflow-auto max-h-96 border">
-                          {JSON.stringify(testResponse.data, null, 2)}
+                          {typeof testResponse.data === 'string' 
+                            ? testResponse.data 
+                            : JSON.stringify(testResponse.data, null, 2)}
                         </pre>
                       </div>
                     </div>
