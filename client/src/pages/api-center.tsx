@@ -36,6 +36,13 @@ interface ApiEndpoint {
   sampleRequest?: any;
   sampleResponse?: any;
   parameters?: Array<{ name: string; type: string; required: boolean; description: string }>;
+  requestStructure?: Array<{
+    field: string;
+    type: string;
+    required: boolean;
+    description: string;
+    example?: any;
+  }>;
 }
 
 const apiEndpoints: ApiEndpoint[] = [
@@ -236,6 +243,15 @@ const apiEndpoints: ApiEndpoint[] = [
     description: 'Sisteme yeni araç ekler',
     category: 'asset',
     requiredPermissions: ['asset:write'],
+    requestStructure: [
+      { field: 'plateNumber', type: 'string', required: true, description: 'Araç plakası', example: "34XYZ789" },
+      { field: 'modelId', type: 'number', required: true, description: 'Araç model ID', example: 1 },
+      { field: 'modelYear', type: 'number', required: true, description: 'Model yılı', example: 2023 },
+      { field: 'chassisNo', type: 'string', required: false, description: 'Şasi numarası', example: "CH123456" },
+      { field: 'engineNo', type: 'string', required: false, description: 'Motor numarası', example: "EN789012" },
+      { field: 'ownershipTypeId', type: 'number', required: true, description: 'Sahiplik türü ID', example: 1 },
+      { field: 'isActive', type: 'boolean', required: false, description: 'Aktiflik durumu', example: true }
+    ],
     sampleRequest: {
       plateNumber: "34XYZ789",
       modelId: 1,
@@ -314,6 +330,15 @@ const apiEndpoints: ApiEndpoint[] = [
     description: 'Sisteme yeni şirket ekler',
     category: 'sirket',
     requiredPermissions: ['company:write'],
+    requestStructure: [
+      { field: 'name', type: 'string', required: true, description: 'Şirket adı', example: "XYZ Lojistik" },
+      { field: 'taxNo', type: 'string', required: true, description: 'Vergi numarası', example: "9876543210" },
+      { field: 'taxOffice', type: 'string', required: true, description: 'Vergi dairesi', example: "Kadıköy" },
+      { field: 'address', type: 'string', required: true, description: 'Şirket adresi', example: "İstanbul" },
+      { field: 'phone', type: 'string', required: false, description: 'Telefon numarası', example: "0216-123-4567" },
+      { field: 'email', type: 'string', required: false, description: 'E-posta adresi', example: "info@xyzlojistik.com" },
+      { field: 'cityId', type: 'number', required: true, description: 'Şehir ID', example: 34 }
+    ],
     sampleRequest: {
       name: "XYZ Lojistik",
       taxNo: "9876543210",
@@ -373,6 +398,15 @@ const apiEndpoints: ApiEndpoint[] = [
     description: 'Sisteme yeni personel ekler',
     category: 'personel',
     requiredPermissions: ['data:write'],
+    requestStructure: [
+      { field: 'name', type: 'string', required: true, description: 'Personel adı soyadı', example: "Mehmet Kaya" },
+      { field: 'positionId', type: 'number', required: true, description: 'Pozisyon ID', example: 1 },
+      { field: 'workAreaId', type: 'number', required: true, description: 'Çalışma alanı ID', example: 1 },
+      { field: 'phone', type: 'string', required: false, description: 'Telefon numarası', example: "0532-123-4567" },
+      { field: 'email', type: 'string', required: false, description: 'E-posta adresi', example: "mehmet@company.com" },
+      { field: 'startDate', type: 'string', required: false, description: 'İşe başlama tarihi (YYYY-MM-DD)', example: "2024-01-01" },
+      { field: 'licenseNumber', type: 'string', required: false, description: 'Ehliyet numarası', example: "12345678" }
+    ],
     sampleRequest: {
       name: "Mehmet Kaya",
       positionId: 1,
@@ -420,6 +454,16 @@ const apiEndpoints: ApiEndpoint[] = [
     description: 'Yeni finansal işlem ekler',
     category: 'finansal',
     requiredPermissions: ['financial:write'],
+    requestStructure: [
+      { field: 'description', type: 'string', required: true, description: 'İşlem açıklaması', example: "Yakıt alımı" },
+      { field: 'payerCompanyId', type: 'number', required: true, description: 'Ödeyen şirket ID', example: 1 },
+      { field: 'payeeCompanyId', type: 'number', required: true, description: 'Alacaklı şirket ID', example: 2 },
+      { field: 'amountCents', type: 'number', required: true, description: 'Tutar (kuruş cinsinden)', example: 50000 },
+      { field: 'transactionDate', type: 'string', required: true, description: 'İşlem tarihi (YYYY-MM-DD)', example: "2024-01-15" },
+      { field: 'paymentStatus', type: 'string', required: true, description: 'Ödeme durumu (pending/paid/cancelled)', example: "pending" },
+      { field: 'paymentMethodId', type: 'number', required: false, description: 'Ödeme yöntemi ID', example: 1 },
+      { field: 'dueDate', type: 'string', required: false, description: 'Vade tarihi (YYYY-MM-DD)', example: "2024-02-15" }
+    ],
     sampleRequest: {
       description: "Yakıt alımı",
       payerCompanyId: 1,
@@ -496,6 +540,16 @@ const apiEndpoints: ApiEndpoint[] = [
     description: 'Yeni yakıt kaydı ekler',
     category: 'yakit',
     requiredPermissions: ['fuel:write'],
+    requestStructure: [
+      { field: 'assetId', type: 'number', required: true, description: 'Araç ID', example: 1 },
+      { field: 'recordDate', type: 'string', required: true, description: 'Kayıt tarihi (YYYY-MM-DD)', example: "2024-01-15" },
+      { field: 'currentKilometers', type: 'number', required: true, description: 'Güncel kilometre', example: 125000 },
+      { field: 'fuelAmount', type: 'number', required: true, description: 'Yakıt miktarı (litre)', example: 50 },
+      { field: 'fuelCostCents', type: 'number', required: true, description: 'Yakıt tutarı (kuruş)', example: 150000 },
+      { field: 'gasStationName', type: 'string', required: false, description: 'Yakıt istasyonu adı', example: "Shell" },
+      { field: 'paymentMethodId', type: 'number', required: false, description: 'Ödeme yöntemi ID', example: 1 },
+      { field: 'notes', type: 'string', required: false, description: 'Notlar', example: "Şehir içi kullanım" }
+    ],
     sampleRequest: {
       assetId: 1,
       recordDate: "2024-01-15",
@@ -1039,6 +1093,70 @@ export default function ApiCenter() {
                         </div>
                       </div>
 
+                      {/* İstek Yapısı (POST/PUT için) */}
+                      {selectedApi.requestStructure && ['POST', 'PUT'].includes(selectedApi.method) && (
+                        <div>
+                          <label className="block text-sm font-medium mb-2">İstek Yapısı</label>
+                          <div className="border rounded-lg overflow-hidden">
+                            <table className="w-full text-sm">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-3 py-2 text-left font-medium">Alan</th>
+                                  <th className="px-3 py-2 text-left font-medium">Tip</th>
+                                  <th className="px-3 py-2 text-left font-medium">Zorunlu</th>
+                                  <th className="px-3 py-2 text-left font-medium">Açıklama</th>
+                                  <th className="px-3 py-2 text-left font-medium">Örnek</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-200">
+                                {selectedApi.requestStructure.map((field) => (
+                                  <tr key={field.field} className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 font-mono text-blue-600">{field.field}</td>
+                                    <td className="px-3 py-2">
+                                      <Badge variant="outline" className="text-xs">
+                                        {field.type}
+                                      </Badge>
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      {field.required ? (
+                                        <Badge variant="destructive" className="text-xs">Evet</Badge>
+                                      ) : (
+                                        <Badge variant="secondary" className="text-xs">Hayır</Badge>
+                                      )}
+                                    </td>
+                                    <td className="px-3 py-2 text-gray-600">{field.description}</td>
+                                    <td className="px-3 py-2 font-mono text-xs text-gray-500">
+                                      {field.example !== undefined ? JSON.stringify(field.example) : '-'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Örnek İstek (POST/PUT için) */}
+                      {selectedApi.sampleRequest && ['POST', 'PUT'].includes(selectedApi.method) && (
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="block text-sm font-medium">Örnek İstek</label>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => copyToClipboard(JSON.stringify(selectedApi.sampleRequest, null, 2))}
+                              className="text-xs"
+                            >
+                              <Copy size={12} className="mr-1" />
+                              Kopyala
+                            </Button>
+                          </div>
+                          <pre className="bg-gray-100 p-3 rounded text-xs overflow-x-auto">
+                            {JSON.stringify(selectedApi.sampleRequest, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+
                       {/* Örnek Yanıt */}
                       {selectedApi.sampleResponse && (
                         <div>
@@ -1143,6 +1261,50 @@ export default function ApiCenter() {
                         ))}
                       </div>
                     </div>
+                  )}
+
+                  {/* Request Yapısı Gösterimi (POST/PUT için) */}
+                  {selectedApi && selectedApi.requestStructure && ['POST', 'PUT'].includes(selectedApi.method) && (
+                    <Collapsible>
+                      <CollapsibleTrigger className="flex items-center justify-between w-full text-sm font-medium mb-2 hover:text-blue-600">
+                        <span>İstek Yapısını Görüntüle</span>
+                        <ChevronDown size={16} />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mb-4 border rounded-lg overflow-hidden">
+                          <table className="w-full text-xs">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-2 py-1 text-left">Alan</th>
+                                <th className="px-2 py-1 text-left">Tip</th>
+                                <th className="px-2 py-1 text-left">Zorunlu</th>
+                                <th className="px-2 py-1 text-left">Açıklama</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                              {selectedApi.requestStructure.map((field) => (
+                                <tr key={field.field} className="hover:bg-gray-50">
+                                  <td className="px-2 py-1 font-mono text-blue-600">{field.field}</td>
+                                  <td className="px-2 py-1">
+                                    <Badge variant="outline" className="text-xs">
+                                      {field.type}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-2 py-1">
+                                    {field.required ? (
+                                      <span className="text-red-500">●</span>
+                                    ) : (
+                                      <span className="text-gray-400">○</span>
+                                    )}
+                                  </td>
+                                  <td className="px-2 py-1 text-gray-600">{field.description}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   )}
 
                   {/* Request Body (POST/PUT için) */}
