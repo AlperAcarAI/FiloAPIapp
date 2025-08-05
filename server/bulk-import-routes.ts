@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
 import { db } from './db';
-// Authentication removed - no longer needed
+import { authenticateApiKey, authorizeEndpoint } from './api-security.js';
 import { parse as csvParse } from 'csv-parse/sync';
 import * as XLSX from 'xlsx';
 
@@ -99,6 +99,8 @@ function stopAllImports() {
  *         description: Geçersiz dosya veya parametreler
  */
 router.post('/bulk-import/csv', 
+  authenticateApiKey, 
+  authorizeEndpoint(['data:write']), 
   upload.single('file'),
   async (req, res) => {
     try {
@@ -165,6 +167,8 @@ router.post('/bulk-import/csv',
  *     description: Bulk import işleminin durumunu kontrol eder
  */
 router.get('/bulk-import/status/:importId',
+  authenticateApiKey,
+  authorizeEndpoint(['data:read']),
   async (req, res) => {
     try {
       const { importId } = req.params;
@@ -378,6 +382,8 @@ async function processCarBrandsModels(batch: any[], importId?: string) {
  *     description: Belirtilen tablo için CSV template indirir
  */
 router.get('/bulk-import/template/:tableName',
+  authenticateApiKey,
+  authorizeEndpoint(['data:read']),
   async (req, res) => {
     try {
       const { tableName } = req.params;
@@ -424,6 +430,8 @@ router.get('/bulk-import/template/:tableName',
 
 // Emergency stop endpoint - tüm import işlemlerini durdur (izin gevşetildi)
 router.post('/bulk-import/stop-all',
+  authenticateApiKey,
+  authorizeEndpoint(['data:write']), // Admin izni yerine data:write yeterli
   async (req, res) => {
     try {
       stopAllImports();
@@ -446,6 +454,8 @@ router.post('/bulk-import/stop-all',
 
 // Manuel import status temizleme endpoint (izin gevşetildi)
 router.delete('/bulk-import/clear-status',
+  authenticateApiKey,
+  authorizeEndpoint(['data:write']), // Admin izni yerine data:write yeterli
   async (req, res) => {
     try {
       const clearedCount = importStatus.size;

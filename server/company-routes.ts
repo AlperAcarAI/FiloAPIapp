@@ -7,7 +7,7 @@ import {
   type InsertCompany, type UpdateCompany, type Company
 } from '../shared/schema.js';
 import { z } from 'zod';
-// Authentication removed - no longer needed
+import { authenticateApiKey, authorizeEndpoint } from './api-security.js';
 import { 
   auditableInsert,
   auditableUpdate,
@@ -47,7 +47,7 @@ const router = Router();
  *       401:
  *         description: Geçersiz API anahtarı
  */
-router.get('/companies', async (req, res) => {
+router.get('/companies', authenticateApiKey, authorizeEndpoint(['data:read', 'company:read']), async (req, res) => {
   try {
     const { search, active, cityId } = req.query;
     
@@ -150,7 +150,7 @@ router.get('/companies', async (req, res) => {
  *       404:
  *         description: Şirket bulunamadı
  */
-router.get('/companies/:id', async (req, res) => {
+router.get('/companies/:id', authenticateApiKey, authorizeEndpoint(['data:read', 'company:read']), async (req, res) => {
   try {
     const companyId = parseInt(req.params.id);
     
@@ -256,7 +256,7 @@ router.get('/companies/:id', async (req, res) => {
  *       401:
  *         description: Geçersiz API anahtarı
  */
-router.post('/companies', async (req, res) => {
+router.post('/companies', authenticateApiKey, authorizeEndpoint(['data:write', 'company:write']), async (req, res) => {
   try {
     // Body validation
     const validatedData = insertCompanySchema.parse(req.body);
@@ -390,7 +390,7 @@ router.post('/companies', async (req, res) => {
  *       404:
  *         description: Şirket bulunamadı
  */
-router.put('/companies/:id', async (req, res) => {
+router.put('/companies/:id', authenticateApiKey, authorizeEndpoint(['data:write', 'company:write']), async (req, res) => {
   try {
     const companyId = parseInt(req.params.id);
     
@@ -516,7 +516,7 @@ router.put('/companies/:id', async (req, res) => {
  *       404:
  *         description: Şirket bulunamadı
  */
-router.delete('/companies/:id', async (req, res) => {
+router.delete('/companies/:id', authenticateApiKey, authorizeEndpoint(['data:delete', 'company:delete']), async (req, res) => {
   try {
     const companyId = parseInt(req.params.id);
     

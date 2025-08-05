@@ -7,7 +7,7 @@ import {
   type InsertAsset, type UpdateAsset, type Asset
 } from '../shared/schema.js';
 import { z } from 'zod';
-// Authentication removed - no longer needed
+import { authenticateApiKey, authorizeEndpoint } from './api-security.js';
 import { 
   auditableInsert,
   auditableUpdate,
@@ -52,7 +52,7 @@ const router = Router();
  *       401:
  *         description: Geçersiz API anahtarı
  */
-router.get('/assets', async (req, res) => {
+router.get('/assets', authenticateApiKey, authorizeEndpoint(['data:read', 'asset:read']), async (req, res) => {
   try {
     const { search, active, modelId, companyId } = req.query;
     
@@ -155,7 +155,7 @@ router.get('/assets', async (req, res) => {
  *       404:
  *         description: Asset bulunamadı
  */
-router.get('/assets/:id', async (req, res) => {
+router.get('/assets/:id', authenticateApiKey, authorizeEndpoint(['data:read', 'asset:read']), async (req, res) => {
   try {
     const assetId = parseInt(req.params.id);
     
@@ -280,7 +280,7 @@ router.get('/assets/:id', async (req, res) => {
  *       409:
  *         description: Plaka numarası zaten mevcut
  */
-router.post('/assets', async (req, res) => {
+router.post('/assets', authenticateApiKey, authorizeEndpoint(['data:write', 'asset:write']), async (req, res) => {
   try {
     // Validate request body
     const validatedData = insertAssetSchema.parse(req.body);
@@ -399,7 +399,7 @@ router.post('/assets', async (req, res) => {
  *       409:
  *         description: Plaka numarası başka asset'te mevcut
  */
-router.put('/assets/:id', async (req, res) => {
+router.put('/assets/:id', authenticateApiKey, authorizeEndpoint(['data:write', 'asset:write']), async (req, res) => {
   try {
     const assetId = parseInt(req.params.id);
     
@@ -509,7 +509,7 @@ router.put('/assets/:id', async (req, res) => {
  *       404:
  *         description: Asset bulunamadı
  */
-router.delete('/assets/:id', async (req, res) => {
+router.delete('/assets/:id', authenticateApiKey, authorizeEndpoint(['data:delete', 'asset:delete']), async (req, res) => {
   try {
     const assetId = parseInt(req.params.id);
     

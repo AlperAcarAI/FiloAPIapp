@@ -12,24 +12,73 @@ import DocumentManagement from "@/pages/document-management";
 import Dashboard from "@/pages/Dashboard";
 import Analytics from "@/pages/Analytics";
 import BulkImport from "@/pages/BulkImport";
-// Login kaldırıldı - artık authentication yok
+import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 import AdminTenants from "@/pages/AdminTenants";
 
-// ProtectedRoute kaldırıldı - artık authentication yok
+function ProtectedRoute({ component: Component }: { component: any }) {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('authToken');
+      
+      if (!token) {
+        setIsAuthenticated(false);
+        return;
+      }
+
+      // Verify token is still valid
+      try {
+        const response = await fetch('/api/test-auth', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          setIsAuthenticated(true);
+        } else {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        setIsAuthenticated(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  if (isAuthenticated === null) {
+    return <div className="min-h-screen flex items-center justify-center">Yükleniyor...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect to="/login" />;
+  }
+
+  return <Component />;
+}
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/api/:id" component={ApiDetails} />
-      <Route path="/test" component={VarlikTest} />
-      <Route path="/api-center" component={ApiCenter} />
-      <Route path="/documents" component={DocumentManagement} />
-      <Route path="/dashboard" component={Dashboard} />
-      <Route path="/analytics" component={Analytics} />
-      <Route path="/bulk-import" component={BulkImport} />
-      <Route path="/admin/tenants" component={AdminTenants} />
+      <Route path="/login" component={Login} />
+      <Route path="/" component={() => <ProtectedRoute component={Home} />} />
+      <Route path="/api/:id" component={() => <ProtectedRoute component={ApiDetails} />} />
+      <Route path="/test" component={() => <ProtectedRoute component={VarlikTest} />} />
+      <Route path="/api-center" component={() => <ProtectedRoute component={ApiCenter} />} />
+      <Route path="/documents" component={() => <ProtectedRoute component={DocumentManagement} />} />
+      <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
+      <Route path="/analytics" component={() => <ProtectedRoute component={Analytics} />} />
+      <Route path="/bulk-import" component={() => <ProtectedRoute component={BulkImport} />} />
+      <Route path="/admin/tenants" component={() => <ProtectedRoute component={AdminTenants} />} />
       <Route component={NotFound} />
     </Switch>
   );

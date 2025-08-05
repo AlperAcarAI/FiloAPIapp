@@ -3,7 +3,9 @@ import { db } from "./db";
 import { documents, docSubTypes, users, personnel, companies, workAreas, assets } from "@shared/schema";
 import { insertDocumentSchema, updateDocumentSchema } from "@shared/schema";
 import { eq, and, or, like, desc, asc, sql } from "drizzle-orm";
-// Authentication imports removed - no longer needed
+import { authenticateToken } from "./auth";
+import { hasPermission } from "./permission-management-routes";
+import { authenticateJWT } from "./hierarchical-auth";
 import { captureAuditInfo, auditableInsert, auditableUpdate, auditableDelete } from "./audit-middleware";
 import { z } from "zod";
 
@@ -12,7 +14,7 @@ const documentRoutes = Router();
 export default documentRoutes;
 
 // Tüm dökümanları listele (filtreleme destekli)
-documentRoutes.get("/", async (req: any, res) => {
+documentRoutes.get("/", authenticateJWT, hasPermission(["document:read"]), async (req: any, res) => {
   try {
     const { 
       entityType, 
@@ -115,7 +117,7 @@ documentRoutes.get("/", async (req: any, res) => {
 });
 
 // Belirli bir dökümanı getir
-documentRoutes.get("/:id", async (req: any, res) => {
+documentRoutes.get("/:id", authenticateJWT, hasPermission(["document:read"]), async (req: any, res) => {
   try {
     const { id } = req.params;
     
@@ -160,7 +162,7 @@ documentRoutes.get("/:id", async (req: any, res) => {
 });
 
 // Yeni döküman ekle
-documentRoutes.post("/", async (req: any, res) => {
+documentRoutes.post("/", authenticateJWT, hasPermission(["document:write"]), async (req: any, res) => {
   try {
     const validatedData = insertDocumentSchema.parse(req.body);
     const auditInfo = captureAuditInfo(req);
@@ -243,7 +245,7 @@ documentRoutes.post("/", async (req: any, res) => {
 });
 
 // Döküman güncelle
-documentRoutes.put("/:id", async (req: any, res) => {
+documentRoutes.put("/:id", authenticateJWT, hasPermission(["document:write"]), async (req: any, res) => {
   try {
     const { id } = req.params;
     const validatedData = updateDocumentSchema.parse(req.body);
@@ -291,7 +293,7 @@ documentRoutes.put("/:id", async (req: any, res) => {
 });
 
 // Döküman sil (soft delete)
-documentRoutes.delete("/:id", async (req: any, res) => {
+documentRoutes.delete("/:id", authenticateJWT, hasPermission(["document:delete"]), async (req: any, res) => {
   try {
     const { id } = req.params;
     const auditInfo = captureAuditInfo(req);
@@ -330,7 +332,7 @@ documentRoutes.delete("/:id", async (req: any, res) => {
 });
 
 // Entity'ye göre dökümanları listele
-documentRoutes.get("/entity/:entityType/:entityId", async (req: any, res) => {
+documentRoutes.get("/entity/:entityType/:entityId", authenticateJWT, hasPermission(["document:read"]), async (req: any, res) => {
   try {
     const { entityType, entityId } = req.params;
     

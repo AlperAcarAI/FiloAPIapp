@@ -326,7 +326,7 @@ export const rateLimitBuckets = pgTable("rate_limit_buckets", {
   blockedUntil: timestamp("blocked_until"),
 }, (table) => ({
   identifierBucketIdx: index("idx_rate_limit_identifier_bucket").on(table.identifier, table.bucketType),
-  windowIdx: index("idx_rate_limit_buckets_window").on(table.windowEnd),
+  windowIdx: index("idx_rate_limit_window").on(table.windowEnd),
   uniqueIdentifierBucket: unique("unique_identifier_bucket").on(table.identifier, table.bucketType),
 }));
 
@@ -497,7 +497,7 @@ export const apiRateLimit = pgTable("api_rate_limit", {
   windowEnd: timestamp("window_end").notNull(),
 }, (table) => ({
   clientEndpointIdx: index("idx_rate_limit_client_endpoint").on(table.clientId, table.endpointId),
-  windowIdx: index("idx_api_rate_limit_window").on(table.windowStart, table.windowEnd),
+  windowIdx: index("idx_rate_limit_window").on(table.windowStart, table.windowEnd),
 }));
 
 // ========================

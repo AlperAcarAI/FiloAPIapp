@@ -1,5 +1,5 @@
-import type { Express, Request } from 'express';
-// Authentication removed - direct access enabled
+import type { Express } from 'express';
+import { authenticateToken, type AuthRequest } from './auth';
 import { db } from './db';
 import { 
   securityEvents, 
@@ -22,10 +22,16 @@ import { randomBytes } from 'crypto';
 export const registerSecurityRoutes = (app: Express) => {
   
   // Get user security dashboard
-  app.get('/api/security/dashboard', async (req, res) => {
+  app.get('/api/security/dashboard', authenticateToken, async (req: AuthRequest, res) => {
     try {
-      // Mock user ID since authentication is removed
-      const userId = 1; // Default user for demonstration
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'UNAUTHORIZED',
+          message: 'Kullanıcı kimliği bulunamadı'
+        });
+      }
 
       // Get security settings
       const [securitySettings] = await db
@@ -45,7 +51,7 @@ export const registerSecurityRoutes = (app: Express) => {
       const recentLogins = await db
         .select()
         .from(loginAttempts)
-        .where(eq(loginAttempts.email, 'demo@filokiapi.com'))
+        .where(eq(loginAttempts.email, req.user?.username || ''))
         .orderBy(desc(loginAttempts.attemptTime))
         .limit(5);
 
@@ -90,10 +96,18 @@ export const registerSecurityRoutes = (app: Express) => {
 
 
   // Change password with security checks
-  app.post('/api/security/change-password', async (req, res) => {
+  app.post('/api/security/change-password', authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const userId = 1; // Mock user ID
+      const userId = req.user?.userId;
       const { currentPassword, newPassword } = req.body;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'UNAUTHORIZED',
+          message: 'Kullanıcı kimliği bulunamadı'
+        });
+      }
 
       // Validate password strength
       const strengthCheck = validatePasswordStrength(newPassword);
@@ -198,9 +212,9 @@ export const registerSecurityRoutes = (app: Express) => {
   });
 
   // Get security events (with pagination)
-  app.get('/api/security/events', async (req, res) => {
+  app.get('/api/security/events', authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const userId = 1;
+      const userId = req.user?.userId;
       const { page = 1, limit = 10, severity, eventType } = req.query;
       
       if (!userId) {
@@ -288,9 +302,9 @@ export const registerSecurityRoutes = (app: Express) => {
   });
 
   // Get trusted devices
-  app.get('/api/security/devices', async (req: Request, res) => {
+  app.get('/api/security/devices', authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const userId = 1;
+      const userId = req.user?.userId;
       
       if (!userId) {
         return res.status(401).json({
@@ -321,9 +335,9 @@ export const registerSecurityRoutes = (app: Express) => {
   });
 
   // Revoke device trust
-  app.delete('/api/security/devices/:deviceId', async (req: Request, res) => {
+  app.delete('/api/security/devices/:deviceId', authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const userId = 1;
+      const userId = req.user?.userId;
       const { deviceId } = req.params;
       
       if (!userId) {
@@ -369,10 +383,10 @@ export const registerSecurityRoutes = (app: Express) => {
   });
 
   // Admin: Get security overview
-  app.get('/api/security/admin/overview', async (req: Request, res) => {
+  app.get('/api/security/admin/overview', authenticateToken, async (req: AuthRequest, res) => {
     try {
       // This should have admin permission check
-      const userId = 1;
+      const userId = req.user?.userId;
       
       if (!userId) {
         return res.status(401).json({

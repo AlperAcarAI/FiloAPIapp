@@ -7,22 +7,116 @@ import {
   accessLevels, userAccessRights
 } from '@shared/schema';
 import { eq, and, inArray, or, like, desc, sql } from 'drizzle-orm';
-// Authentication imports removed - no longer needed
-import { Request, Response } from 'express';
+import { 
+  authenticateJWT, 
+  requirePermission, 
+  filterByWorkArea, 
+  loadUserContext, 
+  generateJWTToken,
+  type AuthRequest 
+} from './hierarchical-auth';
 
 const router = express.Router();
 
 // ========================
-// TÜM AUTHENTICATION KALDIRILDI
+// AUTHENTICATION ENDPOINTS
 // ========================
+
+// Login endpoint
+router.post('/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'MISSING_CREDENTIALS',
+        message: 'Email ve şifre gerekli'
+      });
+    }
+
+    // Kullanıcıyı bul
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'INVALID_CREDENTIALS',
+        message: 'Geçersiz email veya şifre'
+      });
+    }
+
+    // Şifre kontrolü
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        error: 'INVALID_CREDENTIALS',
+        message: 'Geçersiz email veya şifre'
+      });
+    }
+
+    // Kullanıcı aktif mi kontrol et
+    if (!user.isActive) {
+      return res.status(401).json({
+        success: false,
+        error: 'ACCOUNT_DISABLED',
+        message: 'Hesabınız pasif durumda. Yöneticinizle iletişime geçin.'
+      });
+    }
+
+    // User context yükle
+    const userContext = await loadUserContext(user.id);
+
+    if (!userContext) {
+      return res.status(500).json({
+        success: false,
+        error: 'CONTEXT_LOAD_ERROR',
+        message: 'Kullanıcı bilgileri yüklenemedi'
+      });
+    }
+
+    // JWT token oluştur
+    const token = generateJWTToken(userContext);
+
+    res.json({
+      success: true,
+      data: {
+        token,
+        expiresIn: 28800, // 8 hours in seconds
+        userContext
+      },
+      message: 'Başarıyla giriş yapıldı'
+    });
+
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'LOGIN_ERROR',
+      message: 'Giriş işlemi sırasında hata oluştu'
+    });
+  }
+});
+
+// Get current user context
+router.get('/auth/me', authenticateJWT, (req: AuthRequest, res) => {
+  res.json({
+    success: true,
+    data: req.userContext,
+    message: 'Kullanıcı bilgileri alındı'
+  });
+});
 
 // ========================
 // PERSONNEL ENDPOINTS
 // ========================
 
-// Get personnel list (authentication removed)
+// Get personnel list
 router.get('/personnel', 
-  async (req: Request, res) => {
+  authenticateJWT, 
+  requirePermission('personnel:read'), 
+  async (req: AuthRequest, res) => {
     try {
       const { 
         page = 1, 
@@ -34,10 +128,9 @@ router.get('/personnel',
       } = req.query;
 
       const offset = (Number(page) - 1) * Number(limit);
-      const allowedWorkAreaIds = null; // No filtering
+      const { allowedWorkAreaIds } = req.userContext!;
 
-      // Build base query
-      const baseQuery = db.select({
+      let query = db.select({
         id: personnel.id,
         name: personnel.name,
         surname: personnel.surname,
@@ -91,17 +184,15 @@ router.get('/personnel',
         conditions.push(inArray(workAreas.id, allowedWorkAreaIds));
       }
 
-      // Build final query
-      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-      const query = whereClause 
-        ? baseQuery.where(whereClause).limit(Number(limit)).offset(offset)
-        : baseQuery.limit(Number(limit)).offset(offset);
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
 
       // Execute query with pagination
-      const personnelList = await query;
+      const personnelList = await query.limit(Number(limit)).offset(offset);
 
       // Get total count
-      const baseCountQuery = db.select({ count: sql<number>`count(*)` })
+      let countQuery = db.select({ count: sql<number>`count(*)` })
         .from(personnel)
         .leftJoin(personnelWorkAreas, and(
           eq(personnel.id, personnelWorkAreas.personnelId),
@@ -110,9 +201,9 @@ router.get('/personnel',
         .leftJoin(workAreas, eq(personnelWorkAreas.workAreaId, workAreas.id))
         .leftJoin(personnelPositions, eq(personnelWorkAreas.positionId, personnelPositions.id));
 
-      const countQuery = whereClause 
-        ? baseCountQuery.where(whereClause)
-        : baseCountQuery;
+      if (conditions.length > 0) {
+        countQuery = countQuery.where(and(...conditions));
+      }
 
       const [{ count: totalRecords }] = await countQuery;
 
@@ -125,6 +216,10 @@ router.get('/personnel',
           totalRecords,
           hasNext: offset + Number(limit) < totalRecords,
           hasPrev: Number(page) > 1
+        },
+        userContext: {
+          accessLevel: req.userContext!.accessLevel,
+          filteredByWorkAreas: allowedWorkAreaIds
         }
       });
 
@@ -139,12 +234,14 @@ router.get('/personnel',
   }
 );
 
-// Get personnel by ID (authentication removed)
+// Get personnel by ID
 router.get('/personnel/:id', 
-  async (req: Request, res) => {
+  authenticateJWT, 
+  requirePermission('personnel:read'),
+  async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
-      const allowedWorkAreaIds = null; // No filtering
+      const { allowedWorkAreaIds } = req.userContext!;
 
       let query = db.select({
         id: personnel.id,
@@ -208,9 +305,11 @@ router.get('/personnel/:id',
 // ASSETS ENDPOINTS  
 // ========================
 
-// Get assets list (authentication removed)
+// Get assets list 
 router.get('/assets',
-  async (req: Request, res) => {
+  authenticateJWT,
+  requirePermission('fleet:read'),
+  async (req: AuthRequest, res) => {
     try {
       const {
         page = 1,
@@ -223,8 +322,7 @@ router.get('/assets',
       } = req.query;
 
       const offset = (Number(page) - 1) * Number(limit);
-      const allowedWorkAreaIds = null; // No filtering
-      const personnelId = null; // No user context
+      const { allowedWorkAreaIds, personnelId } = req.userContext!;
 
       let query = db.select({
         id: assets.id,
@@ -257,14 +355,13 @@ router.get('/assets',
       const conditions = [eq(assets.isActive, true)];
 
       if (search) {
-        const searchCondition = or(
-          like(assets.plateNumber, `%${search}%`),
-          like(carBrands.name, `%${search}%`),
-          like(carModels.name, `%${search}%`)
+        conditions.push(
+          or(
+            like(assets.plateNumber, `%${search}%`),
+            like(carBrands.name, `%${search}%`),
+            like(carModels.name, `%${search}%`)
+          )
         );
-        if (searchCondition) {
-          conditions.push(searchCondition);
-        }
       }
 
       // assignedToMe filtresini kaldır (table mevcut değil)
@@ -329,7 +426,7 @@ router.get('/assets',
         success: false,
         error: 'FETCH_ERROR',
         message: 'Araç listesi alınamadı',
-        debug: error instanceof Error ? error.message : 'Bilinmeyen hata'
+        debug: error.message
       });
     }
   }
@@ -341,7 +438,9 @@ router.get('/assets',
 
 // Get fuel records
 router.get('/fuel-records',
-  async (req: Request, res) => {
+  authenticateJWT,
+  requirePermission('fuel:read'),
+  async (req: AuthRequest, res) => {
     try {
       const {
         page = 1,
@@ -353,8 +452,7 @@ router.get('/fuel-records',
       } = req.query;
 
       const offset = (Number(page) - 1) * Number(limit);
-      const allowedWorkAreaIds = null; // No filtering
-      const personnelId = null; // No user context
+      const { allowedWorkAreaIds, personnelId } = req.userContext!;
 
       let query = db.select({
         id: fuelRecords.id,
@@ -462,7 +560,7 @@ router.get('/fuel-records',
         success: false,
         error: 'FETCH_ERROR',
         message: 'Yakıt kayıtları alınamadı',
-        debug: error instanceof Error ? error.message : 'Bilinmeyen hata'
+        debug: error.message
       });
     }
   }
@@ -470,7 +568,9 @@ router.get('/fuel-records',
 
 // Create fuel record
 router.post('/fuel-records',
-  async (req: Request, res) => {
+  authenticateJWT,
+  requirePermission('fuel:write'),
+  async (req: AuthRequest, res) => {
     try {
       const {
         assetId,
@@ -483,8 +583,7 @@ router.post('/fuel-records',
         receiptNumber
       } = req.body;
 
-      const personnelId = 1; // Default personnel ID
-      const allowedWorkAreaIds = null; // No filtering
+      const { personnelId, allowedWorkAreaIds } = req.userContext!;
 
       // Validate required fields
       if (!assetId || !recordDate || !currentKilometers || !fuelAmount || !fuelCostCents) {
@@ -546,12 +645,13 @@ router.post('/fuel-records',
 // WORK AREAS ENDPOINTS
 // ========================
 
-// Get work areas (authentication removed)
+// Get work areas
 router.get('/work-areas',
-  async (req: Request, res) => {
+  authenticateJWT,
+  requirePermission('data:read'),
+  async (req: AuthRequest, res) => {
     try {
-      const allowedWorkAreaIds = null; // No filtering
-      const currentWorkAreaId = null; // No user context
+      const { allowedWorkAreaIds, currentWorkAreaId } = req.userContext!;
 
       // Simplified work areas query
       let baseQuery = db.select({
@@ -569,13 +669,23 @@ router.get('/work-areas',
       .from(workAreas)
       .where(eq(workAreas.isActive, true));
 
-      // No hierarchical filtering needed since authentication is removed
+      // Apply hierarchical filtering if needed
+      if (allowedWorkAreaIds !== null && allowedWorkAreaIds.length > 0) {
+        baseQuery = baseQuery.where(and(
+          eq(workAreas.isActive, true),
+          inArray(workAreas.id, allowedWorkAreaIds)
+        ));
+      }
 
       const workAreasList = await baseQuery;
 
       res.json({
         success: true,
-        data: workAreasList
+        data: workAreasList,
+        userContext: {
+          accessLevel: req.userContext!.accessLevel,
+          allowedWorkAreaIds
+        }
       });
 
     } catch (error) {
@@ -584,7 +694,7 @@ router.get('/work-areas',
         success: false,
         error: 'FETCH_ERROR',
         message: 'Çalışma alanları alınamadı',
-        debug: error instanceof Error ? error.message : 'Bilinmeyen hata'
+        debug: error.message
       });
     }
   }

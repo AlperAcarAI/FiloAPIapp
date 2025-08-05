@@ -4,67 +4,21 @@ import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 
-// Domain filtering middleware - Sadece belirli URL'den gelen istekleri kabul et
+// CORS ayarları - Production domain için
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  const referer = req.headers.referer;
-  const host = req.headers.host;
+  const allowedOrigins = [
+    'https://filokiapi.architectaiagency.com',
+    'http://localhost:5000',
+    'http://localhost:3000'
+  ];
   
-  // İzin verilen domain
-  const allowedDomain = 'architectaiagency';
-  
-  // Domain kontrolünü devre dışı bırakmak için DISABLE_DOMAIN_CHECK=true kullanın
-  if (process.env.DISABLE_DOMAIN_CHECK === 'true') {
-    console.log('[Domain Check] Disabled via environment variable');
-    next();
-    return;
+  if (allowedOrigins.includes(origin || '')) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '');
   }
   
-  // Sadece production ortamında domain kontrolü yap
-  if (process.env.NODE_ENV === 'production') {
-    // Debug için header'ları logla
-    console.log('[Domain Check] Headers:', {
-      origin: origin || 'none',
-      referer: referer || 'none',
-      host: host || 'none'
-    });
-    
-    // Origin veya referer kontrolü
-    const isAllowed = (origin && origin.includes(allowedDomain)) || 
-                     (referer && referer.includes(allowedDomain)) ||
-                     (host && host.includes(allowedDomain));
-    
-    if (!isAllowed) {
-      const requestedUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-      const requestSource = origin || referer || host || 'unknown';
-      
-      console.log('[Domain Check] Request blocked from:', requestSource);
-      console.log('[Domain Check] Requested URL:', requestedUrl);
-      
-      return res.status(403).json({
-        success: false,
-        error: 'FORBIDDEN',
-        message: `Bu API sadece yetkili domainlerden erişilebilir. İstek yapılan URL: ${requestedUrl}. İzin verilen domain: ${allowedDomain}`,
-        debug: {
-          istekYapilanUrl: requestedUrl,
-          istekKaynagi: requestSource,
-          izinVerilenDomain: allowedDomain,
-          headers: {
-            origin: origin || 'none',
-            referer: referer || 'none',
-            host: host || 'none'
-          }
-        }
-      });
-    }
-    
-    console.log('[Domain Check] Request allowed');
-  }
-  
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', origin || '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   
   if (req.method === 'OPTIONS') {
