@@ -6,13 +6,13 @@ import {
   getUserAuditActivity,
   getTableAuditSummary
 } from "./audit-middleware";
-import { authenticateToken } from "./auth";
+// Authentication removed - direct access enabled
 import { eq, desc, and, gte, sql } from "drizzle-orm";
 
 export function registerAuditRoutes(app: Express) {
   
   // Belirli bir kaydın audit geçmişini getir
-  app.get("/api/audit/record/:tableName/:recordId", authenticateToken, async (req, res) => {
+  app.get("/api/audit/record/:tableName/:recordId", async (req, res) => {
     try {
       const { tableName, recordId } = req.params;
       
@@ -66,7 +66,7 @@ export function registerAuditRoutes(app: Express) {
   });
 
   // Kullanıcının son aktivitelerini getir
-  app.get("/api/audit/user/:userId", authenticateToken, async (req, res) => {
+  app.get("/api/audit/user/:userId", async (req, res) => {
     try {
       const { userId } = req.params;
       const limit = parseInt(req.query.limit as string) || 100;
@@ -89,7 +89,7 @@ export function registerAuditRoutes(app: Express) {
   });
 
   // Tablo bazlı audit özeti
-  app.get("/api/audit/table/:tableName/summary", authenticateToken, async (req, res) => {
+  app.get("/api/audit/table/:tableName/summary", async (req, res) => {
     try {
       const { tableName } = req.params;
       const days = parseInt(req.query.days as string) || 30;
@@ -115,7 +115,7 @@ export function registerAuditRoutes(app: Express) {
   });
 
   // Genel audit istatistikleri
-  app.get("/api/audit/stats", authenticateToken, async (req, res) => {
+  app.get("/api/audit/stats", async (req, res) => {
     try {
       const days = parseInt(req.query.days as string) || 7;
       const dateLimit = new Date();
