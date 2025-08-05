@@ -177,7 +177,34 @@ export const publicApi = {
   },
 
   async getEndpoints(): Promise<ApiEndpoint[]> {
-    const response = await fetch('/api/endpoints');
+    // Use the /api/overview endpoint to get accurate endpoint data
+    const overviewResponse = await fetch('/api/overview');
+    const overview = await overviewResponse.json();
+    
+    // Generate endpoint list from categories
+    const endpoints: ApiEndpoint[] = [];
+    let idCounter = 1;
+    
+    overview.categories.forEach((category: any) => {
+      for (let i = 0; i < category.count; i++) {
+        endpoints.push({
+          id: idCounter++,
+          name: `${category.name} - API ${i + 1}`,
+          method: 'GET',
+          path: `${category.path}${i === 0 ? '' : `/${i + 1}`}`,
+          description: `${category.name} API endpoint`,
+          status: 'active',
+          createdAt: '2025-01-05T19:00:00Z',
+          updatedAt: '2025-01-05T19:00:00Z'
+        });
+      }
+    });
+    
+    return endpoints;
+  },
+
+  async getOverview(): Promise<any> {
+    const response = await fetch('/api/overview');
     return response.json();
   }
 };

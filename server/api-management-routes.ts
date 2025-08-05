@@ -3675,4 +3675,30 @@ export function registerApiManagementRoutes(app: Express) {
       }
     });
   });
+
+  // Implement the actual /api/endpoints route
+  app.get('/api/endpoints', (req, res) => {
+    // Generate endpoint list from the swagger documentation
+    const endpoints = [];
+    let idCounter = 1;
+    
+    for (const [path, methods] of Object.entries(swaggerDocument.paths)) {
+      for (const [method, details] of Object.entries(methods)) {
+        if (typeof details === 'object' && details.summary) {
+          endpoints.push({
+            id: idCounter++,
+            name: details.summary,
+            method: method.toUpperCase(),
+            path: path,
+            description: details.description || details.summary,
+            status: 'active',
+            createdAt: '2025-01-05T19:00:00Z',
+            updatedAt: '2025-01-05T19:00:00Z'
+          });
+        }
+      }
+    }
+    
+    res.json(endpoints);
+  });
 }

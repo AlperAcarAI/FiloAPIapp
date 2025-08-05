@@ -20,6 +20,16 @@ interface ApiTest {
 }
 
 export default function ApiStatus() {
+  const { data: overview } = useQuery({
+    queryKey: ['/api/overview'],
+    queryFn: () => publicApi.getOverview()
+  });
+
+  const { data: endpoints = [] } = useQuery({
+    queryKey: ['/api/endpoints'],
+    queryFn: () => publicApi.getEndpoints()
+  });
+
   const [tests, setTests] = useState<ApiTest[]>([
     {
       name: 'Cities API',
@@ -222,7 +232,7 @@ export default function ApiStatus() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">FiloApi System Status</h1>
-          <p className="text-gray-600 mt-2">Real-time monitoring of all 138+ API endpoints</p>
+          <p className="text-gray-600 mt-2">Real-time monitoring of all {overview?.totalEndpoints || 98} API endpoints</p>
         </div>
         <Button onClick={runAllTests} disabled={overallStats.pending > 0}>
           <RefreshCw className={`w-4 h-4 mr-2 ${overallStats.pending > 0 ? 'animate-spin' : ''}`} />
@@ -237,7 +247,7 @@ export default function ApiStatus() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total APIs</p>
-                <p className="text-2xl font-bold">{overallStats.total}</p>
+                <p className="text-2xl font-bold">{overview?.totalEndpoints || overallStats.total}</p>
               </div>
               <Database className="w-8 h-8 text-blue-500" />
             </div>

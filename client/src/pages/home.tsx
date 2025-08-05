@@ -16,14 +16,19 @@ export default function Home() {
   const { toast } = useToast();
 
   // Get real API statistics from backend
+  const { data: overview } = useQuery({
+    queryKey: ['/api/overview'],
+    queryFn: () => publicApi.getOverview()
+  });
+
   const { data: endpoints = [] } = useQuery({
     queryKey: ['/api/endpoints'],
     queryFn: () => publicApi.getEndpoints()
   });
 
   const stats = {
-    total: endpoints.length || 138,
-    active: endpoints.filter(e => e.status === 'active').length || 138,
+    total: overview?.totalEndpoints || endpoints.length || 98,
+    active: endpoints.filter(e => e.status === 'active').length || (overview?.totalEndpoints || 98),
     inactive: endpoints.filter(e => e.status === 'inactive').length || 0,
     error: endpoints.filter(e => e.status === 'maintenance').length || 0
   };
