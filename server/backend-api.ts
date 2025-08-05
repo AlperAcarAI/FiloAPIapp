@@ -189,7 +189,7 @@ router.get('/personnel',
       }
 
       // Execute query with pagination
-      const personnelList = await query.limit(Number(limit)).offset(offset);
+      const personnelList = await query.limit(Number(limit)).offset(offset).execute();
 
       // Get total count
       let countQuery = db.select({ count: sql<number>`count(*)` })
@@ -205,7 +205,7 @@ router.get('/personnel',
         countQuery = countQuery.where(and(...conditions));
       }
 
-      const [{ count: totalRecords }] = await countQuery;
+      const [{ count: totalRecords }] = await countQuery.execute();
 
       res.json({
         success: true,

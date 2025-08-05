@@ -150,9 +150,37 @@ router.get('/users',
       .where(eq(users.isActive, true));
 
       if (search) {
-        query = query.where(or(
-          eq(users.email, search as string)
+        const baseQuery = db.select({
+          id: users.id,
+          email: users.email,
+          department: users.department,
+          positionLevel: users.positionLevel,
+          personnelId: users.personnelId,
+          personnelName: personnel.name,
+          personnelSurname: personnel.surname,
+          isActive: users.isActive,
+          
+          // Access rights bilgileri
+          accessLevelId: userAccessRights.accessLevelId,
+          accessLevelName: accessLevels.name,
+          accessScope: userAccessRights.accessScope,
+          hasAccessRights: userAccessRights.id
+        })
+        .from(users)
+        .leftJoin(personnel, eq(users.personnelId, personnel.id))
+        .leftJoin(userAccessRights, and(
+          eq(users.id, userAccessRights.userId),
+          eq(userAccessRights.isActive, true)
+        ))
+        .leftJoin(accessLevels, eq(userAccessRights.accessLevelId, accessLevels.id))
+        .where(and(
+          eq(users.isActive, true),
+          or(
+            eq(users.email, search as string)
+          )
         ));
+        
+        query = baseQuery;
       }
 
       const usersList = await query

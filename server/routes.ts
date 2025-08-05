@@ -361,14 +361,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const citiesList = await query.execute();
+      const citiesList = await query;
       
       // Toplam sayı (filtreleme dahil)
-      let totalQuery = db.select({ count: sql`count(*)` }).from(cities);
+      let totalQuery = db.select({ count: sql`count(*)`.as('count') }).from(cities);
       if (search) {
         totalQuery = totalQuery.where(ilike(cities.name, `%${search}%`));
       }
-      const totalResult = await totalQuery.execute();
+      const totalResult = await totalQuery;
       const totalCount = Number(totalResult[0].count);
       
       res.json({

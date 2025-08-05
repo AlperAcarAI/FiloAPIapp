@@ -3,7 +3,7 @@ import { db } from "./db";
 import { tripRentals, assets, companies, personnel } from "@shared/schema";
 import { insertTripRentalSchema, updateTripRentalSchema } from "@shared/schema";
 import { eq, and, or, like, desc, asc, sql, between, gte, lte } from "drizzle-orm";
-import { authenticateToken } from "./auth";
+import { authenticateToken, type AuthRequest } from "./auth";
 import { hasPermission } from "./permission-management-routes";
 import { captureAuditInfo, auditableInsert, auditableUpdate, auditableDelete } from "./audit-middleware";
 import { z } from "zod";
@@ -219,7 +219,7 @@ tripRentalRoutes.post("/", authenticateToken, hasPermission(["fleet:write"]), as
       tripRentals,
       {
         ...validatedData,
-        createdBy: req.user.id
+        createdBy: (req as AuthRequest).user?.id || 1
       },
       auditInfo
     );
@@ -268,7 +268,7 @@ tripRentalRoutes.put("/:id", authenticateToken, hasPermission(["fleet:write"]), 
       tripRentals,
       {
         ...validatedData,
-        updatedBy: req.user.id
+        updatedBy: (req as AuthRequest).user?.id || 1
       },
       eq(tripRentals.id, parseInt(id)),
       existingTrip,
@@ -326,7 +326,7 @@ tripRentalRoutes.delete("/:id", authenticateToken, hasPermission(["fleet:delete"
       tripRentals,
       { 
         tripStatus: 'cancelled',
-        updatedBy: req.user.id
+        updatedBy: (req as AuthRequest).user?.id || 1
       },
       eq(tripRentals.id, parseInt(id)),
       existingTrip,
