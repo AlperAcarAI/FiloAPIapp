@@ -328,6 +328,216 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Document Main Types API - getDocMainTypes endpoint
+  app.get("/api/getDocMainTypes", async (req, res) => {
+    try {
+      const docMainTypes = [
+        { id: 1, name: "Ruhsat" },
+        { id: 2, name: "Sigorta" },
+        { id: 3, name: "Muayene" },
+        { id: 4, name: "Vergi" },
+        { id: 5, name: "Sözleşme" },
+        { id: 6, name: "Fatura" },
+        { id: 7, name: "Diğer" }
+      ];
+
+      res.json({
+        success: true,
+        message: "Döküman ana tipleri başarıyla getirildi",
+        data: docMainTypes
+      });
+    } catch (error) {
+      console.error("Doc main types getirme hatası:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "DOC_MAIN_TYPES_FETCH_ERROR",
+        message: "Döküman ana tipleri alınırken bir hata oluştu" 
+      });
+    }
+  });
+
+  // Document Sub Types API - getDocSubTypes endpoint
+  app.get("/api/getDocSubTypes", async (req, res) => {
+    try {
+      const { mainTypeId } = req.query;
+      
+      const docSubTypes = [
+        { id: 1, name: "Araç Ruhsatı", mainTypeId: 1 },
+        { id: 2, name: "Sürücü Belgesi", mainTypeId: 1 },
+        { id: 3, name: "Kasko Sigortası", mainTypeId: 2 },
+        { id: 4, name: "Trafik Sigortası", mainTypeId: 2 },
+        { id: 5, name: "Araç Muayenesi", mainTypeId: 3 },
+        { id: 6, name: "Egzoz Muayenesi", mainTypeId: 3 },
+        { id: 7, name: "MTV", mainTypeId: 4 },
+        { id: 8, name: "Kiralama Sözleşmesi", mainTypeId: 5 },
+        { id: 9, name: "Yakıt Faturası", mainTypeId: 6 },
+        { id: 10, name: "Bakım Faturası", mainTypeId: 6 }
+      ];
+
+      let filteredSubTypes = docSubTypes;
+      
+      if (mainTypeId) {
+        filteredSubTypes = docSubTypes.filter(st => st.mainTypeId === Number(mainTypeId));
+      }
+
+      res.json({
+        success: true,
+        message: "Döküman alt tipleri başarıyla getirildi",
+        data: filteredSubTypes
+      });
+    } catch (error) {
+      console.error("Doc sub types getirme hatası:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "DOC_SUB_TYPES_FETCH_ERROR",
+        message: "Döküman alt tipleri alınırken bir hata oluştu" 
+      });
+    }
+  });
+
+  // Maintenance Types API - getMaintenanceTypes endpoint
+  app.get("/api/getMaintenanceTypes", async (req, res) => {
+    try {
+      const maintenanceTypes = [
+        { id: 1, name: "Periyodik Bakım" },
+        { id: 2, name: "Arıza Bakımı" },
+        { id: 3, name: "Kaza Onarımı" },
+        { id: 4, name: "Lastik Değişimi" },
+        { id: 5, name: "Yağ Değişimi" },
+        { id: 6, name: "Filtre Değişimi" },
+        { id: 7, name: "Fren Bakımı" },
+        { id: 8, name: "Elektrik Arızası" },
+        { id: 9, name: "Motor Bakımı" },
+        { id: 10, name: "Kaporta İşlemi" }
+      ];
+
+      res.json({
+        success: true,
+        message: "Bakım türleri başarıyla getirildi",
+        data: maintenanceTypes
+      });
+    } catch (error) {
+      console.error("Maintenance types getirme hatası:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "MAINTENANCE_TYPES_FETCH_ERROR",
+        message: "Bakım türleri alınırken bir hata oluştu" 
+      });
+    }
+  });
+
+  // Penalty Types API - getPenaltyTypes endpoint
+  app.get("/api/getPenaltyTypes", async (req, res) => {
+    try {
+      const penaltyTypes = [
+        { id: 1, name: "Hız İhlali" },
+        { id: 2, name: "Park İhlali" },
+        { id: 3, name: "Kırmızı Işık İhlali" },
+        { id: 4, name: "Emniyet Kemeri" },
+        { id: 5, name: "Alkollü Araç Kullanma" },
+        { id: 6, name: "Muayene Gecikme" },
+        { id: 7, name: "Sigorta Eksikliği" },
+        { id: 8, name: "Araç Belge Eksikliği" },
+        { id: 9, name: "Telefon Kullanımı" },
+        { id: 10, name: "Hatalı Sollama" }
+      ];
+
+      res.json({
+        success: true,
+        message: "Ceza türleri başarıyla getirildi",
+        data: penaltyTypes
+      });
+    } catch (error) {
+      console.error("Penalty types getirme hatası:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "PENALTY_TYPES_FETCH_ERROR",
+        message: "Ceza türleri alınırken bir hata oluştu" 
+      });
+    }
+  });
+
+  // Policy Types API - getPolicyTypes endpoint
+  app.get("/api/getPolicyTypes", async (req, res) => {
+    try {
+      const policyTypes = [
+        { id: 1, name: "Kasko" },
+        { id: 2, name: "Trafik Sigortası" },
+        { id: 3, name: "İhtiyari Mali Mesuliyet" },
+        { id: 4, name: "Ferdi Kaza" },
+        { id: 5, name: "Mini Hasar" },
+        { id: 6, name: "Asistans" }
+      ];
+
+      res.json({
+        success: true,
+        message: "Poliçe türleri başarıyla getirildi",
+        data: policyTypes
+      });
+    } catch (error) {
+      console.error("Policy types getirme hatası:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "POLICY_TYPES_FETCH_ERROR",
+        message: "Poliçe türleri alınırken bir hata oluştu" 
+      });
+    }
+  });
+
+  // Personnel List API - getPersonnel endpoint
+  app.get("/api/getPersonnel", async (req, res) => {
+    try {
+      const { search, positionId, limit, offset } = req.query;
+      
+      // Mock data - Gerçek veritabanı tablosu oluşturulduğunda değiştirilecek
+      const personnel = [
+        { id: 1, name: "Ahmet Yılmaz", position: "Şoför", positionId: 1, phone: "+90 555 111 2233", email: "ahmet@example.com" },
+        { id: 2, name: "Mehmet Demir", position: "Müdür", positionId: 2, phone: "+90 555 222 3344", email: "mehmet@example.com" },
+        { id: 3, name: "Ayşe Kaya", position: "Muhasebe", positionId: 3, phone: "+90 555 333 4455", email: "ayse@example.com" },
+        { id: 4, name: "Fatma Çelik", position: "İnsan Kaynakları", positionId: 4, phone: "+90 555 444 5566", email: "fatma@example.com" },
+        { id: 5, name: "Ali Öztürk", position: "Şoför", positionId: 1, phone: "+90 555 555 6677", email: "ali@example.com" },
+        { id: 6, name: "Zeynep Arslan", position: "Operasyon Uzmanı", positionId: 5, phone: "+90 555 666 7788", email: "zeynep@example.com" },
+        { id: 7, name: "Mustafa Şahin", position: "Şoför", positionId: 1, phone: "+90 555 777 8899", email: "mustafa@example.com" },
+        { id: 8, name: "Elif Yıldız", position: "Satış Temsilcisi", positionId: 6, phone: "+90 555 888 9900", email: "elif@example.com" },
+        { id: 9, name: "Hasan Koç", position: "Teknik Uzman", positionId: 7, phone: "+90 555 999 0011", email: "hasan@example.com" },
+        { id: 10, name: "Hatice Aydın", position: "Yönetici Asistanı", positionId: 8, phone: "+90 555 000 1122", email: "hatice@example.com" }
+      ];
+
+      let filteredPersonnel = personnel;
+      
+      // Search filter
+      if (search) {
+        filteredPersonnel = personnel.filter(p => 
+          p.name.toLowerCase().includes(search.toString().toLowerCase()) ||
+          p.position.toLowerCase().includes(search.toString().toLowerCase())
+        );
+      }
+
+      // Position filter
+      if (positionId) {
+        filteredPersonnel = filteredPersonnel.filter(p => p.positionId === Number(positionId));
+      }
+
+      // Pagination
+      const start = offset ? Number(offset) : 0;
+      const end = limit ? start + Number(limit) : undefined;
+      const paginatedPersonnel = filteredPersonnel.slice(start, end);
+
+      res.json({
+        success: true,
+        message: "Personel listesi başarıyla getirildi",
+        data: paginatedPersonnel
+      });
+    } catch (error) {
+      console.error("Personnel getirme hatası:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "PERSONNEL_FETCH_ERROR",
+        message: "Personel listesi alınırken bir hata oluştu" 
+      });
+    }
+  });
+
   // Cities API - getCities endpoint - Filtreleme desteği ile
   app.get("/api/getCities", async (req, res) => {
     try {
