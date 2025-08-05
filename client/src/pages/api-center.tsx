@@ -44,7 +44,7 @@ const apiEndpoints: ApiEndpoint[] = [
     id: 'cities',
     name: 'Şehirler Listesi',
     method: 'GET',
-    endpoint: '/api/secure/getCities',
+    endpoint: '/api/getCities',
     description: 'Türkiye şehirlerinin tam listesini getirir',
     category: 'referans',
     requiredPermissions: ['data:read'],
@@ -59,7 +59,7 @@ const apiEndpoints: ApiEndpoint[] = [
     id: 'countries',
     name: 'Ülkeler Listesi',
     method: 'GET',
-    endpoint: '/api/secure/getCountries',
+    endpoint: '/api/getCountries',
     description: 'Dünya ülkelerinin listesini getirir',
     category: 'referans',
     requiredPermissions: ['data:read'],
@@ -69,7 +69,7 @@ const apiEndpoints: ApiEndpoint[] = [
     id: 'car-brands',
     name: 'Araç Markaları',
     method: 'GET',
-    endpoint: '/api/secure/getCarBrands',
+    endpoint: '/api/getCarBrands',
     description: 'Araç markalarının listesini getirir',
     category: 'referans',
     requiredPermissions: ['data:read'],
@@ -79,7 +79,7 @@ const apiEndpoints: ApiEndpoint[] = [
     id: 'car-models',
     name: 'Araç Modelleri',
     method: 'GET',
-    endpoint: '/api/secure/getCarModels',
+    endpoint: '/api/getCarModels',
     description: 'Araç modellerinin listesini getirir',
     category: 'referans',
     requiredPermissions: ['data:read'],
@@ -88,45 +88,278 @@ const apiEndpoints: ApiEndpoint[] = [
     ],
     sampleResponse: { success: true, data: [{id: 1, name: "Transit", brandId: 1}] }
   },
+  {
+    id: 'car-types',
+    name: 'Araç Tipleri',
+    method: 'GET',
+    endpoint: '/api/getCarTypes',
+    description: 'Araç tiplerinin listesini getirir',
+    category: 'referans',
+    requiredPermissions: ['data:read'],
+    sampleResponse: { success: true, data: [{id: 1, name: "Otomobil"}, {id: 2, name: "Kamyonet"}] }
+  },
+  {
+    id: 'ownership-types',
+    name: 'Sahiplik Türleri',
+    method: 'GET',
+    endpoint: '/api/getOwnershipTypes',
+    description: 'Sahiplik türlerinin listesini getirir',
+    category: 'referans',
+    requiredPermissions: ['data:read'],
+    sampleResponse: { success: true, data: [{id: 1, name: "Şirket Mülkiyeti"}, {id: 2, name: "Kiralık"}] }
+  },
+  {
+    id: 'work-areas',
+    name: 'Çalışma Alanları',
+    method: 'GET',
+    endpoint: '/api/getWorkAreas',
+    description: 'Çalışma alanlarının listesini getirir',
+    category: 'referans',
+    requiredPermissions: ['data:read'],
+    sampleResponse: { success: true, data: [{id: 1, name: "İstanbul Bölgesi"}, {id: 2, name: "Ankara Bölgesi"}] }
+  },
+  {
+    id: 'payment-methods',
+    name: 'Ödeme Yöntemleri',
+    method: 'GET',
+    endpoint: '/api/getPaymentMethods',
+    description: 'Ödeme yöntemlerinin listesini getirir',
+    category: 'referans',
+    requiredPermissions: ['data:read'],
+    sampleResponse: { success: true, data: [{id: 1, name: "Nakit"}, {id: 2, name: "Kredi Kartı"}] }
+  },
+  {
+    id: 'payment-types',
+    name: 'Ödeme Türleri',
+    method: 'GET',
+    endpoint: '/api/financial/payment-types',
+    description: 'Finansal ödeme türlerini getirir',
+    category: 'referans',
+    requiredPermissions: ['data:read'],
+    sampleResponse: { success: true, data: [{id: 1, name: "Yakıt"}, {id: 2, name: "Bakım"}] }
+  },
+  {
+    id: 'doc-main-types',
+    name: 'Doküman Ana Tipleri',
+    method: 'GET',
+    endpoint: '/api/getDocMainTypes',
+    description: 'Doküman ana tiplerini getirir',
+    category: 'referans',
+    requiredPermissions: ['data:read'],
+    sampleResponse: { success: true, data: [{id: 1, name: "Ruhsat"}, {id: 2, name: "Sigorta"}] }
+  },
+  {
+    id: 'doc-sub-types',
+    name: 'Doküman Alt Tipleri',
+    method: 'GET',
+    endpoint: '/api/getDocSubTypes',
+    description: 'Doküman alt tiplerini getirir',
+    category: 'referans',
+    requiredPermissions: ['data:read'],
+    sampleResponse: { success: true, data: [{id: 1, name: "Araç Ruhsatı", mainTypeId: 1}] }
+  },
+  {
+    id: 'maintenance-types',
+    name: 'Bakım Türleri',
+    method: 'GET',
+    endpoint: '/api/getMaintenanceTypes',
+    description: 'Bakım türlerinin listesini getirir',
+    category: 'referans',
+    requiredPermissions: ['data:read'],
+    sampleResponse: { success: true, data: [{id: 1, name: "Periyodik Bakım"}, {id: 2, name: "Arıza Bakımı"}] }
+  },
+  {
+    id: 'penalty-types',
+    name: 'Ceza Türleri',
+    method: 'GET',
+    endpoint: '/api/getPenaltyTypes',
+    description: 'Ceza türlerinin listesini getirir',
+    category: 'referans',
+    requiredPermissions: ['data:read'],
+    sampleResponse: { success: true, data: [{id: 1, name: "Hız Cezası"}, {id: 2, name: "Park Cezası"}] }
+  },
+  {
+    id: 'policy-types',
+    name: 'Poliçe Türleri',
+    method: 'GET',
+    endpoint: '/api/getPolicyTypes',
+    description: 'Poliçe türlerinin listesini getirir',
+    category: 'referans',
+    requiredPermissions: ['data:read'],
+    sampleResponse: { success: true, data: [{id: 1, name: "Kasko"}, {id: 2, name: "Trafik Sigortası"}] }
+  },
+  {
+    id: 'personnel-positions',
+    name: 'Personel Pozisyonları',
+    method: 'GET',
+    endpoint: '/api/getPersonnelPositions',
+    description: 'Personel pozisyonlarının listesini getirir',
+    category: 'referans',
+    requiredPermissions: ['data:read'],
+    sampleResponse: { success: true, data: [{id: 1, name: "Şoför"}, {id: 2, name: "Müdür"}] }
+  },
   // Asset Yönetimi
   {
     id: 'assets-list',
     name: 'Araç Listesi',
     method: 'GET',
-    endpoint: '/api/secure/assets',
+    endpoint: '/api/assets',
     description: 'Şirket araçlarının listesini getirir',
     category: 'asset',
     requiredPermissions: ['asset:read'],
     parameters: [
       { name: 'search', type: 'string', required: false, description: 'Plaka veya model araması' },
-      { name: 'workAreaId', type: 'number', required: false, description: 'Çalışma alanına göre filtre' }
+      { name: 'active', type: 'boolean', required: false, description: 'Sadece aktif araçlar' },
+      { name: 'modelId', type: 'number', required: false, description: 'Model ID filtresi' },
+      { name: 'companyId', type: 'number', required: false, description: 'Şirket ID filtresi' }
     ],
     sampleResponse: { success: true, data: [{id: 1, plateNumber: "34ABC123", modelName: "Ford Transit"}] }
+  },
+  {
+    id: 'assets-detail',
+    name: 'Araç Detayı',
+    method: 'GET',
+    endpoint: '/api/assets/{id}',
+    description: 'Belirli bir aracın detaylarını getirir',
+    category: 'asset',
+    requiredPermissions: ['asset:read'],
+    parameters: [
+      { name: 'id', type: 'number', required: true, description: 'Araç ID' }
+    ],
+    sampleResponse: { success: true, data: {id: 1, plateNumber: "34ABC123", modelName: "Ford Transit"} }
   },
   {
     id: 'assets-create',
     name: 'Yeni Araç Ekle',
     method: 'POST',
-    endpoint: '/api/secure/assets',
+    endpoint: '/api/assets',
     description: 'Sisteme yeni araç ekler',
     category: 'asset',
     requiredPermissions: ['asset:write'],
     sampleRequest: {
       plateNumber: "34XYZ789",
       modelId: 1,
-      year: 2023,
-      workAreaId: 1,
+      modelYear: 2023,
+      chassisNo: "CH123456",
+      engineNo: "EN789012",
       ownershipTypeId: 1,
       isActive: true
     },
     sampleResponse: { success: true, message: "Araç başarıyla eklendi", data: {id: 123} }
+  },
+  {
+    id: 'assets-update',
+    name: 'Araç Güncelle',
+    method: 'PUT',
+    endpoint: '/api/assets/{id}',
+    description: 'Mevcut araç bilgilerini günceller',
+    category: 'asset',
+    requiredPermissions: ['asset:write'],
+    parameters: [
+      { name: 'id', type: 'number', required: true, description: 'Araç ID' }
+    ],
+    sampleRequest: {
+      plateNumber: "34XYZ789",
+      modelYear: 2024
+    },
+    sampleResponse: { success: true, message: "Araç başarıyla güncellendi" }
+  },
+  {
+    id: 'assets-delete',
+    name: 'Araç Sil',
+    method: 'DELETE',
+    endpoint: '/api/assets/{id}',
+    description: 'Aracı siler (soft delete)',
+    category: 'asset',
+    requiredPermissions: ['asset:delete'],
+    parameters: [
+      { name: 'id', type: 'number', required: true, description: 'Araç ID' }
+    ],
+    sampleResponse: { success: true, message: "Araç başarıyla silindi" }
+  },
+  // Şirket Yönetimi
+  {
+    id: 'companies-list',
+    name: 'Şirket Listesi',
+    method: 'GET',
+    endpoint: '/api/companies',
+    description: 'Tüm şirketleri listeler',
+    category: 'sirket',
+    requiredPermissions: ['company:read'],
+    parameters: [
+      { name: 'search', type: 'string', required: false, description: 'Şirket adında arama' },
+      { name: 'active', type: 'boolean', required: false, description: 'Sadece aktif şirketler' },
+      { name: 'cityId', type: 'number', required: false, description: 'Şehir ID filtresi' }
+    ],
+    sampleResponse: { success: true, data: [{id: 1, name: "ABC Lojistik", taxNo: "1234567890"}] }
+  },
+  {
+    id: 'companies-detail',
+    name: 'Şirket Detayı',
+    method: 'GET',
+    endpoint: '/api/companies/{id}',
+    description: 'Şirket detaylarını getirir',
+    category: 'sirket',
+    requiredPermissions: ['company:read'],
+    parameters: [
+      { name: 'id', type: 'number', required: true, description: 'Şirket ID' }
+    ],
+    sampleResponse: { success: true, data: {id: 1, name: "ABC Lojistik", taxNo: "1234567890"} }
+  },
+  {
+    id: 'companies-create',
+    name: 'Yeni Şirket Ekle',
+    method: 'POST',
+    endpoint: '/api/companies',
+    description: 'Sisteme yeni şirket ekler',
+    category: 'sirket',
+    requiredPermissions: ['company:write'],
+    sampleRequest: {
+      name: "XYZ Lojistik",
+      taxNo: "9876543210",
+      taxOffice: "Kadıköy",
+      address: "İstanbul",
+      phone: "0216-123-4567",
+      cityId: 34
+    },
+    sampleResponse: { success: true, message: "Şirket başarıyla eklendi", data: {id: 456} }
+  },
+  {
+    id: 'companies-update',
+    name: 'Şirket Güncelle',
+    method: 'PUT',
+    endpoint: '/api/companies/{id}',
+    description: 'Şirket bilgilerini günceller',
+    category: 'sirket',
+    requiredPermissions: ['company:write'],
+    parameters: [
+      { name: 'id', type: 'number', required: true, description: 'Şirket ID' }
+    ],
+    sampleRequest: {
+      name: "XYZ Lojistik A.Ş.",
+      phone: "0216-987-6543"
+    },
+    sampleResponse: { success: true, message: "Şirket başarıyla güncellendi" }
+  },
+  {
+    id: 'companies-delete',
+    name: 'Şirket Sil',
+    method: 'DELETE',
+    endpoint: '/api/companies/{id}',
+    description: 'Şirketi siler (soft delete)',
+    category: 'sirket',
+    requiredPermissions: ['company:delete'],
+    parameters: [
+      { name: 'id', type: 'number', required: true, description: 'Şirket ID' }
+    ],
+    sampleResponse: { success: true, message: "Şirket başarıyla silindi" }
   },
   // Personel Yönetimi
   {
     id: 'personnel-list',
     name: 'Personel Listesi',
     method: 'GET',
-    endpoint: '/api/secure/getPersonnel',
+    endpoint: '/api/getPersonnel',
     description: 'Şirket personelinin listesini getirir',
     category: 'personel',
     requiredPermissions: ['data:read'],
@@ -136,7 +369,7 @@ const apiEndpoints: ApiEndpoint[] = [
     id: 'personnel-create',
     name: 'Yeni Personel Ekle',
     method: 'POST',
-    endpoint: '/api/secure/addPersonnel',
+    endpoint: '/api/addPersonnel',
     description: 'Sisteme yeni personel ekler',
     category: 'personel',
     requiredPermissions: ['data:write'],
@@ -149,45 +382,330 @@ const apiEndpoints: ApiEndpoint[] = [
     },
     sampleResponse: { success: true, message: "Personel başarıyla eklendi" }
   },
+  {
+    id: 'personnel-delete',
+    name: 'Personel Sil',
+    method: 'DELETE',
+    endpoint: '/api/deletePersonnel/{id}',
+    description: 'Personeli siler',
+    category: 'personel',
+    requiredPermissions: ['data:delete'],
+    parameters: [
+      { name: 'id', type: 'number', required: true, description: 'Personel ID' }
+    ],
+    sampleResponse: { success: true, message: "Personel başarıyla silindi" }
+  },
   // Finansal İşlemler
   {
     id: 'financial-accounts',
     name: 'Finansal Hesaplar',
     method: 'GET',
-    endpoint: '/api/secure/financial/current-accounts',
+    endpoint: '/api/financial/current-accounts',
     description: 'Finansal işlem kayıtlarını getirir',
     category: 'finansal',
     requiredPermissions: ['financial:read'],
+    parameters: [
+      { name: 'page', type: 'number', required: false, description: 'Sayfa numarası' },
+      { name: 'limit', type: 'number', required: false, description: 'Sayfa başına kayıt' },
+      { name: 'status', type: 'string', required: false, description: 'Ödeme durumu' },
+      { name: 'search', type: 'string', required: false, description: 'Arama terimi' }
+    ],
     sampleResponse: { success: true, data: [{id: 1, amount: 50000, paymentType: "hasar"}] }
   },
-  // Dokuman Yönetimi
+  {
+    id: 'financial-accounts-create',
+    name: 'Yeni Finansal İşlem',
+    method: 'POST',
+    endpoint: '/api/financial/current-accounts',
+    description: 'Yeni finansal işlem ekler',
+    category: 'finansal',
+    requiredPermissions: ['financial:write'],
+    sampleRequest: {
+      description: "Yakıt alımı",
+      payerCompanyId: 1,
+      payeeCompanyId: 2,
+      amountCents: 50000,
+      transactionDate: "2024-01-15",
+      paymentStatus: "pending"
+    },
+    sampleResponse: { success: true, message: "İşlem başarıyla eklendi" }
+  },
+  {
+    id: 'financial-details',
+    name: 'Finansal Detaylar',
+    method: 'GET',
+    endpoint: '/api/financial/accounts-details',
+    description: 'Finansal detay kayıtlarını getirir',
+    category: 'finansal',
+    requiredPermissions: ['financial:read'],
+    parameters: [
+      { name: 'current_account_id', type: 'number', required: false, description: 'Ana hesap ID' }
+    ],
+    sampleResponse: { success: true, data: [{id: 1, amount: 15000, paymentTypeId: 1}] }
+  },
+  {
+    id: 'financial-details-create',
+    name: 'Yeni Detay Kayıt',
+    method: 'POST',
+    endpoint: '/api/financial/accounts-details',
+    description: 'Yeni finansal detay ekler',
+    category: 'finansal',
+    requiredPermissions: ['financial:write'],
+    sampleRequest: {
+      finCurAcId: 1,
+      amount: 15000,
+      date: "2024-01-15",
+      paymentTypeId: 1
+    },
+    sampleResponse: { success: true, message: "Detay başarıyla eklendi" }
+  },
+  // Yakıt Yönetimi
+  {
+    id: 'fuel-records-list',
+    name: 'Yakıt Kayıtları',
+    method: 'GET',
+    endpoint: '/api/fuel-records',
+    description: 'Yakıt kayıtlarını listeler',
+    category: 'yakit',
+    requiredPermissions: ['fuel:read'],
+    parameters: [
+      { name: 'assetId', type: 'number', required: false, description: 'Araç ID' },
+      { name: 'startDate', type: 'string', required: false, description: 'Başlangıç tarihi' },
+      { name: 'endDate', type: 'string', required: false, description: 'Bitiş tarihi' }
+    ],
+    sampleResponse: { success: true, data: [{id: 1, assetId: 1, fuelAmount: 50, fuelCostCents: 150000}] }
+  },
+  {
+    id: 'fuel-records-detail',
+    name: 'Yakıt Kaydı Detayı',
+    method: 'GET',
+    endpoint: '/api/fuel-records/{id}',
+    description: 'Yakıt kaydı detayını getirir',
+    category: 'yakit',
+    requiredPermissions: ['fuel:read'],
+    parameters: [
+      { name: 'id', type: 'number', required: true, description: 'Kayıt ID' }
+    ],
+    sampleResponse: { success: true, data: {id: 1, assetId: 1, fuelAmount: 50} }
+  },
+  {
+    id: 'fuel-records-create',
+    name: 'Yeni Yakıt Kaydı',
+    method: 'POST',
+    endpoint: '/api/fuel-records',
+    description: 'Yeni yakıt kaydı ekler',
+    category: 'yakit',
+    requiredPermissions: ['fuel:write'],
+    sampleRequest: {
+      assetId: 1,
+      recordDate: "2024-01-15",
+      currentKilometers: 125000,
+      fuelAmount: 50,
+      fuelCostCents: 150000,
+      gasStationName: "Shell"
+    },
+    sampleResponse: { success: true, message: "Yakıt kaydı eklendi" }
+  },
+  {
+    id: 'fuel-records-update',
+    name: 'Yakıt Kaydı Güncelle',
+    method: 'PUT',
+    endpoint: '/api/fuel-records/{id}',
+    description: 'Yakıt kaydını günceller',
+    category: 'yakit',
+    requiredPermissions: ['fuel:write'],
+    parameters: [
+      { name: 'id', type: 'number', required: true, description: 'Kayıt ID' }
+    ],
+    sampleRequest: {
+      fuelAmount: 55,
+      fuelCostCents: 165000
+    },
+    sampleResponse: { success: true, message: "Yakıt kaydı güncellendi" }
+  },
+  {
+    id: 'fuel-records-delete',
+    name: 'Yakıt Kaydı Sil',
+    method: 'DELETE',
+    endpoint: '/api/fuel-records/{id}',
+    description: 'Yakıt kaydını siler',
+    category: 'yakit',
+    requiredPermissions: ['fuel:delete'],
+    parameters: [
+      { name: 'id', type: 'number', required: true, description: 'Kayıt ID' }
+    ],
+    sampleResponse: { success: true, message: "Yakıt kaydı silindi" }
+  },
+  // Doküman Yönetimi
   {
     id: 'document-upload',
     name: 'Dosya Yükleme',
     method: 'POST',
-    endpoint: '/api/secure/documents/upload',
+    endpoint: '/api/documents',
     description: 'Asset veya personel için dosya yükler',
     category: 'dokuman',
     requiredPermissions: ['document:write'],
     sampleRequest: "FormData (multipart/form-data)",
     sampleResponse: { success: true, message: "Dosya başarıyla yüklendi" }
+  },
+  {
+    id: 'document-list',
+    name: 'Doküman Listesi',
+    method: 'GET',
+    endpoint: '/api/documents/entity/{entityType}/{entityId}',
+    description: 'Entity dokümanlarını listeler',
+    category: 'dokuman',
+    requiredPermissions: ['document:read'],
+    parameters: [
+      { name: 'entityType', type: 'string', required: true, description: 'Entity tipi (asset/personnel)' },
+      { name: 'entityId', type: 'number', required: true, description: 'Entity ID' }
+    ],
+    sampleResponse: { success: true, data: [{id: 1, fileName: "ruhsat.pdf", fileSize: 1024000}] }
+  },
+  {
+    id: 'document-delete',
+    name: 'Doküman Sil',
+    method: 'DELETE',
+    endpoint: '/api/documents/{id}',
+    description: 'Dokümanı siler',
+    category: 'dokuman',
+    requiredPermissions: ['document:delete'],
+    parameters: [
+      { name: 'id', type: 'number', required: true, description: 'Doküman ID' }
+    ],
+    sampleResponse: { success: true, message: "Doküman silindi" }
+  },
+  // Toplu İşlemler
+  {
+    id: 'bulk-import-csv',
+    name: 'CSV İle Toplu Veri Aktarımı',
+    method: 'POST',
+    endpoint: '/api/bulk-import/csv',
+    description: 'CSV dosyası ile toplu veri aktarımı yapar',
+    category: 'toplu',
+    requiredPermissions: ['data:write'],
+    sampleRequest: "FormData: file + targetTable + batchSize",
+    sampleResponse: { success: true, data: { importId: "import_123", totalRows: 1000 } }
+  },
+  {
+    id: 'bulk-import-status',
+    name: 'Import Durumu',
+    method: 'GET',
+    endpoint: '/api/bulk-import/status/{importId}',
+    description: 'Import işleminin durumunu kontrol eder',
+    category: 'toplu',
+    requiredPermissions: ['data:read'],
+    parameters: [
+      { name: 'importId', type: 'string', required: true, description: 'Import ID' }
+    ],
+    sampleResponse: { success: true, data: { status: "processing", progress: 75 } }
+  },
+  {
+    id: 'bulk-import-template',
+    name: 'CSV Şablonu İndir',
+    method: 'GET',
+    endpoint: '/api/bulk-import/template/{tableName}',
+    description: 'Belirtilen tablo için CSV şablonu indirir',
+    category: 'toplu',
+    requiredPermissions: ['data:read'],
+    parameters: [
+      { name: 'tableName', type: 'string', required: true, description: 'Tablo adı' }
+    ],
+    sampleResponse: "CSV dosyası indirme"
+  },
+  {
+    id: 'bulk-import-stop',
+    name: 'Tüm İmportları Durdur',
+    method: 'POST',
+    endpoint: '/api/bulk-import/stop-all',
+    description: 'Tüm import işlemlerini durdurur',
+    category: 'toplu',
+    requiredPermissions: ['data:write'],
+    sampleResponse: { success: true, message: "Tüm import işlemleri durduruldu" }
+  },
+  {
+    id: 'bulk-import-clear',
+    name: 'Import Durumlarını Temizle',
+    method: 'DELETE',
+    endpoint: '/api/bulk-import/clear-status',
+    description: 'Import durumlarını temizler',
+    category: 'toplu',
+    requiredPermissions: ['data:write'],
+    sampleResponse: { success: true, message: "5 import status kaydı temizlendi" }
+  },
+  // Backend API - Hiyerarşik Sistem
+  {
+    id: 'backend-login',
+    name: 'Backend Kullanıcı Girişi',
+    method: 'POST',
+    endpoint: '/api/backend/auth/login',
+    description: 'Backend kullanıcı girişi yapar',
+    category: 'backend',
+    requiredPermissions: [],
+    sampleRequest: {
+      username: "admin",
+      password: "password123"
+    },
+    sampleResponse: { success: true, data: { token: "jwt_token_here", user: {id: 1, username: "admin"} } }
+  },
+  {
+    id: 'backend-assets',
+    name: 'Hiyerarşik Asset Listesi',
+    method: 'GET',
+    endpoint: '/api/backend/assets',
+    description: 'Kullanıcının yetkisine göre asset listesi getirir',
+    category: 'backend',
+    requiredPermissions: ['backend:read'],
+    parameters: [
+      { name: 'search', type: 'string', required: false, description: 'Arama terimi' },
+      { name: 'assignedToMe', type: 'boolean', required: false, description: 'Bana atananlar' }
+    ],
+    sampleResponse: { success: true, data: [{id: 1, plateNumber: "34ABC123", assignedPersonnel: {}}] }
+  },
+  {
+    id: 'backend-personnel',
+    name: 'Hiyerarşik Personel Listesi',
+    method: 'GET',
+    endpoint: '/api/backend/personnel',
+    description: 'Kullanıcının yetkisine göre personel listesi getirir',
+    category: 'backend',
+    requiredPermissions: ['backend:read'],
+    sampleResponse: { success: true, data: [{id: 1, name: "Ahmet Yılmaz", workArea: "İstanbul"}] }
+  },
+  {
+    id: 'backend-fuel-records',
+    name: 'Hiyerarşik Yakıt Kayıtları',
+    method: 'GET',
+    endpoint: '/api/backend/fuel-records',
+    description: 'Kullanıcının yetkisine göre yakıt kayıtları getirir',
+    category: 'backend',
+    requiredPermissions: ['backend:read'],
+    sampleResponse: { success: true, data: [{id: 1, assetPlate: "34ABC123", fuelAmount: 50}] }
   }
 ];
 
 const categoryNames = {
   referans: 'Referans Veriler',
   asset: 'Araç Yönetimi', 
+  sirket: 'Şirket Yönetimi',
   personel: 'Personel Yönetimi',
   finansal: 'Finansal İşlemler',
-  dokuman: 'Döküman Yönetimi'
+  yakit: 'Yakıt Yönetimi',
+  dokuman: 'Döküman Yönetimi',
+  toplu: 'Toplu İşlemler',
+  backend: 'Backend API'
 };
 
 const categoryColors = {
   referans: 'bg-blue-50 text-blue-700 border-blue-200',
   asset: 'bg-green-50 text-green-700 border-green-200',
+  sirket: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   personel: 'bg-purple-50 text-purple-700 border-purple-200',
   finansal: 'bg-orange-50 text-orange-700 border-orange-200',
-  dokuman: 'bg-pink-50 text-pink-700 border-pink-200'
+  yakit: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+  dokuman: 'bg-pink-50 text-pink-700 border-pink-200',
+  toplu: 'bg-red-50 text-red-700 border-red-200',
+  backend: 'bg-gray-50 text-gray-700 border-gray-200'
 };
 
 const methodColors = {
@@ -762,7 +1280,7 @@ export default function ApiCenter() {
                       <div className="text-sm text-green-600">Dokümante API</div>
                     </div>
                     <div className="text-center p-3 bg-purple-50 rounded">
-                      <div className="text-2xl font-bold text-purple-600">5</div>
+                      <div className="text-2xl font-bold text-purple-600">{Object.keys(categoryNames).length}</div>
                       <div className="text-sm text-purple-600">Kategori</div>
                     </div>
                     <div className="text-center p-3 bg-orange-50 rounded">
