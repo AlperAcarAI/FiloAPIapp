@@ -9,6 +9,7 @@ A fleet management platform designed for multi-tenant operations. All authentica
 - **UI Updates**: Removed login functionality and authentication UI components
 - **API Access**: All APIs are now directly accessible without authentication
 - **JSON Responses**: All API endpoints return data in JSON format
+- **Fixed Missing APIs**: Added reference data endpoints that were returning HTML (getCountries, getCarBrands, getCarModels, getCarTypes, getOwnershipTypes, getPersonnelPositions, getWorkAreas, getPaymentMethods)
 
 ## Project Architecture
 
