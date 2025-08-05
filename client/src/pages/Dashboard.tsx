@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
+import { apiKeyService, publicApi, type ApiKey, type ApiEndpoint } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,44 +13,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Header } from '@/components/Header';
 import { format } from 'date-fns';
 
-interface ApiKey {
-  id: number;
-  name: string;
-  key: string; // Maskelenmiş format: *******abcd
-  permissions: string[];
-  allowedDomains: string[];
-  isActive: boolean;
-  createdAt: string;
-  lastUsedAt: string | null;
-  usageCount: number;
-}
-
 interface NewApiKeyResponse {
   success: boolean;
   message: string;
   data: {
-    apiKey: {
-      id: number;
-      name: string;
-      key: string; // Tam API key - sadece oluşturma anında
-      permissions: string[];
-      allowedDomains: string[];
-      isActive: boolean;
-      createdAt: string;
+    apiKey: ApiKey & {
       warning?: string;
     };
   };
-}
-
-interface ApiEndpoint {
-  id: number;
-  name: string;
-  method: string;
-  path: string;
-  description: string;
-  status: 'active' | 'inactive' | 'maintenance';
-  createdAt: string;
-  updatedAt: string;
 }
 
 const AVAILABLE_PERMISSIONS = [
@@ -72,60 +42,21 @@ export default function Dashboard() {
   // Kullanıcının API key'lerini getir
   const { data: apiKeys = [], isLoading } = useQuery({
     queryKey: ['/api/user/api-keys'],
-    queryFn: async () => {
-      const response = await fetch('/api/user/api-keys', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      return response.json();
-    },
+    queryFn: () => apiKeyService.getUserApiKeys(),
     retry: false,
   });
 
   // API endpoint'lerini getir (veritabanından)
   const { data: apiEndpoints = [], isLoading: isLoadingEndpoints } = useQuery({
     queryKey: ['/api/endpoints'],
-    queryFn: async () => {
-      const response = await fetch('/api/endpoints', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      return result.data || [];
-    },
+    queryFn: () => publicApi.getEndpoints(),
     retry: false,
   });
 
   // Yeni API key oluşturma
   const createKeyMutation = useMutation({
-    mutationFn: async (data: { name: string; permissions: string[], allowedDomains: string[] }) => {
-      const response = await fetch('/api/user/api-keys', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        },
-        body: JSON.stringify(data),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      return response.json();
-    },
+    mutationFn: (data: { name: string; permissions: string[], allowedDomains: string[] }) => 
+      apiKeyService.createApiKey(data),
     onSuccess: (response: NewApiKeyResponse) => {
       // Güvenlik uyarısı ile API key göster
       if (response?.data?.apiKey?.key) {

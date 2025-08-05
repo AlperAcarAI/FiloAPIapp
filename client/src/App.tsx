@@ -8,6 +8,7 @@ import Home from "@/pages/home";
 import ApiDetails from "@/pages/api-details";
 import VarlikTest from "@/pages/varlik-test";
 import ApiCenter from "@/pages/api-center";
+import ApiStatus from "@/pages/api-status";
 import DocumentManagement from "@/pages/document-management";
 import Dashboard from "@/pages/Dashboard";
 import Analytics from "@/pages/Analytics";
@@ -74,6 +75,7 @@ function Router() {
       <Route path="/api/:id" component={() => <ProtectedRoute component={ApiDetails} />} />
       <Route path="/test" component={() => <ProtectedRoute component={VarlikTest} />} />
       <Route path="/api-center" component={() => <ProtectedRoute component={ApiCenter} />} />
+      <Route path="/api-status" component={() => <ProtectedRoute component={ApiStatus} />} />
       <Route path="/documents" component={() => <ProtectedRoute component={DocumentManagement} />} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/analytics" component={() => <ProtectedRoute component={Analytics} />} />

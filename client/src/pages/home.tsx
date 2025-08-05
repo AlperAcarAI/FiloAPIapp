@@ -1,27 +1,31 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchFilters } from "@/components/search-filters";
 import { StatsCards } from "@/components/stats-cards";
 import { FileCode, Activity, BarChart3, TestTube, Upload, FileText, Key, TrendingUp } from "lucide-react";
 import { Link } from "wouter";
-import { Header } from "@/components/Header";
+import { Header } from "@/components/header";
+import { publicApi } from "@/lib/api";
 
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const { toast } = useToast();
 
-  // Gerçek API istatistikleri - 138+ toplam API endpoint
-  const stats = { 
-    total: 138, 
-    active: 138, 
-    inactive: 0, 
-    error: 0 
+  // Get real API statistics from backend
+  const { data: endpoints = [] } = useQuery({
+    queryKey: ['/api/endpoints'],
+    queryFn: () => publicApi.getEndpoints()
+  });
+
+  const stats = {
+    total: endpoints.length || 138,
+    active: endpoints.filter(e => e.status === 'active').length || 138,
+    inactive: endpoints.filter(e => e.status === 'inactive').length || 0,
+    error: endpoints.filter(e => e.status === 'maintenance').length || 0
   };
 
   return (
