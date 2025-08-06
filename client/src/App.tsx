@@ -23,12 +23,6 @@ function ProtectedRoute({ component: Component }: { component: any }) {
 
   useEffect(() => {
     const checkAuth = async () => {
-      // Development mode - skip authentication for faster testing
-      if (process.env.NODE_ENV === 'development') {
-        setIsAuthenticated(true);
-        return;
-      }
-
       const token = localStorage.getItem('authToken');
       
       if (!token) {
@@ -66,7 +60,7 @@ function ProtectedRoute({ component: Component }: { component: any }) {
     return <div className="min-h-screen flex items-center justify-center">Yükleniyor...</div>;
   }
 
-  if (!isAuthenticated && process.env.NODE_ENV !== 'development') {
+  if (!isAuthenticated) {
     return <Redirect to="/login" />;
   }
 
