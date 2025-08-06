@@ -39,7 +39,7 @@ export default function Login() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          email: loginData.username, 
+          email: loginData.username.trim(), 
           password: loginData.password 
         }),
       });

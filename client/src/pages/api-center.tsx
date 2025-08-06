@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Code, Play, Database, Users, MapPin, Key, Shield } from 'lucide-react';
+import { Search, Code, Play, Database, Users, MapPin, Key, Shield, Terminal, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ApiCenter() {
@@ -21,7 +21,7 @@ export default function ApiCenter() {
   const [apiKey, setApiKey] = useState('filoki-api-master-key-2025');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [expandedEndpoint, setExpandedEndpoint] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'test' | 'example'>('test');
+  const [activeTab, setActiveTab] = useState<'test' | 'example' | 'curl'>('test');
   const { toast } = useToast();
 
   // Get all available endpoints
@@ -41,6 +41,99 @@ export default function ApiCenter() {
     queryKey: ['/api/docs'],
     queryFn: () => publicApi.getSwaggerDocs()
   });
+
+  // Generate curl command for endpoint
+  const generateCurlCommand = (endpoint: any): string => {
+    const baseUrl = window.location.origin;
+    const url = `${baseUrl}${endpoint.path}`;
+    
+    let curlCommand = `curl -X ${endpoint.method} "${url}"`;
+    
+    // Add headers
+    curlCommand += ` \\\n  -H "Content-Type: application/json"`;
+    
+    // Add API key for secure endpoints
+    if (endpoint.path.includes('/secure/') || endpoint.path.includes('/admin/') || endpoint.path.includes('/backend/')) {
+      curlCommand += ` \\\n  -H "X-API-Key: filoki-api-master-key-2025"`;
+    }
+    
+    // Add auth token for authenticated endpoints (non-public)
+    if (!endpoint.path.includes('/api/auth/') && !endpoint.path.includes('/api/docs') && !endpoint.path.includes('/api/overview')) {
+      curlCommand += ` \\\n  -H "Authorization: Bearer YOUR_JWT_TOKEN"`;
+    }
+    
+    // Add query parameters for GET requests
+    if (endpoint.method === 'GET') {
+      const params = ['limit=10', 'offset=0'];
+      if (endpoint.path.includes('Cities')) params.push('search=İstanbul');
+      if (endpoint.path.includes('Personnel')) params.push('departmentId=1');
+      if (endpoint.path.includes('Asset')) params.push('companyId=1');
+      
+      if (params.length > 0) {
+        curlCommand += ` \\\n  -G`;
+        params.forEach(param => {
+          curlCommand += ` \\\n  -d "${param}"`;
+        });
+      }
+    }
+    
+    // Add request body for POST/PUT/PATCH requests
+    if (['POST', 'PUT', 'PATCH'].includes(endpoint.method)) {
+      let sampleData = {};
+      
+      if (endpoint.path.includes('personnel')) {
+        sampleData = {
+          firstName: "Ahmet",
+          lastName: "Yılmaz",
+          email: "ahmet.yilmaz@sirket.com",
+          phone: "05551234567",
+          personnelNo: "PER001",
+          companyId: 1
+        };
+      } else if (endpoint.path.includes('asset')) {
+        sampleData = {
+          assetNo: "AST001",
+          licensePlate: "34ABC123",
+          brandId: 1,
+          modelId: 1,
+          companyId: 1,
+          year: 2023
+        };
+      } else if (endpoint.path.includes('company')) {
+        sampleData = {
+          name: "Örnek Şirket A.Ş.",
+          taxNo: "1234567890",
+          taxOffice: "Beşiktaş Vergi Dairesi",
+          address: "İstanbul, Türkiye"
+        };
+      } else {
+        sampleData = {
+          "key": "value",
+          "example": "data"
+        };
+      }
+      
+      curlCommand += ` \\\n  -d '${JSON.stringify(sampleData, null, 2)}'`;
+    }
+    
+    return curlCommand;
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Kopyalandı!",
+        description: "Curl komutu panoya kopyalandı"
+      });
+    } catch (err) {
+      toast({
+        title: "Kopyalama Hatası",
+        description: "Curl komutu kopyalanamadı",
+        variant: "destructive"
+      });
+    }
+  };
 
   const getEndpointExample = (endpoint: any) => {
     const examples: Record<string, any> = {
@@ -523,7 +616,7 @@ export default function ApiCenter() {
                           variant={expandedEndpoint === endpoint.path ? "default" : "outline"}
                         >
                           <Code className="w-3 h-3 mr-1" />
-                          {expandedEndpoint === endpoint.id ? 'Kapat' : 'Detay'}
+                          {expandedEndpoint === endpoint.path ? 'Kapat' : 'Detay'}
                         </Button>
                       </div>
                     </div>
@@ -597,6 +690,14 @@ export default function ApiCenter() {
                           >
                             <Code className="w-4 h-4 mr-2" />
                             JSON Örnekleri
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={activeTab === 'curl' ? 'default' : 'outline'}
+                            onClick={() => setActiveTab('curl')}
+                          >
+                            <Terminal className="w-4 h-4 mr-2" />
+                            cURL Komutları
                           </Button>
                         </div>
 
@@ -717,6 +818,83 @@ export default function ApiCenter() {
                                 </div>
                               </div>
                             )}
+                          </div>
+                        )}
+
+                        {/* cURL Tab */}
+                        {activeTab === 'curl' && (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-lg font-semibold">cURL Komutları</h3>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => copyToClipboard(generateCurlCommand(endpoint))}
+                              >
+                                <Copy className="w-4 h-4 mr-2" />
+                                Kopyala
+                              </Button>
+                            </div>
+                            
+                            <div className="space-y-3">
+                              <div>
+                                <Label className="text-sm font-medium text-gray-700">Terminal Komutu:</Label>
+                                <div className="bg-gray-900 text-green-400 p-4 rounded-md font-mono text-sm overflow-x-auto">
+                                  <pre>{generateCurlCommand(endpoint)}</pre>
+                                </div>
+                              </div>
+                              
+                              <div className="text-sm text-gray-600 space-y-2">
+                                <p><strong>Kullanım:</strong></p>
+                                <ul className="list-disc pl-5 space-y-1">
+                                  <li>Yukarıdaki komutu terminal/command prompt'a kopyalayın</li>
+                                  <li><code>YOUR_JWT_TOKEN</code> yerine gerçek JWT token'ınızı yazın</li>
+                                  {endpoint.path.includes('/secure/') && (
+                                    <li>API anahtarı zaten eklenmiş durumda</li>
+                                  )}
+                                  <li>Örnek veri değerlerini kendi verilerinizle değiştirin</li>
+                                </ul>
+                              </div>
+
+                              {/* JWT Token Helper */}
+                              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                                <h4 className="font-semibold text-sm text-blue-800 mb-2">💡 JWT Token Nasıl Alınır:</h4>
+                                <div className="text-xs text-blue-700 space-y-1">
+                                  <p>1. <code>/api/auth/login</code> endpoint'ine giriş yapın</p>
+                                  <p>2. Response'daki <code>accessToken</code> değerini kopyalayın</p>
+                                  <p>3. <code>YOUR_JWT_TOKEN</code> yerine yapıştırın</p>
+                                </div>
+                              </div>
+
+                              {/* Command Examples */}
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium text-gray-700">Örnek Kullanım Senaryoları:</Label>
+                                <div className="grid gap-2">
+                                  {endpoint.method === 'GET' && (
+                                    <div className="bg-gray-50 p-3 rounded border-l-4 border-blue-400">
+                                      <code className="text-xs">
+                                        # Sadece ilk 5 kayıt:<br/>
+                                        curl ... -d "limit=5"
+                                      </code>
+                                    </div>
+                                  )}
+                                  {['POST', 'PUT', 'PATCH'].includes(endpoint.method) && (
+                                    <div className="bg-gray-50 p-3 rounded border-l-4 border-green-400">
+                                      <code className="text-xs">
+                                        # Veri değiştirmeden önce:<br/>
+                                        curl ... --dry-run  # (desteklenmeyebilir)
+                                      </code>
+                                    </div>
+                                  )}
+                                  <div className="bg-gray-50 p-3 rounded border-l-4 border-yellow-400">
+                                    <code className="text-xs">
+                                      # Verbose output için:<br/>
+                                      curl -v ... | jq '.'
+                                    </code>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
