@@ -1,0 +1,196 @@
+root@FiloApiAppArchitect:/var/www/filokiapi/FiloAPIapp# chmod +x setup-production-database.sh
+./setup-production-database.sh
+🚀 FiloAPI Production Database Setup başlatılıyor...
+📊 Veritabanı bağlantısı test ediliyor...
+✅ Veritabanı bağlantısı başarılı!
+🏗️  Tabloları oluşturuluyor...
+CREATE EXTENSION
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+✅ Tablolar başarıyla oluşturuldu!
+⚡ Index'ler oluşturuluyor...
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+✅ Index'ler başarıyla oluşturuldu!
+🌱 Temel veriler ekleniyor...
+INSERT 0 9
+INSERT 0 41
+INSERT 0 4
+INSERT 0 11
+INSERT 0 4
+INSERT 0 3
+INSERT 0 1
+INSERT 0 24
+INSERT 0 20
+INSERT 0 7
+psql:production-seed-data.sql:196: ERROR:  column "year_end" is of type integer but expression is of type text
+LINE 4:     model_name, year_start, year_end, fuel_type, engine_size...
+                                    ^
+HINT:  You will need to rewrite or cast the expression.
+psql:production-seed-data.sql:212: ERROR:  column "year_end" is of type integer but expression is of type text
+LINE 4:     model_name, year_start, year_end, fuel_type, engine_size...
+                                    ^
+HINT:  You will need to rewrite or cast the expression.
+✅ Temel veriler başarıyla eklendi!
+🔍 Oluşturulan tabloları kontrol ediliyor...
+                   List of relations
+ Schema |          Name          | Type  |    Owner    
+--------+------------------------+-------+-------------
+ public | access_levels          | table | filoki_user
+ public | api_client_permissions | table | filoki_user
+ public | api_clients            | table | filoki_user
+ public | api_endpoints          | table | filoki_user
+ public | api_keys               | table | filoki_user
+ public | api_rate_limit         | table | filoki_user
+ public | api_request_logs       | table | filoki_user
+ public | api_tokens             | table | filoki_user
+ public | api_usage_logs         | table | filoki_user
+ public | api_usage_stats        | table | filoki_user
+ public | audit_logs             | table | filoki_user
+ public | car_brands             | table | filoki_user
+ public | car_models             | table | filoki_user
+ public | cities                 | table | filoki_user
+ public | companies              | table | filoki_user
+ public | countries              | table | filoki_user
+ public | documents              | table | filoki_user
+ public | fin_current_accounts   | table | filoki_user
+ public | login_attempts         | table | filoki_user
+ public | password_history       | table | filoki_user
+ public | permissions            | table | filoki_user
+ public | personnel              | table | filoki_user
+ public | rate_limit_buckets     | table | filoki_user
+ public | refresh_tokens         | table | filoki_user
+ public | roles                  | table | filoki_user
+ public | security_events        | table | filoki_user
+ public | sessions               | table | filoki_user
+ public | user_access_rights     | table | filoki_user
+ public | user_devices           | table | filoki_user
+ public | users                  | table | filoki_user
+ public | vehicles               | table | filoki_user
+ public | work_areas             | table | filoki_user
+(32 rows)
+
+📈 Tablo sayılarını kontrol ediliyor...
+ schemaname | tablename | attname | n_distinct | correlation 
+------------+-----------+---------+------------+-------------
+(0 rows)
+
+🎯 Admin kullanıcısı oluşturuluyor...
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+🏁 Kurulum tamamlandı!
+
+📋 Kurulum Özeti:
+   • Veritabanı: filoki_db
+   • Kullanıcı: filoki_user
+   • Host: localhost:5432
+
+🔐 Admin Bilgileri:
+   • Email: alper.acar@architectaiagency.com
+   • Şifre: Acar
+   • API Key: filoki-api-master-key-2025
+
+🧪 Test komutu:
+curl -H 'X-API-Key: filoki-api-master-key-2025' http://localhost:5000/api/vehicles
+
+📚 API Docs: http://localhost:5000/api/docs
+root@FiloApiAppArchitect:/var/www/filokiapi/FiloAPIapp# pm2 restart filokiapi
+curl -H "X-API-Key: filoki-api-master-key-2025" http://localhost:5000/api/vehicles
+Use --update-env to update environment variables
+[PM2] Applying action restartProcessId on app [filokiapi](ids: [ 0 ])
+[PM2] [filokiapi](0) ✓
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 0  │ filokiapi          │ fork     │ 1    │ online    │ 0%       │ 20.9mb   │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+curl: (7) Failed to connect to localhost port 5000 after 0 ms: Could not connect to server
+root@FiloApiAppArchitect:/var/www/filokiapi/FiloAPIapp# curl -H "X-API-Key: filoki-api-master-key-2025" http://localhost:5000/api/vehicles
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <script type="module" crossorigin src="/assets/index-CB99cb1a.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-nnYsetae.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- This is a replit script which adds a banner on the top of the page when opened in development mode outside the replit environment -->
+    <script type="text/javascript" src="https://replit.com/public/js/replit-dev-banner.js"></script>
+  </body>
+</html>root@FiloApiAppArchitect:/var/www/filokiapi/FiloAPIapp# 
