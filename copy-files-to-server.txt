@@ -1,0 +1,48 @@
+FiloAPI SQL Dosyalarını Sunucuya Kopyalama Kılavuzu
+=======================================================
+
+Bu dosyaları sunucunuzun /var/www/filokiapi/FiloAPIapp/ dizinine kopyalamanız gerekiyor:
+
+1. production-schema-setup.sql
+2. production-indexes-setup.sql  
+3. production-seed-data.sql
+4. setup-production-database.sh
+
+YÖNTEM 1 - SCP ile Kopyalama (Önerilen):
+----------------------------------------
+Yerel bilgisayarınızdan sunucuya:
+
+scp production-schema-setup.sql root@YOUR_SERVER_IP:/var/www/filokiapi/FiloAPIapp/
+scp production-indexes-setup.sql root@YOUR_SERVER_IP:/var/www/filokiapi/FiloAPIapp/
+scp production-seed-data.sql root@YOUR_SERVER_IP:/var/www/filokiapi/FiloAPIapp/
+scp setup-production-database.sh root@YOUR_SERVER_IP:/var/www/filokiapi/FiloAPIapp/
+
+YÖNTEM 2 - Nano ile Manuel Oluşturma:
+------------------------------------
+Sunucuda her dosyayı tek tek oluşturun:
+
+cd /var/www/filokiapi/FiloAPIapp/
+nano production-schema-setup.sql
+# İçeriği kopyalayıp yapıştırın
+
+nano production-indexes-setup.sql  
+# İçeriği kopyalayıp yapıştırın
+
+nano production-seed-data.sql
+# İçeriği kopyalayıp yapıştırın
+
+nano setup-production-database.sh
+# İçeriği kopyalayıp yapıştırın
+
+YÖNTEM 3 - Cat ile Dosya Oluşturma:
+----------------------------------
+cat > production-schema-setup.sql << 'EOF'
+[Dosya içeriğini buraya yapıştırın]
+EOF
+
+Dosyaları kopyaladıktan sonra çalıştırın:
+=========================================
+chmod +x setup-production-database.sh
+./setup-production-database.sh
+
+Bu script tüm veritabanı kurulumunu otomatik yapacak!
