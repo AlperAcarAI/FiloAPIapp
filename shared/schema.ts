@@ -496,8 +496,8 @@ export const apiRateLimit = pgTable("api_rate_limit", {
   windowStart: timestamp("window_start").notNull().defaultNow(),
   windowEnd: timestamp("window_end").notNull(),
 }, (table) => ({
-  clientEndpointIdx: index("idx_rate_limit_client_endpoint").on(table.clientId, table.endpointId),
-  windowIdx: index("idx_rate_limit_window").on(table.windowStart, table.windowEnd),
+  clientEndpointIdx: index("idx_api_rate_limit_client_endpoint").on(table.clientId, table.endpointId),
+  windowIdx: index("idx_api_rate_limit_window").on(table.windowStart, table.windowEnd),
 }));
 
 // ========================
