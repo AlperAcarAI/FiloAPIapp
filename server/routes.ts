@@ -333,6 +333,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Legacy secure endpoint aliases for backward compatibility
+  app.get("/api/secure/getPersonnel", (req: any, res: any, next: any) => {
+    req.url = '/api/secure/personnel';
+    req.originalUrl = '/api/secure/personnel';
+    next();
+  });
+
+  app.get("/api/secure/getAssets", (req: any, res: any, next: any) => {
+    req.url = '/api/secure/assets';
+    req.originalUrl = '/api/secure/assets';
+    next();
+  });
+
+  app.get("/api/secure/getCompanies", (req: any, res: any, next: any) => {
+    req.url = '/api/secure/companies';
+    req.originalUrl = '/api/secure/companies';
+    next();
+  });
+
+  app.get("/api/secure/getBrands", (req: any, res: any, next: any) => {
+    req.url = '/api/secure/brands';
+    req.originalUrl = '/api/secure/brands';
+    next();
+  });
+
   // Cities API - getCities endpoint - Filtreleme desteği ile
   app.get("/api/getCities", async (req, res) => {
     try {
