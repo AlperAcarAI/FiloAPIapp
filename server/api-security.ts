@@ -83,26 +83,28 @@ export const generateApiToken = (
 function isDomainAllowed(requestOrigin: string, allowedDomains: string[]): boolean {
   if (!requestOrigin || !allowedDomains?.length) return false;
   
-  // Extract domain from full URL
-  let domain: string;
-  try {
-    domain = new URL(requestOrigin).hostname.toLowerCase();
-  } catch {
-    // If not a full URL, treat as domain directly
-    domain = requestOrigin.toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
-  }
+  const normalizedOrigin = requestOrigin.toLowerCase().trim();
   
   return allowedDomains.some(allowedDomain => {
     const normalizedAllowed = allowedDomain.toLowerCase().trim();
     
     // Exact match
-    if (domain === normalizedAllowed) return true;
+    if (normalizedOrigin === normalizedAllowed) {
+      return true;
+    }
     
-    // Subdomain match (if allowed domain doesn't start with subdomain)
-    if (!normalizedAllowed.includes('.') || normalizedAllowed.startsWith('www.')) {
-      // Main domain like "example.com" allows "api.example.com", "www.example.com", etc.
-      const mainDomain = normalizedAllowed.replace(/^www\./, '');
-      return domain === mainDomain || domain.endsWith('.' + mainDomain);
+    // Wildcard match for *.domain.com format
+    if (normalizedAllowed.startsWith('*.')) {
+      const baseDomain = normalizedAllowed.substring(2);
+      return normalizedOrigin === baseDomain || normalizedOrigin.endsWith('.' + baseDomain);
+    }
+    
+    // Remove protocol and check
+    const cleanOrigin = normalizedOrigin.replace(/^https?:\/\//, '');
+    const cleanAllowed = normalizedAllowed.replace(/^https?:\/\//, '');
+    
+    if (cleanOrigin === cleanAllowed) {
+      return true;
     }
     
     return false;
