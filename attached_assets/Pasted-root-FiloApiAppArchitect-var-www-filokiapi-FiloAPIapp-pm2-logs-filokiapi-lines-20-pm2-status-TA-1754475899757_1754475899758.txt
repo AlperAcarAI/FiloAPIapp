@@ -1,0 +1,260 @@
+root@FiloApiAppArchitect:/var/www/filokiapi/FiloAPIapp# pm2 logs filokiapi --lines 20
+pm2 status
+[TAILING] Tailing last 20 lines for [filokiapi] process (change the value with --lines option)
+/var/log/pm2/filokiapi-error-0.log last 20 lines:
+/var/log/pm2/filokiapi-out-0.log last 20 lines:
+0|filokiap | 2025-08-06T10:23:03: 2025-08-06T10:23:03: 
+0|filokiap | > rest-express@1.0.0 start
+0|filokiap | > NODE_ENV=production node dist/index.js
+0|filokiap | 
+0|filokiap | 2025-08-06T10:23:04: 2025-08-06T10:23:04: 
+0|filokiap | > rest-express@1.0.0 start
+0|filokiap | > NODE_ENV=production node dist/index.js
+0|filokiap | 
+0|filokiap | 2025-08-06T10:23:05: 2025-08-06T10:23:06: 
+0|filokiap | > rest-express@1.0.0 start
+0|filokiap | > NODE_ENV=production node dist/index.js
+0|filokiap | 
+0|filokiap | 2025-08-06T10:23:07: 2025-08-06T10:23:07: 
+0|filokiap | > rest-express@1.0.0 start
+0|filokiap | > NODE_ENV=production node dist/index.js
+0|filokiap | 
+0|filokiap | 2025-08-06T10:23:08: 2025-08-06T10:23:09: 
+0|filokiap | > rest-express@1.0.0 start
+0|filokiap | > NODE_ENV=production node dist/index.js
+0|filokiap | 
+
+/var/log/pm2/filokiapi-error-1.log last 20 lines:
+/var/log/pm2/filokiapi-out-1.log last 20 lines:
+1|filokiap | 2025-08-06T10:23:02: 2025-08-06T10:23:02: 
+1|filokiap | > rest-express@1.0.0 start
+1|filokiap | > NODE_ENV=production node dist/index.js
+1|filokiap | 
+1|filokiap | 2025-08-06T10:23:03: 2025-08-06T10:23:04: 
+1|filokiap | > rest-express@1.0.0 start
+1|filokiap | > NODE_ENV=production node dist/index.js
+1|filokiap | 
+1|filokiap | 2025-08-06T10:23:05: 2025-08-06T10:23:05: 
+1|filokiap | > rest-express@1.0.0 start
+1|filokiap | > NODE_ENV=production node dist/index.js
+1|filokiap | 
+1|filokiap | 2025-08-06T10:23:06: 2025-08-06T10:23:06: 2025-08-06T10:23:06: 
+1|filokiap | > rest-express@1.0.0 start
+1|filokiap | > NODE_ENV=production node dist/index.js
+1|filokiap | 
+1|filokiap | 2025-08-06T10:23:07: 2025-08-06T10:23:08: 
+1|filokiap | > rest-express@1.0.0 start
+1|filokiap | > NODE_ENV=production node dist/index.js
+1|filokiap | 
+
+1|filokiapi  | /usr/bin/node:1
+1|filokiapi  | ELF
+1|filokiapi  | ^
+1|filokiapi  | SyntaxError: Invalid or unexpected token
+1|filokiapi  |     at wrapSafe (node:internal/modules/cjs/loader:1620:18)
+1|filokiapi  |     at Module._compile (node:internal/modules/cjs/loader:1662:20)
+1|filokiapi  |     at Object..js (node:internal/modules/cjs/loader:1820:10)
+1|filokiapi  |     at Module.load (node:internal/modules/cjs/loader:1423:32)
+1|filokiapi  |     at Function._load (node:internal/modules/cjs/loader:1246:12)
+1|filokiapi  |     at /usr/lib/node_modules/pm2/lib/ProcessContainer.js:292:27
+1|filokiapi  |     at wrapper (/usr/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+1|filokiapi  |     at next (/usr/lib/node_modules/pm2/node_modules/async/waterfall.js:96:20)
+1|filokiapi  |     at /usr/lib/node_modules/pm2/node_modules/async/internal/onlyOnce.js:12:16
+1|filokiapi  |     at WriteStream.<anonymous> (/usr/lib/node_modules/pm2/lib/Utility.js:186:13)
+0|filokiapi  | /usr/bin/node:1
+0|filokiapi  | ELF
+0|filokiapi  | ^
+0|filokiapi  | SyntaxError: Invalid or unexpected token
+0|filokiapi  |     at wrapSafe (node:internal/modules/cjs/loader:1620:18)
+0|filokiapi  |     at Module._compile (node:internal/modules/cjs/loader:1662:20)
+0|filokiapi  |     at Object..js (node:internal/modules/cjs/loader:1820:10)
+0|filokiapi  |     at Module.load (node:internal/modules/cjs/loader:1423:32)
+0|filokiapi  |     at Function._load (node:internal/modules/cjs/loader:1246:12)
+0|filokiapi  |     at /usr/lib/node_modules/pm2/lib/ProcessContainer.js:292:27
+0|filokiapi  |     at wrapper (/usr/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+0|filokiapi  |     at next (/usr/lib/node_modules/pm2/node_modules/async/waterfall.js:96:20)
+0|filokiapi  |     at /usr/lib/node_modules/pm2/node_modules/async/internal/onlyOnce.js:12:16
+0|filokiapi  |     at WriteStream.<anonymous> (/usr/lib/node_modules/pm2/lib/Utility.js:186:13)
+1|filokiapi  | /usr/bin/node:1
+1|filokiapi  | ELF
+1|filokiapi  | ^
+1|filokiapi  | SyntaxError: Invalid or unexpected token
+1|filokiapi  |     at wrapSafe (node:internal/modules/cjs/loader:1620:18)
+1|filokiapi  |     at Module._compile (node:internal/modules/cjs/loader:1662:20)
+1|filokiapi  |     at Object..js (node:internal/modules/cjs/loader:1820:10)
+1|filokiapi  |     at Module.load (node:internal/modules/cjs/loader:1423:32)
+1|filokiapi  |     at Function._load (node:internal/modules/cjs/loader:1246:12)
+1|filokiapi  |     at /usr/lib/node_modules/pm2/lib/ProcessContainer.js:292:27
+1|filokiapi  |     at wrapper (/usr/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+1|filokiapi  |     at next (/usr/lib/node_modules/pm2/node_modules/async/waterfall.js:96:20)
+1|filokiapi  |     at /usr/lib/node_modules/pm2/node_modules/async/internal/onlyOnce.js:12:16
+1|filokiapi  |     at WriteStream.<anonymous> (/usr/lib/node_modules/pm2/lib/Utility.js:186:13)
+0|filokiapi  | /usr/bin/node:1
+0|filokiapi  | ELF
+0|filokiapi  | ^
+0|filokiapi  | SyntaxError: Invalid or unexpected token
+0|filokiapi  |     at wrapSafe (node:internal/modules/cjs/loader:1620:18)
+0|filokiapi  |     at Module._compile (node:internal/modules/cjs/loader:1662:20)
+0|filokiapi  |     at Object..js (node:internal/modules/cjs/loader:1820:10)
+0|filokiapi  |     at Module.load (node:internal/modules/cjs/loader:1423:32)
+0|filokiapi  |     at Function._load (node:internal/modules/cjs/loader:1246:12)
+0|filokiapi  |     at /usr/lib/node_modules/pm2/lib/ProcessContainer.js:292:27
+0|filokiapi  |     at wrapper (/usr/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+0|filokiapi  |     at next (/usr/lib/node_modules/pm2/node_modules/async/waterfall.js:96:20)
+0|filokiapi  |     at /usr/lib/node_modules/pm2/node_modules/async/internal/onlyOnce.js:12:16
+0|filokiapi  |     at WriteStream.<anonymous> (/usr/lib/node_modules/pm2/lib/Utility.js:186:13)
+1|filokiapi  | /usr/bin/node:1
+1|filokiapi  | ELF
+1|filokiapi  | ^
+1|filokiapi  | SyntaxError: Invalid or unexpected token
+1|filokiapi  |     at wrapSafe (node:internal/modules/cjs/loader:1620:18)
+1|filokiapi  |     at Module._compile (node:internal/modules/cjs/loader:1662:20)
+1|filokiapi  |     at Object..js (node:internal/modules/cjs/loader:1820:10)
+1|filokiapi  |     at Module.load (node:internal/modules/cjs/loader:1423:32)
+1|filokiapi  |     at Function._load (node:internal/modules/cjs/loader:1246:12)
+1|filokiapi  |     at /usr/lib/node_modules/pm2/lib/ProcessContainer.js:292:27
+1|filokiapi  |     at wrapper (/usr/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+1|filokiapi  |     at next (/usr/lib/node_modules/pm2/node_modules/async/waterfall.js:96:20)
+1|filokiapi  |     at /usr/lib/node_modules/pm2/node_modules/async/internal/onlyOnce.js:12:16
+1|filokiapi  |     at WriteStream.<anonymous> (/usr/lib/node_modules/pm2/lib/Utility.js:186:13)
+0|filokiapi  | /usr/bin/node:1
+0|filokiapi  | ELF
+0|filokiapi  | ^
+0|filokiapi  | SyntaxError: Invalid or unexpected token
+0|filokiapi  |     at wrapSafe (node:internal/modules/cjs/loader:1620:18)
+0|filokiapi  |     at Module._compile (node:internal/modules/cjs/loader:1662:20)
+0|filokiapi  |     at Object..js (node:internal/modules/cjs/loader:1820:10)
+0|filokiapi  |     at Module.load (node:internal/modules/cjs/loader:1423:32)
+0|filokiapi  |     at Function._load (node:internal/modules/cjs/loader:1246:12)
+0|filokiapi  |     at /usr/lib/node_modules/pm2/lib/ProcessContainer.js:292:27
+0|filokiapi  |     at wrapper (/usr/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+0|filokiapi  |     at next (/usr/lib/node_modules/pm2/node_modules/async/waterfall.js:96:20)
+0|filokiapi  |     at /usr/lib/node_modules/pm2/node_modules/async/internal/onlyOnce.js:12:16
+0|filokiapi  |     at WriteStream.<anonymous> (/usr/lib/node_modules/pm2/lib/Utility.js:186:13)
+1|filokiapi  | /usr/bin/node:1
+1|filokiapi  | ELF
+1|filokiapi  | ^
+1|filokiapi  | SyntaxError: Invalid or unexpected token
+1|filokiapi  |     at wrapSafe (node:internal/modules/cjs/loader:1620:18)
+1|filokiapi  |     at Module._compile (node:internal/modules/cjs/loader:1662:20)
+1|filokiapi  |     at Object..js (node:internal/modules/cjs/loader:1820:10)
+1|filokiapi  |     at Module.load (node:internal/modules/cjs/loader:1423:32)
+1|filokiapi  |     at Function._load (node:internal/modules/cjs/loader:1246:12)
+1|filokiapi  |     at /usr/lib/node_modules/pm2/lib/ProcessContainer.js:292:27
+1|filokiapi  |     at wrapper (/usr/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+1|filokiapi  |     at next (/usr/lib/node_modules/pm2/node_modules/async/waterfall.js:96:20)
+1|filokiapi  |     at /usr/lib/node_modules/pm2/node_modules/async/internal/onlyOnce.js:12:16
+1|filokiapi  |     at WriteStream.<anonymous> (/usr/lib/node_modules/pm2/lib/Utility.js:186:13)
+0|filokiapi  | /usr/bin/node:1
+0|filokiapi  | ELF
+0|filokiapi  | ^
+0|filokiapi  | SyntaxError: Invalid or unexpected token
+0|filokiapi  |     at wrapSafe (node:internal/modules/cjs/loader:1620:18)
+0|filokiapi  |     at Module._compile (node:internal/modules/cjs/loader:1662:20)
+0|filokiapi  |     at Object..js (node:internal/modules/cjs/loader:1820:10)
+0|filokiapi  |     at Module.load (node:internal/modules/cjs/loader:1423:32)
+0|filokiapi  |     at Function._load (node:internal/modules/cjs/loader:1246:12)
+0|filokiapi  |     at /usr/lib/node_modules/pm2/lib/ProcessContainer.js:292:27
+0|filokiapi  |     at wrapper (/usr/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+0|filokiapi  |     at next (/usr/lib/node_modules/pm2/node_modules/async/waterfall.js:96:20)
+0|filokiapi  |     at /usr/lib/node_modules/pm2/node_modules/async/internal/onlyOnce.js:12:16
+0|filokiapi  |     at WriteStream.<anonymous> (/usr/lib/node_modules/pm2/lib/Utility.js:186:13)
+1|filokiapi  | /usr/bin/node:1
+1|filokiapi  | ELF
+1|filokiapi  | ^
+1|filokiapi  | SyntaxError: Invalid or unexpected token
+1|filokiapi  |     at wrapSafe (node:internal/modules/cjs/loader:1620:18)
+1|filokiapi  |     at Module._compile (node:internal/modules/cjs/loader:1662:20)
+1|filokiapi  |     at Object..js (node:internal/modules/cjs/loader:1820:10)
+1|filokiapi  |     at Module.load (node:internal/modules/cjs/loader:1423:32)
+1|filokiapi  |     at Function._load (node:internal/modules/cjs/loader:1246:12)
+1|filokiapi  |     at /usr/lib/node_modules/pm2/lib/ProcessContainer.js:292:27
+1|filokiapi  |     at wrapper (/usr/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+1|filokiapi  |     at next (/usr/lib/node_modules/pm2/node_modules/async/waterfall.js:96:20)
+1|filokiapi  |     at /usr/lib/node_modules/pm2/node_modules/async/internal/onlyOnce.js:12:16
+1|filokiapi  |     at WriteStream.<anonymous> (/usr/lib/node_modules/pm2/lib/Utility.js:186:13)
+0|filokiapi  | /usr/bin/node:1
+0|filokiapi  | ELF
+0|filokiapi  | ^
+0|filokiapi  | SyntaxError: Invalid or unexpected token
+0|filokiapi  |     at wrapSafe (node:internal/modules/cjs/loader:1620:18)
+0|filokiapi  |     at Module._compile (node:internal/modules/cjs/loader:1662:20)
+0|filokiapi  |     at Object..js (node:internal/modules/cjs/loader:1820:10)
+0|filokiapi  |     at Module.load (node:internal/modules/cjs/loader:1423:32)
+0|filokiapi  |     at Function._load (node:internal/modules/cjs/loader:1246:12)
+0|filokiapi  |     at /usr/lib/node_modules/pm2/lib/ProcessContainer.js:292:27
+0|filokiapi  |     at wrapper (/usr/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+0|filokiapi  |     at next (/usr/lib/node_modules/pm2/node_modules/async/waterfall.js:96:20)
+0|filokiapi  |     at /usr/lib/node_modules/pm2/node_modules/async/internal/onlyOnce.js:12:16
+0|filokiapi  |     at WriteStream.<anonymous> (/usr/lib/node_modules/pm2/lib/Utility.js:186:13)
+1|filokiapi  | /usr/bin/node:1
+1|filokiapi  | ELF
+1|filokiapi  | ^
+1|filokiapi  | SyntaxError: Invalid or unexpected token
+1|filokiapi  |     at wrapSafe (node:internal/modules/cjs/loader:1620:18)
+1|filokiapi  |     at Module._compile (node:internal/modules/cjs/loader:1662:20)
+1|filokiapi  |     at Object..js (node:internal/modules/cjs/loader:1820:10)
+1|filokiapi  |     at Module.load (node:internal/modules/cjs/loader:1423:32)
+1|filokiapi  |     at Function._load (node:internal/modules/cjs/loader:1246:12)
+1|filokiapi  |     at /usr/lib/node_modules/pm2/lib/ProcessContainer.js:292:27
+1|filokiapi  |     at wrapper (/usr/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+1|filokiapi  |     at next (/usr/lib/node_modules/pm2/node_modules/async/waterfall.js:96:20)
+1|filokiapi  |     at /usr/lib/node_modules/pm2/node_modules/async/internal/onlyOnce.js:12:16
+1|filokiapi  |     at WriteStream.<anonymous> (/usr/lib/node_modules/pm2/lib/Utility.js:186:13)
+0|filokiapi  | /usr/bin/node:1
+0|filokiapi  | ELF
+0|filokiapi  | ^
+0|filokiapi  | SyntaxError: Invalid or unexpected token
+0|filokiapi  |     at wrapSafe (node:internal/modules/cjs/loader:1620:18)
+0|filokiapi  |     at Module._compile (node:internal/modules/cjs/loader:1662:20)
+0|filokiapi  |     at Object..js (node:internal/modules/cjs/loader:1820:10)
+0|filokiapi  |     at Module.load (node:internal/modules/cjs/loader:1423:32)
+0|filokiapi  |     at Function._load (node:internal/modules/cjs/loader:1246:12)
+0|filokiapi  |     at /usr/lib/node_modules/pm2/lib/ProcessContainer.js:292:27
+0|filokiapi  |     at wrapper (/usr/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+0|filokiapi  |     at next (/usr/lib/node_modules/pm2/node_modules/async/waterfall.js:96:20)
+0|filokiapi  |     at /usr/lib/node_modules/pm2/node_modules/async/internal/onlyOnce.js:12:16
+0|filokiapi  |     at WriteStream.<anonymous> (/usr/lib/node_modules/pm2/lib/Utility.js:186:13)
+1|filokiapi  | /usr/bin/node:1
+1|filokiapi  | ELF
+1|filokiapi  | ^
+1|filokiapi  | SyntaxError: Invalid or unexpected token
+1|filokiapi  |     at wrapSafe (node:internal/modules/cjs/loader:1620:18)
+1|filokiapi  |     at Module._compile (node:internal/modules/cjs/loader:1662:20)
+1|filokiapi  |     at Object..js (node:internal/modules/cjs/loader:1820:10)
+1|filokiapi  |     at Module.load (node:internal/modules/cjs/loader:1423:32)
+1|filokiapi  |     at Function._load (node:internal/modules/cjs/loader:1246:12)
+1|filokiapi  |     at /usr/lib/node_modules/pm2/lib/ProcessContainer.js:292:27
+1|filokiapi  |     at wrapper (/usr/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+1|filokiapi  |     at next (/usr/lib/node_modules/pm2/node_modules/async/waterfall.js:96:20)
+1|filokiapi  |     at /usr/lib/node_modules/pm2/node_modules/async/internal/onlyOnce.js:12:16
+1|filokiapi  |     at WriteStream.<anonymous> (/usr/lib/node_modules/pm2/lib/Utility.js:186:13)
+0|filokiapi  | /usr/bin/node:1
+0|filokiapi  | ELF
+0|filokiapi  | ^
+0|filokiapi  | SyntaxError: Invalid or unexpected token
+0|filokiapi  |     at wrapSafe (node:internal/modules/cjs/loader:1620:18)
+0|filokiapi  |     at Module._compile (node:internal/modules/cjs/loader:1662:20)
+0|filokiapi  |     at Object..js (node:internal/modules/cjs/loader:1820:10)
+0|filokiapi  |     at Module.load (node:internal/modules/cjs/loader:1423:32)
+0|filokiapi  |     at Function._load (node:internal/modules/cjs/loader:1246:12)
+0|filokiapi  |     at /usr/lib/node_modules/pm2/lib/ProcessContainer.js:292:27
+0|filokiapi  |     at wrapper (/usr/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+0|filokiapi  |     at next (/usr/lib/node_modules/pm2/node_modules/async/waterfall.js:96:20)
+0|filokiapi  |     at /usr/lib/node_modules/pm2/node_modules/async/internal/onlyOnce.js:12:16
+0|filokiapi  |     at WriteStream.<anonymous> (/usr/lib/node_modules/pm2/lib/Utility.js:186:13)
+1|filokiapi  | /usr/bin/node:1
+1|filokiapi  | ELF
+1|filokiapi  | ^
+1|filokiapi  | SyntaxError: Invalid or unexpected token
+1|filokiapi  |     at wrapSafe (node:internal/modules/cjs/loader:1620:18)
+1|filokiapi  |     at Module._compile (node:internal/modules/cjs/loader:1662:20)
+1|filokiapi  |     at Object..js (node:internal/modules/cjs/loader:1820:10)
+1|filokiapi  |     at Module.load (node:internal/modules/cjs/loader:1423:32)
+1|filokiapi  |     at Function._load (node:internal/modules/cjs/loader:1246:12)
+1|filokiapi  |     at /usr/lib/node_modules/pm2/lib/ProcessContainer.js:292:27
+1|filokiapi  |     at wrapper (/usr/lib/node_modules/pm2/node_modules/async/internal/once.js:12:16)
+1|filokiapi  |     at next (/usr/lib/node_modules/pm2/node_modules/async/waterfall.js:96:20)
+1|filokiapi  |     at /usr/lib/node_modules/pm2/node_modules/async/internal/onlyOnce.js:12:16
+1|filokiapi  |     at WriteStream.<anonymous> (/usr/lib/node_modules/pm2/lib/Utility.js:186:13)
+0
