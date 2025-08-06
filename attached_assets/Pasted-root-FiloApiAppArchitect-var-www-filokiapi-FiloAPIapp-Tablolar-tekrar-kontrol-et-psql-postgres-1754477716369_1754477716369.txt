@@ -1,0 +1,74 @@
+root@FiloApiAppArchitect:/var/www/filokiapi/FiloAPIapp# # Tabloları tekrar kontrol et
+psql "postgresql://filoki_user:FilokiDB2025@localhost:5432/filoki_db" -c "\dt"
+
+# Eğer tablolar varsa detaylı listele
+psql "postgresql://filoki_user:FilokiDB2025@localhost:5432/filoki_db" -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;"
+Did not find any relations.
+ table_name 
+------------
+(0 rows)
+
+root@FiloApiAppArchitect:/var/www/filokiapi/FiloAPIapp# ls -la shared/schema.ts
+head -n 30 shared/schema.ts
+-rwxr-xr-x 1 www-data www-data 60653 Aug  6 09:31 shared/schema.ts
+import {
+  pgTable,
+  text,
+  varchar,
+  timestamp,
+  boolean,
+  serial,
+  integer,
+  date,
+  decimal,
+  bigint,
+  primaryKey,
+  index,
+  unique,
+  check,
+} from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { z } from "zod";
+
+// ========================
+// Lookup / Reference Tables
+// ========================
+
+export const countries = pgTable("countries", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  phoneCode: varchar("phone_code", { length: 10 }),
+});
+
+root@FiloApiAppArchitect:/var/www/filokiapi/FiloAPIapp# # Migrations dizinini kontrol et
+ls -la migrations/
+
+# En son migration dosyasını görelim
+ls -la migrations/ | tail -5
+ls: cannot access 'migrations/': No such file or directory
+ls: cannot access 'migrations/': No such file or directory
+root@FiloApiAppArchitect:/var/www/filokiapi/FiloAPIapp# # Test tablosu oluştur
+psql "postgresql://filoki_user:FilokiDB2025@localhost:5432/filoki_db" -c " 
+CREATE TABLE IF NOT EXISTS test_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+INSERT INTO test_table (name) VALUES ('test');
+SELECT * FROM test_table;
+"
+CREATE TABLE
+INSERT 0 1
+ id | name 
+----+------
+  1 | test
+(1 row)
+
+root@FiloApiAppArchitect:/var/www/filokiapi/FiloAPIapp# # Drizzle kit'i force mode ile çalıştır
+DATABASE_URL="postgresql://filoki_user:FilokiDB2025@localhost:5432/filoki_db" npx drizzle-kit push --force
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/var/www/filokiapi/FiloAPIapp/drizzle.config.ts'
+Using 'pg' driver for database querying
+
+ Warning  We've found duplicated index name across public schema. Please rename your index in either the rate_limit_buckets table or the table with the duplicated index name
+root@FiloApiAppArchitect:/var/www/filokiapi/FiloAPIapp# 
