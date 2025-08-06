@@ -6,7 +6,7 @@ import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, typ
 import { generateTokenPair, validateRefreshToken, revokeRefreshToken, revokeAllUserRefreshTokens } from "./auth";
 import { z } from "zod";
 import { db } from "./db";
-import { assets } from "@shared/schema";
+import { assets, countries } from "@shared/schema";
 import { eq, desc, asc, sql, like, ilike, and } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -395,6 +395,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         error: "CITIES_FETCH_ERROR",
         message: "Şehir listesi alınırken bir hata oluştu" 
+      });
+    }
+  });
+
+  // Ülke listesini getir (Public API)
+  app.get("/api/getCountries", async (req: Request, res: Response) => {
+    try {
+      const { limit, offset, search, sortBy = 'name', sortOrder = 'asc' } = req.query;
+      
+      const validSortByFields = ['name', 'phone_code', 'id'];
+      const validSortOrder = ['asc', 'desc'];
+      
+      const finalSortBy = validSortByFields.includes(sortBy as string) ? sortBy as string : 'name';
+      const finalSortOrder = validSortOrder.includes(sortOrder as string) ? sortOrder as string : 'asc';
+      
+      // Base query
+      let query = db.select().from(countries);
+      let whereQuery = db.select().from(countries);
+      
+      // Add search filter if provided
+      if (search && typeof search === 'string') {
+        const searchCondition = ilike(countries.name, `%${search}%`);
+        query = query.where(searchCondition);
+        whereQuery = whereQuery.where(searchCondition);
+      }
+      
+      // Get total count for pagination
+      const totalCountQuery = db.select({ count: sql<number>`count(*)` }).from(countries);
+      if (search && typeof search === 'string') {
+        totalCountQuery.where(ilike(countries.name, `%${search}%`));
+      }
+      const [{ count: totalCount }] = await totalCountQuery;
+      
+      // Add sorting
+      const orderByColumn = finalSortBy === 'name' ? countries.name 
+                          : finalSortBy === 'phone_code' ? countries.phoneCode
+                          : countries.id;
+      
+      query = finalSortOrder === 'desc' 
+        ? query.orderBy(desc(orderByColumn))
+        : query.orderBy(asc(orderByColumn));
+      
+      // Add pagination if provided
+      if (limit && typeof limit === 'string' && !isNaN(Number(limit))) {
+        query = query.limit(Number(limit));
+        
+        if (offset && typeof offset === 'string' && !isNaN(Number(offset))) {
+          query = query.offset(Number(offset));
+        }
+      }
+      
+      const countriesList = await query;
+      
+      res.json({
+        success: true,
+        message: "Ülkeler başarıyla getirildi",
+        data: {
+          countries: countriesList,
+          totalCount,
+          pagination: {
+            limit: limit ? Number(limit) : null,
+            offset: offset ? Number(offset) : null,
+            hasMore: limit ? countriesList.length === Number(limit) : false
+          },
+          filters: {
+            search: search || null,
+            sortBy: finalSortBy,
+            sortOrder: finalSortOrder
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Countries getirme hatası:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "COUNTRIES_FETCH_ERROR",
+        message: "Ülke listesi alınırken bir hata oluştu" 
       });
     }
   });
