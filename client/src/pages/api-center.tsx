@@ -15,12 +15,13 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function ApiCenter() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedEndpoint, setSelectedEndpoint] = useState('');
   const [testResponse, setTestResponse] = useState<any>(null);
   const [testRequest, setTestRequest] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState('filoki-api-master-key-2025');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [expandedEndpoint, setExpandedEndpoint] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'test' | 'example'>('test');
   const { toast } = useToast();
 
   // Get all available endpoints
@@ -437,23 +438,7 @@ export default function ApiCenter() {
         </Card>
       )}
 
-      <Tabs defaultValue="endpoints" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="endpoints">
-            <Database className="w-4 h-4 mr-2" />
-            Endpoints
-          </TabsTrigger>
-          <TabsTrigger value="test">
-            <Play className="w-4 h-4 mr-2" />
-            API Tester
-          </TabsTrigger>
-          <TabsTrigger value="examples">
-            <Code className="w-4 h-4 mr-2" />
-            Examples
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="endpoints" className="space-y-4">
+      <div className="space-y-4">
           <div className="flex items-center space-x-2">
             <Search className="w-4 h-4" />
             <Input
@@ -527,11 +512,18 @@ export default function ApiCenter() {
                         </Dialog>
                         <Button 
                           size="sm" 
-                          onClick={() => handleTestEndpoint(endpoint.path, endpoint.method)}
-                          disabled={isLoading || endpoint.status !== 'active'}
+                          onClick={() => {
+                            if (expandedEndpoint === endpoint.path) {
+                              setExpandedEndpoint(null);
+                            } else {
+                              setExpandedEndpoint(endpoint.path);
+                              setActiveTab('test');
+                            }
+                          }}
+                          variant={expandedEndpoint === endpoint.path ? "default" : "outline"}
                         >
-                          <Play className="w-3 h-3 mr-1" />
-                          Test
+                          <Code className="w-3 h-3 mr-1" />
+                          {expandedEndpoint === endpoint.id ? 'Kapat' : 'Detay'}
                         </Button>
                       </div>
                     </div>
@@ -583,229 +575,158 @@ export default function ApiCenter() {
                       </div>
                     )}
                   </CardContent>
+
+                  {/* Expanded Details Section */}
+                  {expandedEndpoint === endpoint.path && (
+                    <CardContent className="border-t bg-gray-50 dark:bg-gray-900">
+                      <div className="space-y-4">
+                        {/* Tab Navigation */}
+                        <div className="flex space-x-2">
+                          <Button
+                            size="sm"
+                            variant={activeTab === 'test' ? 'default' : 'outline'}
+                            onClick={() => setActiveTab('test')}
+                          >
+                            <Play className="w-4 h-4 mr-2" />
+                            Test API
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={activeTab === 'example' ? 'default' : 'outline'}
+                            onClick={() => setActiveTab('example')}
+                          >
+                            <Code className="w-4 h-4 mr-2" />
+                            JSON Örnekleri
+                          </Button>
+                        </div>
+
+                        {/* Test Tab */}
+                        {activeTab === 'test' && (
+                          <div className="space-y-4">
+                            {/* API Key Warning for secure endpoints */}
+                            {(endpoint.path.includes('/secure/') || endpoint.path.includes('/backend/')) && !apiKey && (
+                              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                                <div className="flex items-center gap-2">
+                                  <Shield className="w-4 h-4 text-yellow-600" />
+                                  <span className="text-sm text-yellow-700">
+                                    Bu endpoint API anahtarı gerektirir. Lütfen yukarıdaki "API Key" butonuna tıklayarak anahtarınızı girin.
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            <Button 
+                              onClick={() => handleTestEndpoint(endpoint.path, endpoint.method)}
+                              disabled={isLoading || endpoint.status !== 'active'}
+                              className="w-full"
+                            >
+                              {isLoading ? 'Test Ediliyor...' : `${endpoint.method} ${endpoint.path} Test Et`}
+                            </Button>
+
+                            {/* Show Request and Response */}
+                            {(testRequest || testResponse) && (
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                {testRequest && (
+                                  <div className="space-y-2">
+                                    <Label className="flex items-center gap-2">
+                                      <Code className="w-4 h-4" />
+                                      Gönderilen İstek (Request)
+                                    </Label>
+                                    <div className="relative">
+                                      <Textarea
+                                        value={JSON.stringify(testRequest, null, 2)}
+                                        readOnly
+                                        className="h-48 font-mono text-sm bg-blue-50 border-blue-200"
+                                      />
+                                      <Badge className="absolute top-2 right-2 bg-blue-100 text-blue-800">
+                                        REQUEST
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {testResponse && (
+                                  <div className="space-y-2">
+                                    <Label className="flex items-center gap-2">
+                                      <Database className="w-4 h-4" />
+                                      Alınan Cevap (Response)
+                                    </Label>
+                                    <div className="relative">
+                                      <Textarea
+                                        value={JSON.stringify(testResponse, null, 2)}
+                                        readOnly
+                                        className={`h-48 font-mono text-sm ${
+                                          testResponse.error ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
+                                        }`}
+                                      />
+                                      <Badge className={`absolute top-2 right-2 ${
+                                        testResponse.error 
+                                          ? 'bg-red-100 text-red-800' 
+                                          : 'bg-green-100 text-green-800'
+                                      }`}>
+                                        {testResponse.error ? 'ERROR' : 'SUCCESS'}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Response Metadata */}
+                            {testResponse?._metadata && (
+                              <div className="p-3 bg-gray-100 border rounded-md">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="font-medium">Detaylar:</span>
+                                  <div className="flex gap-4">
+                                    <span>Durum: <code>{testResponse._metadata.status}</code></span>
+                                    <span>Süre: <code>{testResponse._metadata.responseTime}</code></span>
+                                    <span>Zaman: <code>{new Date(testResponse._metadata.timestamp).toLocaleTimeString('tr-TR')}</code></span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Example Tab */}
+                        {activeTab === 'example' && (
+                          <div className="space-y-4">
+                            <div>
+                              <h3 className="text-lg font-semibold mb-2">İstek (Request)</h3>
+                              <div className="bg-gray-100 p-4 rounded-md">
+                                <pre className="text-sm overflow-x-auto">
+                                  {JSON.stringify(example.request, null, 2)}
+                                </pre>
+                              </div>
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-semibold mb-2">Cevap (Response)</h3>
+                              <div className="bg-gray-100 p-4 rounded-md">
+                                <pre className="text-sm overflow-x-auto">
+                                  {JSON.stringify(example.response, null, 2)}
+                                </pre>
+                              </div>
+                            </div>
+                            {example.request.parameters && (
+                              <div>
+                                <h3 className="text-lg font-semibold mb-2">Parametreler</h3>
+                                <div className="bg-blue-50 p-4 rounded-md">
+                                  <pre className="text-sm overflow-x-auto">
+                                    {JSON.stringify(example.request.parameters, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  )}
                 </Card>
               );
             })}
           </div>
-        </TabsContent>
-
-        <TabsContent value="test" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>API Tester</CardTitle>
-              <CardDescription>Test API endpoints with custom parameters</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Select Endpoint</Label>
-                  <Select value={selectedEndpoint} onValueChange={setSelectedEndpoint}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose an endpoint" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="/api/getCities">GET /api/getCities (Public)</SelectItem>
-                      <SelectItem value="/api/docs">GET /api/docs (Public)</SelectItem>
-                      <SelectItem value="/api/endpoints">GET /api/endpoints (Public)</SelectItem>
-                      <SelectItem value="/api/test-auth">GET /api/test-auth (Public)</SelectItem>
-                      <SelectItem value="/api/secure/assets">GET /api/secure/assets (API Key)</SelectItem>
-                      <SelectItem value="/api/secure/personnel">GET /api/secure/personnel (API Key)</SelectItem>
-                      <SelectItem value="/api/secure/fuel-records">GET /api/secure/fuel-records (API Key)</SelectItem>
-                      <SelectItem value="/api/backend/companies">GET /api/backend/companies (API Key)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Authentication</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select auth method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None (Public)</SelectItem>
-                      <SelectItem value="jwt">JWT Token</SelectItem>
-                      <SelectItem value="apikey">API Key</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* API Key Warning for secure endpoints */}
-              {selectedEndpoint && (selectedEndpoint.includes('/secure/') || selectedEndpoint.includes('/backend/')) && !apiKey && (
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-yellow-600" />
-                    <span className="text-sm text-yellow-700">
-                      Bu endpoint API anahtarı gerektirir. Lütfen yukarıdaki "API Key" butonuna tıklayarak anahtarınızı girin.
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <Button 
-                onClick={() => selectedEndpoint && handleTestEndpoint(selectedEndpoint, 'GET')}
-                disabled={!selectedEndpoint || isLoading}
-                className="w-full"
-              >
-                {isLoading ? 'Test Ediliyor...' : 'Endpoint Test Et'}
-              </Button>
-
-              {/* Show Request and Response */}
-              {(testRequest || testResponse) && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {testRequest && (
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <Code className="w-4 h-4" />
-                        Gönderilen İstek (Request)
-                      </Label>
-                      <div className="relative">
-                        <Textarea
-                          value={JSON.stringify(testRequest, null, 2)}
-                          readOnly
-                          className="h-48 font-mono text-sm bg-blue-50 border-blue-200"
-                        />
-                        <Badge className="absolute top-2 right-2 bg-blue-100 text-blue-800">
-                          REQUEST
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
-
-                  {testResponse && (
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <Database className="w-4 h-4" />
-                        Alınan Cevap (Response)
-                      </Label>
-                      <div className="relative">
-                        <Textarea
-                          value={JSON.stringify(testResponse, null, 2)}
-                          readOnly
-                          className={`h-48 font-mono text-sm ${
-                            testResponse.error ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
-                          }`}
-                        />
-                        <Badge className={`absolute top-2 right-2 ${
-                          testResponse.error 
-                            ? 'bg-red-100 text-red-800' 
-                            : 'bg-green-100 text-green-800'
-                        }`}>
-                          {testResponse.error ? 'ERROR' : 'SUCCESS'}
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Response Metadata */}
-              {testResponse?._metadata && (
-                <div className="p-3 bg-gray-50 border rounded-md">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">Detaylar:</span>
-                    <div className="flex gap-4">
-                      <span>Durum: <code>{testResponse._metadata.status}</code></span>
-                      <span>Süre: <code>{testResponse._metadata.responseTime}</code></span>
-                      <span>Zaman: <code>{new Date(testResponse._metadata.timestamp).toLocaleTimeString('tr-TR')}</code></span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="examples" className="space-y-4">
-          <div className="grid gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <MapPin className="w-5 h-5 mr-2" />
-                  Cities API Example
-                </CardTitle>
-                <CardDescription>Get Turkish cities with filtering and pagination</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <Label>JavaScript/Fetch</Label>
-                    <pre className="bg-gray-100 p-3 rounded text-sm overflow-x-auto">
-{`fetch('/api/getCities?search=istanbul&limit=10')
-  .then(response => response.json())
-  .then(data => console.log(data));`}
-                    </pre>
-                  </div>
-                  <div>
-                    <Label>Sample Response</Label>
-                    <pre className="bg-gray-100 p-3 rounded text-sm overflow-x-auto">
-{JSON.stringify(citiesData, null, 2)}
-                    </pre>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Shield className="w-5 h-5 mr-2" />
-                  Authentication Example
-                </CardTitle>
-                <CardDescription>Login and get JWT token</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <Label>Login Request</Label>
-                    <pre className="bg-gray-100 p-3 rounded text-sm overflow-x-auto">
-{`fetch('/api/auth/login', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    email: 'user@example.com',
-    password: 'password123'
-  })
-})
-.then(response => response.json())
-.then(data => {
-  // Store the token
-  localStorage.setItem('token', data.data.accessToken);
-});`}
-                    </pre>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Users className="w-5 h-5 mr-2" />
-                  Backend API Example
-                </CardTitle>
-                <CardDescription>Access hierarchical personnel data</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <Label>Personnel Request</Label>
-                    <pre className="bg-gray-100 p-3 rounded text-sm overflow-x-auto">
-{`fetch('/api/backend/personnel?page=1&limit=20', {
-  headers: {
-    'Authorization': 'Bearer YOUR_JWT_TOKEN'
-  }
-})
-.then(response => response.json())
-.then(data => console.log(data));`}
-                    </pre>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+      </div>
     </div>
   );
 }
