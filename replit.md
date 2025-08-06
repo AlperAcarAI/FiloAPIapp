@@ -11,12 +11,18 @@ Preferred communication style: Simple, everyday language.
 ## Production Deployment
 
 - **Domain**: filokiapi.architectaiagency.com
-- **Database**: filoki_db
+- **Database**: filoki_db (PostgreSQL local instance)
 - **Admin Credentials**: alper.acar@architectaiagency.com / Acar
 - **Status**: Production deployment active with PM2, Nginx, SSL
 - **API Key**: filoki-api-master-key-2025 (single master key for all protected endpoints)
 - **Authentication**: JWT-based with refresh tokens (login endpoint is public, no API key required)
-- **Deployment**: Automated with `deploy.sh` script - pulls from GitHub and updates production
+- **Database Driver**: PostgreSQL (pg) - switched from Neon serverless for production compatibility
+- **Working Endpoints**: 
+  - /api/getCities (200 OK - returns Turkish cities)
+  - /api/health (200 OK)
+  - /api/docs (Swagger documentation)
+- **Recent Fixes**: Database connection issue resolved by switching from @neondatabase/serverless to pg driver
+- **Deployment Date**: August 6, 2025
 
 ## System Architecture
 
