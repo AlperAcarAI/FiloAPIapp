@@ -17,6 +17,7 @@ export default function ApiCenter() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEndpoint, setSelectedEndpoint] = useState('');
   const [testResponse, setTestResponse] = useState<any>(null);
+  const [testRequest, setTestRequest] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState('filoki-api-master-key-2025');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
@@ -242,6 +243,29 @@ export default function ApiCenter() {
     }
 
     setIsLoading(true);
+    
+    // Prepare request object for display
+    const requestData: any = {
+      method: method,
+      url: endpoint,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      timestamp: new Date().toISOString()
+    };
+
+    // Add API key for secure endpoints
+    if (endpoint.includes('/secure/') || endpoint.includes('/admin/') || endpoint.includes('/backend/')) {
+      requestData.headers['X-API-Key'] = apiKey;
+    }
+
+    // Add parameters for specific endpoints
+    if (endpoint === '/api/getCities') {
+      requestData.parameters = { limit: 5, offset: 0 };
+    }
+
+    setTestRequest(requestData);
+
     try {
       let response;
       const headers: Record<string, string> = {
@@ -252,6 +276,8 @@ export default function ApiCenter() {
       if (endpoint.includes('/secure/') || endpoint.includes('/admin/') || endpoint.includes('/backend/')) {
         headers['X-API-Key'] = apiKey;
       }
+      
+      const startTime = Date.now();
       
       switch (endpoint) {
         case '/api/getCities':
@@ -281,19 +307,44 @@ export default function ApiCenter() {
               variant: "destructive"
             });
             setShowApiKeyInput(true);
-            setTestResponse(response);
+            setTestResponse({
+              ...response,
+              status: fetchResponse.status,
+              responseTime: `${Date.now() - startTime}ms`,
+              timestamp: new Date().toISOString()
+            });
             return;
           }
       }
       
-      setTestResponse(response);
+      // Add metadata to response
+      const responseWithMeta = {
+        ...response,
+        _metadata: {
+          status: 200,
+          responseTime: `${Date.now() - startTime}ms`,
+          timestamp: new Date().toISOString(),
+          endpoint: endpoint
+        }
+      };
+      
+      setTestResponse(responseWithMeta);
       toast({
         title: "Test Başarılı",
         description: `${method} ${endpoint} başarıyla çalıştırıldı`
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen hata';
-      setTestResponse({ error: errorMessage });
+      const errorResponse = {
+        error: errorMessage,
+        _metadata: {
+          status: 'error',
+          responseTime: '0ms',
+          timestamp: new Date().toISOString(),
+          endpoint: endpoint
+        }
+      };
+      setTestResponse(errorResponse);
       toast({
         title: "Test Başarısız",
         description: `${endpoint} test edilirken hata oluştu: ${errorMessage}`,
@@ -599,14 +650,66 @@ export default function ApiCenter() {
                 {isLoading ? 'Test Ediliyor...' : 'Endpoint Test Et'}
               </Button>
 
-              {testResponse && (
-                <div className="space-y-2">
-                  <Label>Response</Label>
-                  <Textarea
-                    value={JSON.stringify(testResponse, null, 2)}
-                    readOnly
-                    className="h-48 font-mono text-sm"
-                  />
+              {/* Show Request and Response */}
+              {(testRequest || testResponse) && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {testRequest && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Code className="w-4 h-4" />
+                        Gönderilen İstek (Request)
+                      </Label>
+                      <div className="relative">
+                        <Textarea
+                          value={JSON.stringify(testRequest, null, 2)}
+                          readOnly
+                          className="h-48 font-mono text-sm bg-blue-50 border-blue-200"
+                        />
+                        <Badge className="absolute top-2 right-2 bg-blue-100 text-blue-800">
+                          REQUEST
+                        </Badge>
+                      </div>
+                    </div>
+                  )}
+
+                  {testResponse && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Database className="w-4 h-4" />
+                        Alınan Cevap (Response)
+                      </Label>
+                      <div className="relative">
+                        <Textarea
+                          value={JSON.stringify(testResponse, null, 2)}
+                          readOnly
+                          className={`h-48 font-mono text-sm ${
+                            testResponse.error ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
+                          }`}
+                        />
+                        <Badge className={`absolute top-2 right-2 ${
+                          testResponse.error 
+                            ? 'bg-red-100 text-red-800' 
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {testResponse.error ? 'ERROR' : 'SUCCESS'}
+                        </Badge>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Response Metadata */}
+              {testResponse?._metadata && (
+                <div className="p-3 bg-gray-50 border rounded-md">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">Detaylar:</span>
+                    <div className="flex gap-4">
+                      <span>Durum: <code>{testResponse._metadata.status}</code></span>
+                      <span>Süre: <code>{testResponse._metadata.responseTime}</code></span>
+                      <span>Zaman: <code>{new Date(testResponse._metadata.timestamp).toLocaleTimeString('tr-TR')}</code></span>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
