@@ -424,6 +424,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Vehicles API - Public endpoint (Protected with API Key)
+  app.get("/api/vehicles", async (req, res) => {
+    try {
+      const { search, limit, offset, sortBy = 'id', sortOrder = 'asc', companyId, modelId } = req.query;
+      
+      let query = db.select({
+        id: assets.id,
+        plateNumber: assets.plateNumber,
+        modelYear: assets.modelYear,
+        chassisNo: assets.chassisNo,
+        isActive: assets.isActive,
+        createdAt: assets.createdAt
+      }).from(assets);
+
+      // Search filtering
+      if (search) {
+        query = query.where(ilike(assets.plateNumber, `%${search}%`));
+      }
+
+      // Company filtering
+      if (companyId) {
+        query = query.where(eq(assets.ownerCompanyId, Number(companyId)));
+      }
+
+      // Model filtering
+      if (modelId) {
+        query = query.where(eq(assets.modelId, Number(modelId)));
+      }
+
+      // Sorting
+      const orderColumn = sortBy === 'plateNumber' ? assets.plateNumber : assets.id;
+      const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
+      query = query.orderBy(orderDirection);
+
+      // Pagination
+      if (limit) {
+        query = query.limit(Number(limit));
+        if (offset) {
+          query = query.offset(Number(offset));
+        }
+      }
+
+      const vehicles = await query;
+      
+      res.json({
+        success: true,
+        message: "Vehicles başarıyla getirildi",
+        data: {
+          vehicles,
+          totalCount: vehicles.length,
+          pagination: {
+            limit: limit ? Number(limit) : null,
+            offset: offset ? Number(offset) : null
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Vehicles getirme hatası:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "VEHICLES_FETCH_ERROR",
+        message: "Vehicles listesi alınırken bir hata oluştu" 
+      });
+    }
+  });
+
   // Ülke listesini getir (Public API)
   app.get("/api/getCountries", async (req: Request, res: Response) => {
     try {
