@@ -1,0 +1,74 @@
+root@FiloApiAppArchitect:/var/www/filokiapi/FiloAPIapp# # .env dosyasının içeriğini kontrol et
+cat .env
+
+# Drizzle config'i kontrol et  
+cat drizzle.config.ts
+NODE_ENV=production
+PORT=5000
+DATABASE_URL=postgresql://filoki_user:FilokiDB2025@localhost:5432/filoki_db
+
+# JWT için güçlü secret key
+JWT_SECRET=çok_güçlü_jwt_secret_key_buraya
+JWT_REFRESH_SECRET=çok_güçlü_refresh_secret_key_buraya
+
+# Session secret
+SESSION_SECRET=güçlü_session_secret_buraya
+
+# Domain ayarları
+DOMAIN=filokiapi.architectaiagency.com
+import { defineConfig } from "drizzle-kit";
+
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL, ensure the database is provisioned");
+}
+
+export default defineConfig({
+  out: "./migrations",
+  schema: "./shared/schema.ts",
+  dialect: "postgresql",
+  dbCredentials: {
+    url: process.env.DATABASE_URL,
+  },
+});
+root@FiloApiAppArchitect:/var/www/filokiapi/FiloAPIapp# cat drizzle.config.ts
+import { defineConfig } from "drizzle-kit";
+
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL, ensure the database is provisioned");
+}
+
+export default defineConfig({
+  out: "./migrations",
+  schema: "./shared/schema.ts",
+  dialect: "postgresql",
+  dbCredentials: {
+    url: process.env.DATABASE_URL,
+  },
+});
+root@FiloApiAppArchitect:/var/www/filokiapi/FiloAPIapp# cat .env
+NODE_ENV=production
+PORT=5000
+DATABASE_URL=postgresql://filoki_user:FilokiDB2025@localhost:5432/filoki_db
+
+# JWT için güçlü secret key
+JWT_SECRET=çok_güçlü_jwt_secret_key_buraya
+JWT_REFRESH_SECRET=çok_güçlü_refresh_secret_key_buraya
+
+# Session secret
+SESSION_SECRET=güçlü_session_secret_buraya
+
+# Domain ayarları
+DOMAIN=filokiapi.architectaiagency.com
+root@FiloApiAppArchitect:/var/www/filokiapi/FiloAPIapp# # DATABASE_URL'nin okunup okunmadığını kontrol et
+export DATABASE_URL="postgresql://filoki_user:FilokiDB2025@localhost:5432/filoki_db"
+echo $DATABASE_URL
+
+# Drizzle kit'i environment variable ile çalıştır
+DATABASE_URL="postgresql://filoki_user:FilokiDB2025@localhost:5432/filoki_db" npx drizzle-kit push
+postgresql://filoki_user:FilokiDB2025@localhost:5432/filoki_db
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/var/www/filokiapi/FiloAPIapp/drizzle.config.ts'
+Using 'pg' driver for database querying
+
+ Warning  We've found duplicated index name across public schema. Please rename your index in either the rate_limit_buckets table or the table with the duplicated index name
+root@FiloApiAppArchitect:/var/www/filokiapi/FiloAPIapp# 
