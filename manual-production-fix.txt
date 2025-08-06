@@ -1,0 +1,53 @@
+# Production Database Fix - Manual Commands
+
+## 1. Server'a SSH bağlantısı
+ssh root@filokiapi.architectaiagency.com
+
+## 2. Proje dizinine git
+cd /var/www/filokiapi/FiloAPIapp
+
+## 3. Backup mevcut kodu
+cp -r . ../FiloAPIapp_backup_$(date +%Y%m%d_%H%M%S)
+
+## 4. Database connection dosyasını güncelle
+cat > server/db.ts << 'EOF'
+import { Pool } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import * as schema from "@shared/schema";
+
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    "DATABASE_URL must be set. Did you forget to provision a database?",
+  );
+}
+
+export const pool = new Pool({ 
+  connectionString: process.env.DATABASE_URL,
+  // Production PostgreSQL için ek ayarlar
+  ssl: process.env.NODE_ENV === 'production' ? false : undefined, // Local PostgreSQL için SSL kapalı
+  max: 10, // Maximum connection pool size
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+export const db = drizzle(pool, { schema });
+EOF
+
+## 5. pg package kurulumunu kontrol et ve kur
+npm list pg || npm install pg @types/pg
+
+## 6. Build ve restart
+npm run build
+pm2 restart filokiapi
+
+## 7. Test et
+sleep 3
+curl -s https://filokiapi.architectaiagency.com/api/getCities \
+  -H "X-API-Key: filoki-api-master-key-2025" \
+  -H "Accept: application/json" | jq '.'
+
+## 8. Logları kontrol et
+pm2 logs filokiapi --lines 20
+
+## 9. Database bağlantısını test et
+psql postgresql://filoki_user:FilokiDB2025@localhost:5432/filoki_db -c "SELECT COUNT(*) FROM cities;"
