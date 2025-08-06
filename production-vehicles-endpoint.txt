@@ -1,0 +1,156 @@
+# Vehicles endpoint to add to production routes.ts
+# Add this code BEFORE the "Ülke listesini getir" line in server/routes.ts
+
+  // Vehicles API - Public endpoint (Protected with API Key)
+  app.get("/api/vehicles", async (req, res) => {
+    try {
+      const { search, limit, offset, sortBy = 'id', sortOrder = 'asc', companyId, modelId } = req.query;
+      
+      let query = db.select({
+        id: assets.id,
+        plateNumber: assets.plateNumber,
+        modelYear: assets.modelYear,
+        chassisNo: assets.chassisNo,
+        isActive: assets.isActive,
+        createdAt: assets.createdAt
+      }).from(assets);
+
+      // Search filtering
+      if (search) {
+        query = query.where(ilike(assets.plateNumber, `%${search}%`));
+      }
+
+      // Company filtering
+      if (companyId) {
+        query = query.where(eq(assets.ownerCompanyId, Number(companyId)));
+      }
+
+      // Model filtering
+      if (modelId) {
+        query = query.where(eq(assets.modelId, Number(modelId)));
+      }
+
+      // Sorting
+      const orderColumn = sortBy === 'plateNumber' ? assets.plateNumber : assets.id;
+      const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
+      query = query.orderBy(orderDirection);
+
+      // Pagination
+      if (limit) {
+        query = query.limit(Number(limit));
+        if (offset) {
+          query = query.offset(Number(offset));
+        }
+      }
+
+      const vehicles = await query;
+      
+      res.json({
+        success: true,
+        message: "Vehicles başarıyla getirildi",
+        data: {
+          vehicles,
+          totalCount: vehicles.length,
+          pagination: {
+            limit: limit ? Number(limit) : null,
+            offset: offset ? Number(offset) : null
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Vehicles getirme hatası:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "VEHICLES_FETCH_ERROR",
+        message: "Vehicles listesi alınırken bir hata oluştu" 
+      });
+    }
+  });
+
+# Complete production update commands:
+
+# 1. First, edit routes.ts to add the vehicles endpoint
+nano server/routes.ts
+# Find the line "// Ülke listesini getir (Public API)"
+# Add the vehicles endpoint code above that line
+
+# 2. Or use sed to insert the vehicles endpoint
+# This is the automated way to add it:
+
+sed -i '/\/\/ Ülke listesini getir (Public API)/i \
+\
+  \/\/ Vehicles API - Public endpoint (Protected with API Key)\
+  app.get("\/api\/vehicles", async (req, res) => {\
+    try {\
+      const { search, limit, offset, sortBy = '\''id'\'', sortOrder = '\''asc'\'', companyId, modelId } = req.query;\
+      \
+      let query = db.select({\
+        id: assets.id,\
+        plateNumber: assets.plateNumber,\
+        modelYear: assets.modelYear,\
+        chassisNo: assets.chassisNo,\
+        isActive: assets.isActive,\
+        createdAt: assets.createdAt\
+      }).from(assets);\
+\
+      \/\/ Search filtering\
+      if (search) {\
+        query = query.where(ilike(assets.plateNumber, `%${search}%`));\
+      }\
+\
+      \/\/ Company filtering\
+      if (companyId) {\
+        query = query.where(eq(assets.ownerCompanyId, Number(companyId)));\
+      }\
+\
+      \/\/ Model filtering\
+      if (modelId) {\
+        query = query.where(eq(assets.modelId, Number(modelId)));\
+      }\
+\
+      \/\/ Sorting\
+      const orderColumn = sortBy === '\''plateNumber'\'' ? assets.plateNumber : assets.id;\
+      const orderDirection = sortOrder === '\''desc'\'' ? desc(orderColumn) : asc(orderColumn);\
+      query = query.orderBy(orderDirection);\
+\
+      \/\/ Pagination\
+      if (limit) {\
+        query = query.limit(Number(limit));\
+        if (offset) {\
+          query = query.offset(Number(offset));\
+        }\
+      }\
+\
+      const vehicles = await query;\
+      \
+      res.json({\
+        success: true,\
+        message: "Vehicles başarıyla getirildi",\
+        data: {\
+          vehicles,\
+          totalCount: vehicles.length,\
+          pagination: {\
+            limit: limit ? Number(limit) : null,\
+            offset: offset ? Number(offset) : null\
+          }\
+        }\
+      });\
+    } catch (error) {\
+      console.error("Vehicles getirme hatası:", error);\
+      res.status(500).json({ \
+        success: false,\
+        error: "VEHICLES_FETCH_ERROR",\
+        message: "Vehicles listesi alınırken bir hata oluştu" \
+      });\
+    }\
+  });\
+' server/routes.ts
+
+# 3. Build and restart
+npm run build
+pm2 restart filokiapi
+
+# 4. Test endpoints
+sleep 3
+curl https://filokiapi.architectaiagency.com/api/vehicles -H "X-API-Key: filoki-api-master-key-2025"
+curl -X POST https://filokiapi.architectaiagency.com/api/auth/login -H "Content-Type: application/json" -d '{"email":"alper.acar@architectaiagency.com","password":"Acar"}'
