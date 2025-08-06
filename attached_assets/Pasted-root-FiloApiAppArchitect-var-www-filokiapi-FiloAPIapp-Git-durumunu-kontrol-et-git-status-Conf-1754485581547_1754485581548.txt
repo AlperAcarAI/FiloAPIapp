@@ -1,0 +1,247 @@
+root@FiloApiAppArchitect:/var/www/filokiapi/FiloAPIapp# # Git durumunu kontrol et
+git status
+
+# Conflict olan dosyaları gör
+git diff --name-only --diff-filter=U
+
+# Conflict'i basit şekilde çöz - local değişiklikleri ata, remote'u al
+git reset --hard HEAD
+git pull origin main
+
+# Eğer hala sorun varsa, force reset
+git fetch origin
+git reset --hard origin/main
+
+# Şimdi dependencies kur
+npm install --include=dev
+
+# Build yap
+npm run build
+
+# PM2 restart
+pm2 restart filokiapi
+
+# Test et
+sleep 3
+curl -s https://filokiapi.architectaiagency.com/api/getCities -H "X-API-Key: filoki-api-master-key-2025"
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   .env.example
+	modified:   .gitignore
+	modified:   .replit
+	modified:   DEPLOYMENT_README.md
+	modified:   Dockerfile
+	modified:   attached_assets/202507R3_1753429379200.xlsx
+	modified:   attached_assets/Ekran Resmi 2025-07-26 18.54.32_1753545274555.png
+	modified:   attached_assets/Ekran Resmi 2025-07-26 19.11.35_1753546300500.png
+	modified:   attached_assets/Pasted--1-Tabloyu-olu-tur-CREATE-TABLE-countries-id-SERIAL-PRIMARY-KEY-Otomatik--1753173679449_1753173679450.txt
+	modified:   attached_assets/Pasted--Lookup-Reference-Tables-CREATE-TABLE-c-1753090291429_1753090291429.txt
+	modified:   attached_assets/Pasted--nsan-Kaynaklar-ID-1-e-Giri-Bildirgesi-ten-k-Bildirgesi-stifa-Belgesi-S-zle-mesi-Ki-1753452777328_1753452777329.txt
+	modified:   attached_assets/Pasted-1-Veritaban-emas-Sa-lanan-sema-sql-ve-test-veri-sql-SQL-dosyalar-yla-olu-turulmu-bir-PostgreSQL-1752824726534_1752824726535.txt
+	modified:   attached_assets/Pasted-root-FiloApiAppArchitect-curl-X-POST-http-localhost-5000-api-auth-login-H-Content-Type--1754307976327_1754307976327.txt
+	modified:   attached_assets/Pasted-root-FiloApiAppArchitect-home-root-FiloAPIapp-1-PM2-yi-yeniden-ba-lat-n-cd-home-root-FiloAPIap-1754305515862_1754305515862.txt
+	modified:   attached_assets/Pasted-root-FiloApiAppArchitect-home-root-FiloAPIapp-1-PM2-yi-yeniden-ba-lat-n-cd-home-root-FiloAPIap-1754308803986_1754308803986.txt
+	modified:   attached_assets/Pasted-root-FiloApiAppArchitect-home-root-FiloAPIapp-cd-home-root-FiloAPIapp-nce-hash-olu-turun-HASH-1754308929326_1754308929326.txt
+	modified:   attached_assets/Pasted-root-FiloApiAppArchitect-home-root-FiloAPIapp-curl-X-POST-http-localhost-5000-api-auth-login--1754308511724_1754308511724.txt
+	modified:   attached_assets/sema_1752824759359.sql
+	modified:   attached_assets/test_veri_1752824759359.sql
+	modified:   client/index.html
+	modified:   client/src/App.tsx
+	modified:   client/src/components/DocumentUploader.tsx
+	modified:   client/src/components/Header.tsx
+	modified:   client/src/components/Navigation.tsx
+	modified:   client/src/components/header.tsx
+	modified:   client/src/components/search-filters.tsx
+	modified:   client/src/components/stats-cards.tsx
+	modified:   client/src/components/ui/accordion.tsx
+	modified:   client/src/components/ui/alert-dialog.tsx
+	modified:   client/src/components/ui/alert.tsx
+	modified:   client/src/components/ui/aspect-ratio.tsx
+	modified:   client/src/components/ui/avatar.tsx
+	modified:   client/src/components/ui/badge.tsx
+	modified:   client/src/components/ui/breadcrumb.tsx
+	modified:   client/src/components/ui/button.tsx
+	modified:   client/src/components/ui/calendar.tsx
+	modified:   client/src/components/ui/card.tsx
+	modified:   client/src/components/ui/carousel.tsx
+	modified:   client/src/components/ui/chart.tsx
+	modified:   client/src/components/ui/checkbox.tsx
+	modified:   client/src/components/ui/collapsible.tsx
+	modified:   client/src/components/ui/command.tsx
+	modified:   client/src/components/ui/context-menu.tsx
+	modified:   client/src/components/ui/dialog.tsx
+	modified:   client/src/components/ui/drawer.tsx
+	modified:   client/src/components/ui/dropdown-menu.tsx
+	modified:   client/src/components/ui/form.tsx
+	modified:   client/src/components/ui/hover-card.tsx
+	modified:   client/src/components/ui/input-otp.tsx
+	modified:   client/src/components/ui/input.tsx
+	modified:   client/src/components/ui/label.tsx
+	modified:   client/src/components/ui/menubar.tsx
+	modified:   client/src/components/ui/navigation-menu.tsx
+	modified:   client/src/components/ui/pagination.tsx
+	modified:   client/src/components/ui/popover.tsx
+	modified:   client/src/components/ui/progress.tsx
+	modified:   client/src/components/ui/radio-group.tsx
+	modified:   client/src/components/ui/resizable.tsx
+	modified:   client/src/components/ui/scroll-area.tsx
+	modified:   client/src/components/ui/select.tsx
+	modified:   client/src/components/ui/separator.tsx
+	modified:   client/src/components/ui/sheet.tsx
+	modified:   client/src/components/ui/sidebar.tsx
+	modified:   client/src/components/ui/skeleton.tsx
+	modified:   client/src/components/ui/slider.tsx
+	modified:   client/src/components/ui/switch.tsx
+	modified:   client/src/components/ui/table.tsx
+	modified:   client/src/components/ui/tabs.tsx
+	modified:   client/src/components/ui/textarea.tsx
+	modified:   client/src/components/ui/toast.tsx
+	modified:   client/src/components/ui/toaster.tsx
+	modified:   client/src/components/ui/toggle-group.tsx
+	modified:   client/src/components/ui/toggle.tsx
+	modified:   client/src/components/ui/tooltip.tsx
+	modified:   client/src/hooks/use-mobile.tsx
+	modified:   client/src/hooks/use-toast.ts
+	modified:   client/src/index.css
+	modified:   client/src/lib/api.ts
+	modified:   client/src/lib/queryClient.ts
+	modified:   client/src/lib/utils.ts
+	modified:   client/src/main.tsx
+	modified:   client/src/pages/AdminTenants.tsx
+	modified:   client/src/pages/Analytics.tsx
+	modified:   client/src/pages/BulkImport.tsx
+	modified:   client/src/pages/Dashboard.tsx
+	modified:   client/src/pages/api-center.tsx
+	modified:   client/src/pages/api-details.tsx
+	modified:   client/src/pages/api-status.tsx
+	modified:   client/src/pages/api-test.tsx
+	modified:   client/src/pages/document-management.tsx
+	modified:   client/src/pages/home.tsx
+	modified:   client/src/pages/login.tsx
+	modified:   client/src/pages/not-found.tsx
+	modified:   client/src/pages/varlik-test.tsx
+	modified:   complete_data_insert.sql
+	modified:   components.json
+	modified:   data.sql
+	modified:   database_data_summary.md
+	modified:   docker-compose.yml
+	modified:   drizzle.config.ts
+	deleted:    ecosystem.config.js
+	modified:   fuel_template.csv
+	modified:   full_database.sql
+	modified:   generate-api-key-hash.js
+	modified:   nginx.conf
+	modified:   package-lock.json
+	modified:   package.json
+	modified:   personnel_template.csv
+	modified:   postcss.config.js
+	modified:   production-database-setup.sql
+	modified:   production-full-database-setup.sql
+	modified:   quick_test_data.sql
+	modified:   replit.md
+	modified:   schema.sql
+	modified:   scripts/create-tenant.js
+	modified:   server/api-analytics-middleware.ts
+	modified:   server/api-analytics-routes.ts
+	modified:   server/api-management-routes.backup.ts
+	modified:   server/api-management-routes.ts
+	modified:   server/api-security.ts
+	modified:   server/asset-routes.ts
+	modified:   server/audit-middleware.ts
+	modified:   server/audit-routes.ts
+	modified:   server/auth.ts
+	modified:   server/backend-api.ts
+	modified:   server/bulk-import-routes.ts
+	modified:   server/company-routes.ts
+	modified:   server/document-routes.ts
+	modified:   server/financial-routes.ts
+	modified:   server/fuel-routes.ts
+	modified:   server/hierarchical-auth.ts
+	modified:   server/index.ts
+	modified:   server/permission-management-routes.ts
+	modified:   server/routes.ts
+	modified:   server/security-middleware.ts
+	modified:   server/security-routes.ts
+	modified:   server/storage.ts
+	modified:   server/tenant-manager.ts
+	modified:   server/tenant-middleware.ts
+	modified:   server/tenant-routes.ts
+	modified:   server/tenant-storage.ts
+	modified:   server/trip-rental-routes.ts
+	modified:   server/vite.ts
+	modified:   shared/schema.ts
+	modified:   swagger_apis.txt
+	modified:   tailwind.config.ts
+	modified:   test.txt
+	modified:   test_personnel.txt
+	modified:   tsconfig.json
+	modified:   uploads/personnel/1/15/1753534713702_8f1d00ac_test_personnel.txt
+	modified:   vite.config.ts
+
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   server/db.ts
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.env
+	ecosystem.config.cjs
+	migrations/
+
+server/db.ts
+HEAD is now at c91a3c8 Improve application startup by ensuring necessary dependencies are installed
+From https://github.com/AlperAcarAI/FiloAPIapp
+ * branch            main       -> FETCH_HEAD
+Already up to date.
+HEAD is now at c91a3c8 Improve application startup by ensuring necessary dependencies are installed
+npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+
+added 97 packages, removed 1 package, and audited 547 packages in 6s
+
+68 packages are looking for funding
+  run `npm fund` for details
+
+12 vulnerabilities (3 low, 8 moderate, 1 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues possible (including breaking changes), run:
+  npm audit fix --force
+
+Some issues need review, and may require choosing
+a different dependency.
+
+Run `npm audit` for details.
+
+> rest-express@1.0.0 build
+> vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+
+vite v5.4.19 building for production...
+transforming (1) index.htmlBrowserslist: browsers data (caniuse-lite) is 10 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+✓ 2040 modules transformed.
+../dist/public/index.html                   0.63 kB │ gzip:   0.38 kB
+../dist/public/assets/index-nnYsetae.css   71.73 kB │ gzip:  12.37 kB
+../dist/public/assets/index-CB99cb1a.js   494.38 kB │ gzip: 143.93 kB
+✓ built in 10.01s
+
+  dist/index.js  382.7kb
+
+⚡ Done in 41ms
+Use --update-env to update environment variables
+[PM2] Applying action restartProcessId on app [filokiapi](ids: [ 0 ])
+[PM2] [filokiapi](0) ✓
+┌────┬────────────────────┬──────────┬──────┬───────────┬──────────┬──────────┐
+│ id │ name               │ mode     │ ↺    │ status    │ cpu      │ memory   │
+├────┼────────────────────┼──────────┼──────┼───────────┼──────────┼──────────┤
+│ 0  │ filokiapi          │ fork     │ 6    │ online    │ 0%       │ 21.6mb   │
+└────┴────────────────────┴──────────┴──────┴───────────┴──────────┴──────────┘
+172.70.231.10 - - [06/Aug/2025:13:04:19 +0000] "GET /api/getCities HTTP/1.1" 200 565 "-" "curl/8.12.1"
+{"success":true,"message":"Şehirler başarıyla getirildi","data":{"cities":[{"id":6,"name":"Adana"},{"id":34,"name":"Afyon"},{"id":2,"name":"Ankara"},{"id":5,"name":"Antalya"},{"id":25,"name":"Aydın"},{"id":30,"name":"Balıkesir"},{"id":17,"name":"Batman"},{"id":4,"name":"Bursa"},{"id":28,"name":"Denizli"},{"id":10,"name":"Diyarbakır"},{"id":39,"name":"Düzce"},{"id":18,"name":"Elazığ"},{"id":15,"name":"Erzurum"},{"id":12,"name":"Eskişehir"},{"id":8,"name":"Gaziantep"},{"id":35,"name":"Isparta"},{"id":22,"name":"Kahramanmaraş"},{"id":37,"name":"Karaman"},{"id":11,"name":"Kayseri"},{"id":20,"name":"Kocaeli"},{"id":7,"name":"Konya"},{"id":32,"name":"Kütahya"},{"id":41,"name":"Kırklareli"},{"id":38,"name":"Kırıkkale"},{"id":14,"name":"Malatya"},{"id":21,"name":"Manisa"},{"id":24,"name":"Mardin"},{"id":9,"name":"Mersin"},{"id":29,"name":"Muğla"},{"id":40,"name":"Osmaniye"},{"id":27,"name":"Sakarya"},{"id":23,"name":"Samsun"},{"id":26,"name":"Tekirdağ"},{"id":19,"name":"Trabzon"},{"id":13,"name":"Urfa"},{"id":31,"name":"Uşak"},{"id":16,"name":"Van"},{"id":36,"name":"Zonguldak"},{"id":33,"name":"Çorum"},{"id":1,"name":"İstanbul"},{"id":3,"name":"İzmir"}],"totalCount":41,"pagination":{"limit":null,"offset":null,"hasMore":false},"filters":{"search":null,"sortBy":"name","sortOrder":"asc"}}}root@FiloApiAppArchitect:/var/www/filokiapi/FiloAPIapp# 
