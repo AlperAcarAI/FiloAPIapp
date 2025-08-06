@@ -18,6 +18,8 @@ export default function ApiCenter() {
   const [selectedEndpoint, setSelectedEndpoint] = useState('');
   const [testResponse, setTestResponse] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [apiKey, setApiKey] = useState('filoki-api-master-key-2025');
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const { toast } = useToast();
 
   // Get all available endpoints
@@ -216,10 +218,40 @@ export default function ApiCenter() {
     };
   };
 
+  const validateApiKey = (endpointPath: string): boolean => {
+    // Check if endpoint requires API key
+    const requiresApiKey = endpointPath.includes('/secure/') || endpointPath.includes('/admin/') || endpointPath.includes('/backend/');
+    
+    if (requiresApiKey && !apiKey.trim()) {
+      toast({
+        title: "API Anahtarı Gerekli",
+        description: "Bu endpoint için API anahtarı gereklidir",
+        variant: "destructive"
+      });
+      setShowApiKeyInput(true);
+      return false;
+    }
+    
+    return true;
+  };
+
   const handleTestEndpoint = async (endpoint: string, method: string) => {
+    // Validate API key before making request
+    if (!validateApiKey(endpoint)) {
+      return;
+    }
+
     setIsLoading(true);
     try {
       let response;
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Add API key for secure endpoints
+      if (endpoint.includes('/secure/') || endpoint.includes('/admin/') || endpoint.includes('/backend/')) {
+        headers['X-API-Key'] = apiKey;
+      }
       
       switch (endpoint) {
         case '/api/getCities':
@@ -232,21 +264,39 @@ export default function ApiCenter() {
           response = await publicApi.getEndpoints();
           break;
         default:
-          // For other endpoints, make a generic fetch request
-          const fetchResponse = await fetch(endpoint);
+          // For other endpoints, make a generic fetch request with proper headers
+          const fetchOptions: RequestInit = {
+            method: method,
+            headers: headers
+          };
+          
+          const fetchResponse = await fetch(endpoint, fetchOptions);
           response = await fetchResponse.json();
+          
+          // Check if response indicates API key error
+          if (response.error === 'API_KEY_MISSING' || response.error === 'API_KEY_INVALID') {
+            toast({
+              title: "API Anahtarı Hatası",
+              description: "Geçersiz veya eksik API anahtarı",
+              variant: "destructive"
+            });
+            setShowApiKeyInput(true);
+            setTestResponse(response);
+            return;
+          }
       }
       
       setTestResponse(response);
       toast({
-        title: "Test Successful",
-        description: `${method} ${endpoint} executed successfully`
+        title: "Test Başarılı",
+        description: `${method} ${endpoint} başarıyla çalıştırıldı`
       });
     } catch (error) {
-      setTestResponse({ error: error instanceof Error ? error.message : 'Unknown error' });
+      const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen hata';
+      setTestResponse({ error: errorMessage });
       toast({
-        title: "Test Failed",
-        description: `Error testing ${endpoint}`,
+        title: "Test Başarısız",
+        description: `${endpoint} test edilirken hata oluştu: ${errorMessage}`,
         variant: "destructive"
       });
     } finally {
@@ -286,12 +336,55 @@ export default function ApiCenter() {
           <p className="text-gray-600 mt-2">Explore and test FiloApi endpoints</p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+            className={apiKey ? 'border-green-500 text-green-700' : 'border-red-500 text-red-700'}
+          >
+            <Key className="w-4 h-4 mr-2" />
+            API Key {apiKey ? '✓' : '✗'}
+          </Button>
           <Button variant="outline" onClick={() => window.open('/api/docs', '_blank')}>
             <Code className="w-4 h-4 mr-2" />
             Swagger Docs
           </Button>
         </div>
       </div>
+
+      {/* API Key Input Section */}
+      {showApiKeyInput && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center">
+              <Key className="w-5 h-5 mr-2" />
+              API Anahtarı Ayarları
+            </CardTitle>
+            <CardDescription>
+              Güvenli endpoint'leri test etmek için API anahtarınızı girin
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Input
+                type="password"
+                placeholder="API Anahtarınızı girin..."
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                className="flex-1"
+              />
+              <Button 
+                onClick={() => setShowApiKeyInput(false)}
+                variant={apiKey ? "default" : "outline"}
+              >
+                {apiKey ? 'Kaydet' : 'İptal'}
+              </Button>
+            </div>
+            <p className="text-sm text-gray-600 mt-2">
+              <strong>Varsayılan:</strong> filoki-api-master-key-2025
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="endpoints" className="space-y-4">
         <TabsList>
@@ -423,6 +516,21 @@ export default function ApiCenter() {
                         </div>
                       </div>
                     )}
+
+                    {/* API Key Status Indicator */}
+                    {(endpoint.path.includes('/secure/') || endpoint.path.includes('/admin/') || endpoint.path.includes('/backend/')) && (
+                      <div className="mb-3">
+                        <div className="flex items-center gap-2">
+                          <Shield className="w-4 h-4" />
+                          <span className="text-sm font-semibold">Güvenlik Durumu:</span>
+                          {apiKey ? (
+                            <Badge className="bg-green-100 text-green-800">API Anahtarı Mevcut</Badge>
+                          ) : (
+                            <Badge className="bg-red-100 text-red-800">API Anahtarı Gerekli</Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
@@ -445,10 +553,14 @@ export default function ApiCenter() {
                       <SelectValue placeholder="Choose an endpoint" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="/api/getCities">GET /api/getCities</SelectItem>
-                      <SelectItem value="/api/docs">GET /api/docs</SelectItem>
-                      <SelectItem value="/api/endpoints">GET /api/endpoints</SelectItem>
-                      <SelectItem value="/api/test-auth">GET /api/test-auth</SelectItem>
+                      <SelectItem value="/api/getCities">GET /api/getCities (Public)</SelectItem>
+                      <SelectItem value="/api/docs">GET /api/docs (Public)</SelectItem>
+                      <SelectItem value="/api/endpoints">GET /api/endpoints (Public)</SelectItem>
+                      <SelectItem value="/api/test-auth">GET /api/test-auth (Public)</SelectItem>
+                      <SelectItem value="/api/secure/assets">GET /api/secure/assets (API Key)</SelectItem>
+                      <SelectItem value="/api/secure/personnel">GET /api/secure/personnel (API Key)</SelectItem>
+                      <SelectItem value="/api/secure/fuel-records">GET /api/secure/fuel-records (API Key)</SelectItem>
+                      <SelectItem value="/api/backend/companies">GET /api/backend/companies (API Key)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -467,12 +579,24 @@ export default function ApiCenter() {
                 </div>
               </div>
 
+              {/* API Key Warning for secure endpoints */}
+              {selectedEndpoint && (selectedEndpoint.includes('/secure/') || selectedEndpoint.includes('/backend/')) && !apiKey && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-yellow-600" />
+                    <span className="text-sm text-yellow-700">
+                      Bu endpoint API anahtarı gerektirir. Lütfen yukarıdaki "API Key" butonuna tıklayarak anahtarınızı girin.
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <Button 
                 onClick={() => selectedEndpoint && handleTestEndpoint(selectedEndpoint, 'GET')}
                 disabled={!selectedEndpoint || isLoading}
                 className="w-full"
               >
-                {isLoading ? 'Testing...' : 'Test Endpoint'}
+                {isLoading ? 'Test Ediliyor...' : 'Endpoint Test Et'}
               </Button>
 
               {testResponse && (
