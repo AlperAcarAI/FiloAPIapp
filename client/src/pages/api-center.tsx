@@ -38,6 +38,184 @@ export default function ApiCenter() {
     queryFn: () => publicApi.getSwaggerDocs()
   });
 
+  const getEndpointExample = (endpoint: any) => {
+    const examples: Record<string, any> = {
+      'getCities': {
+        request: {
+          method: 'GET',
+          url: '/api/getCities',
+          parameters: {
+            limit: 10,
+            offset: 0,
+            search: 'İstanbul',
+            sortBy: 'name',
+            sortOrder: 'asc'
+          }
+        },
+        response: {
+          success: true,
+          message: 'Şehirler başarıyla getirildi',
+          data: [
+            { id: 1, name: 'İstanbul', countryId: 1 },
+            { id: 2, name: 'Ankara', countryId: 1 }
+          ],
+          pagination: { total: 81, limit: 10, offset: 0 }
+        }
+      },
+      'getAssets': {
+        request: {
+          method: 'GET',
+          url: '/api/secure/assets',
+          headers: { 'X-API-Key': 'filoki-api-master-key-2025' },
+          parameters: {
+            limit: 10,
+            offset: 0,
+            search: '34ABC',
+            companyId: 1,
+            workAreaId: 1,
+            activeOnly: true
+          }
+        },
+        response: {
+          success: true,
+          message: 'Varlıklar başarıyla getirildi',
+          data: [
+            {
+              id: 1,
+              licensePlate: '34ABC123',
+              carBrandId: 1,
+              carModelId: 1,
+              year: 2022,
+              companyId: 1,
+              workAreaId: 1,
+              isActive: true
+            }
+          ]
+        }
+      },
+      'createAsset': {
+        request: {
+          method: 'POST',
+          url: '/api/secure/assets',
+          headers: { 'X-API-Key': 'filoki-api-master-key-2025' },
+          body: {
+            licensePlate: '34NEW123',
+            carBrandId: 1,
+            carModelId: 1,
+            year: 2024,
+            companyId: 1,
+            workAreaId: 1,
+            ownershipTypeId: 1
+          }
+        },
+        response: {
+          success: true,
+          message: 'Varlık başarıyla oluşturuldu',
+          data: { id: 21, licensePlate: '34NEW123' }
+        }
+      },
+      'getPersonnel': {
+        request: {
+          method: 'GET',
+          url: '/api/secure/personnel',
+          headers: { 'X-API-Key': 'filoki-api-master-key-2025' },
+          parameters: {
+            limit: 10,
+            search: 'Ahmet',
+            companyId: 1,
+            positionId: 1,
+            activeOnly: true
+          }
+        },
+        response: {
+          success: true,
+          message: 'Personel listesi başarıyla getirildi',
+          data: [
+            {
+              id: 1,
+              firstName: 'Ahmet',
+              lastName: 'Yılmaz',
+              email: 'ahmet@test.com',
+              phone: '+905551234567',
+              positionId: 1,
+              companyId: 1,
+              isActive: true
+            }
+          ]
+        }
+      },
+      'login': {
+        request: {
+          method: 'POST',
+          url: '/api/auth/login',
+          body: {
+            email: 'admin@filoki.com',
+            password: 'Acar'
+          }
+        },
+        response: {
+          success: true,
+          message: 'Giriş başarılı',
+          data: {
+            token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            refreshToken: 'refresh_token_here',
+            user: {
+              id: 1,
+              email: 'admin@filoki.com',
+              accessLevel: 'CORPORATE'
+            }
+          }
+        }
+      },
+      'getFuelRecords': {
+        request: {
+          method: 'GET',
+          url: '/api/secure/fuel-records',
+          headers: { 'X-API-Key': 'filoki-api-master-key-2025' },
+          parameters: {
+            limit: 10,
+            assetId: 1,
+            startDate: '2024-01-01',
+            endDate: '2024-12-31',
+            fuelType: 'DIESEL'
+          }
+        },
+        response: {
+          success: true,
+          message: 'Yakıt kayıtları başarıyla getirildi',
+          data: [
+            {
+              id: 1,
+              assetId: 1,
+              personnelId: 1,
+              fuelType: 'DIESEL',
+              liters: 65.5,
+              pricePerLiter: 28.50,
+              totalCost: 1866.75,
+              stationName: 'Petrol Ofisi Levent',
+              fuelDate: '2024-12-01T08:30:00Z'
+            }
+          ]
+        }
+      }
+    };
+
+    return examples[endpoint.name] || {
+      request: {
+        method: endpoint.method,
+        url: endpoint.path,
+        headers: endpoint.path.includes('/secure/') ? { 'X-API-Key': 'filoki-api-master-key-2025' } : undefined,
+        parameters: endpoint.method === 'GET' ? { limit: 10, offset: 0 } : undefined,
+        body: endpoint.method !== 'GET' ? { /* request_body */ } : undefined
+      },
+      response: {
+        success: true,
+        message: 'İşlem başarılı',
+        data: {}
+      }
+    };
+  };
+
   const handleTestEndpoint = async (endpoint: string, method: string) => {
     setIsLoading(true);
     try {
@@ -143,37 +321,112 @@ export default function ApiCenter() {
           </div>
 
           <div className="grid gap-4">
-            {filteredEndpoints.map((endpoint) => (
-              <Card key={endpoint.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Badge className={getMethodColor(endpoint.method)}>
-                        {endpoint.method}
-                      </Badge>
-                      <code className="text-sm font-mono">{endpoint.path}</code>
+            {filteredEndpoints.map((endpoint) => {
+              const example = getEndpointExample(endpoint);
+              return (
+                <Card key={endpoint.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Badge className={getMethodColor(endpoint.method)}>
+                          {endpoint.method}
+                        </Badge>
+                        <code className="text-sm font-mono">{endpoint.path}</code>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge className={getStatusColor(endpoint.status)}>
+                          {endpoint.status}
+                        </Badge>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="outline">
+                              <Code className="w-3 h-3 mr-1" />
+                              JSON
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
+                            <DialogHeader>
+                              <DialogTitle>{endpoint.name} - JSON Örnekleri</DialogTitle>
+                              <DialogDescription>
+                                İstek ve cevap formatları
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <h3 className="text-lg font-semibold mb-2">İstek (Request)</h3>
+                                <div className="bg-gray-50 p-4 rounded-md">
+                                  <pre className="text-sm overflow-x-auto">
+                                    {JSON.stringify(example.request, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
+                              <div>
+                                <h3 className="text-lg font-semibold mb-2">Cevap (Response)</h3>
+                                <div className="bg-gray-50 p-4 rounded-md">
+                                  <pre className="text-sm overflow-x-auto">
+                                    {JSON.stringify(example.response, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
+                              {example.request.parameters && (
+                                <div>
+                                  <h3 className="text-lg font-semibold mb-2">Parametreler</h3>
+                                  <div className="bg-blue-50 p-4 rounded-md">
+                                    <pre className="text-sm overflow-x-auto">
+                                      {JSON.stringify(example.request.parameters, null, 2)}
+                                    </pre>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleTestEndpoint(endpoint.path, endpoint.method)}
+                          disabled={isLoading || endpoint.status !== 'active'}
+                        >
+                          <Play className="w-3 h-3 mr-1" />
+                          Test
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge className={getStatusColor(endpoint.status)}>
-                        {endpoint.status}
-                      </Badge>
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleTestEndpoint(endpoint.path, endpoint.method)}
-                        disabled={isLoading || endpoint.status !== 'active'}
-                      >
-                        <Play className="w-3 h-3 mr-1" />
-                        Test
-                      </Button>
-                    </div>
-                  </div>
-                  <CardTitle className="text-lg">{endpoint.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>{endpoint.description}</CardDescription>
-                </CardContent>
-              </Card>
-            ))}
+                    <CardTitle className="text-lg">{endpoint.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="mb-3">{endpoint.description}</CardDescription>
+                    
+                    {/* Show parameters inline */}
+                    {example.request.parameters && (
+                      <div className="mb-3">
+                        <h4 className="text-sm font-semibold mb-2">Yaygın Parametreler:</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.keys(example.request.parameters).map((param) => (
+                            <Badge key={param} variant="outline" className="text-xs">
+                              {param}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Show headers if API key required */}
+                    {example.request.headers && (
+                      <div className="mb-3">
+                        <h4 className="text-sm font-semibold mb-2">Gerekli Headers:</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.keys(example.request.headers).map((header) => (
+                            <Badge key={header} variant="outline" className="text-xs bg-red-50">
+                              {header}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </TabsContent>
 
