@@ -297,18 +297,124 @@ export default function ApiCenter() {
       }
     };
 
-    return examples[endpoint.name] || {
+    // Create fallback example if not in predefined examples
+    const fallbackExample = examples[endpoint.name];
+    if (fallbackExample) {
+      return fallbackExample;
+    }
+
+    // Generate dynamic sample data based on endpoint path
+    let sampleBody = undefined;
+    if (['POST', 'PUT', 'PATCH'].includes(endpoint.method)) {
+      if (endpoint.path.includes('personnel')) {
+        sampleBody = {
+          firstName: "Ahmet",
+          lastName: "Yılmaz",
+          email: "ahmet.yilmaz@sirket.com",
+          phone: "05551234567",
+          personnelNo: "PER001",
+          companyId: 1,
+          positionId: 1,
+          departmentId: 1
+        };
+      } else if (endpoint.path.includes('asset')) {
+        sampleBody = {
+          assetNo: "AST001",
+          licensePlate: "34ABC123",
+          carBrandId: 1,
+          carModelId: 1,
+          companyId: 1,
+          workAreaId: 1,
+          year: 2023,
+          ownershipTypeId: 1
+        };
+      } else if (endpoint.path.includes('company')) {
+        sampleBody = {
+          name: "Örnek Şirket A.Ş.",
+          taxNo: "1234567890",
+          taxOffice: "Beşiktaş Vergi Dairesi",
+          address: "İstanbul, Türkiye",
+          phone: "02121234567",
+          email: "info@orneksirket.com"
+        };
+      } else if (endpoint.path.includes('fuel')) {
+        sampleBody = {
+          assetId: 1,
+          personnelId: 1,
+          fuelType: "DIESEL",
+          liters: 65.5,
+          pricePerLiter: 28.50,
+          totalCost: 1866.75,
+          stationName: "Petrol Ofisi Levent",
+          fuelDate: "2024-12-01T08:30:00Z"
+        };
+      } else if (endpoint.path.includes('assignment')) {
+        sampleBody = {
+          personnelId: 1,
+          assetId: 1,
+          assignedDate: "2024-12-01T09:00:00Z",
+          assignmentType: "TEMPORARY",
+          notes: "Geçici görevlendirme"
+        };
+      } else if (endpoint.path.includes('maintenance')) {
+        sampleBody = {
+          assetId: 1,
+          maintenanceType: "PERIODIC",
+          description: "Periyodik bakım",
+          cost: 1500.00,
+          maintenanceDate: "2024-12-01T10:00:00Z",
+          serviceProvider: "Yetkili Servis"
+        };
+      } else if (endpoint.path.includes('violation')) {
+        sampleBody = {
+          assetId: 1,
+          personnelId: 1,
+          violationType: "SPEED",
+          description: "Hız limiti aşımı",
+          violationDate: "2024-12-01T14:30:00Z",
+          fineAmount: 500.00,
+          location: "İstanbul - Bosphorus Köprüsü"
+        };
+      } else if (endpoint.path.includes('auth')) {
+        if (endpoint.path.includes('login')) {
+          sampleBody = {
+            email: "user@example.com",
+            password: "password123"
+          };
+        } else if (endpoint.path.includes('register')) {
+          sampleBody = {
+            email: "newuser@example.com",
+            password: "password123",
+            firstName: "Yeni",
+            lastName: "Kullanıcı",
+            companyId: 1
+          };
+        }
+      } else {
+        sampleBody = {
+          "name": "Örnek Veri",
+          "description": "Bu endpoint için örnek veri",
+          "companyId": 1,
+          "isActive": true
+        };
+      }
+    }
+
+    return {
       request: {
         method: endpoint.method,
         url: endpoint.path,
         headers: endpoint.path.includes('/secure/') ? { 'X-API-Key': 'filoki-api-master-key-2025' } : undefined,
         parameters: endpoint.method === 'GET' ? { limit: 10, offset: 0 } : undefined,
-        body: endpoint.method !== 'GET' ? { /* request_body */ } : undefined
+        body: sampleBody
       },
       response: {
         success: true,
         message: 'İşlem başarılı',
-        data: {}
+        data: {
+          id: 1,
+          message: "Örnek başarılı cevap"
+        }
       }
     };
   };
