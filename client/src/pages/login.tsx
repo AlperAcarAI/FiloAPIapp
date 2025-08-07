@@ -158,7 +158,7 @@ export default function Login() {
                     <Input
                       id="login-username"
                       type="text"
-                      placeholder="demo@test.com"
+                      placeholder="example@example.com"
                       className="pl-10"
                       value={loginData.username}
                       onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
@@ -174,7 +174,7 @@ export default function Login() {
                     <Input
                       id="login-password"
                       type="password"
-                      placeholder="demo123"
+                      placeholder="Password"
                       className="pl-10"
                       value={loginData.password}
                       onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
@@ -270,14 +270,7 @@ export default function Login() {
             </TabsContent>
           </Tabs>
           
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <h3 className="font-semibold text-sm text-blue-800 mb-2">🔧 Demo Giriş Bilgileri:</h3>
-            <div className="space-y-1 text-sm text-blue-700">
-              <p><strong>Email:</strong> demo@test.com</p>
-              <p><strong>Şifre:</strong> demo123</p>
-              <p className="text-xs text-blue-600 mt-2">Bu bilgileri yukarıdaki form alanlarına girin</p>
-            </div>
-          </div>
+          
         </CardContent>
       </Card>
     </div>
