@@ -13,7 +13,7 @@ import jwt from "jsonwebtoken";
 import { registerApiManagementRoutes } from "./api-management-routes";
 import documentRoutes from "./document-routes.js";
 import companyRoutes from "./company-routes.js";
-import vehicleRoutes from './vehicle-routes.js';
+import assetRoutes from "./asset-routes.js";
 import apiAnalyticsRoutes from "./api-analytics-routes.js";
 import { apiAnalyticsMiddleware } from "./api-analytics-middleware.js";
 import fuelRoutes from "./fuel-routes.js";
@@ -370,19 +370,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Search filtrelemesi
       if (search) {
-        query.where(ilike(cities.name, `%${search}%`));
+        query = query.where(ilike(cities.name, `%${search}%`));
       }
 
       // Sıralama
       const orderColumn = sortBy === 'id' ? cities.id : cities.name;
       const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
-      query.orderBy(orderDirection);
+      query = query.orderBy(orderDirection);
 
       // Sayfalama
       if (limit) {
-        query.limit(Number(limit));
+        query = query.limit(Number(limit));
         if (offset) {
-          query.offset(Number(offset));
+          query = query.offset(Number(offset));
         }
       }
 
@@ -391,7 +391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Toplam sayı (filtreleme dahil)
       let totalQuery = db.select({ count: sql`count(*)`.as('count') }).from(cities);
       if (search) {
-        totalQuery.where(ilike(cities.name, `%${search}%`));
+        totalQuery = totalQuery.where(ilike(cities.name, `%${search}%`));
       }
       const totalResult = await totalQuery;
       const totalCount = Number(totalResult[0].count);
@@ -440,29 +440,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Search filtering
       if (search) {
-        query.where(ilike(assets.plateNumber, `%${search}%`));
+        query = query.where(ilike(assets.plateNumber, `%${search}%`));
       }
 
       // Company filtering
       if (companyId) {
-        query.where(eq(assets.ownerCompanyId, Number(companyId)));
+        query = query.where(eq(assets.ownerCompanyId, Number(companyId)));
       }
 
       // Model filtering
       if (modelId) {
-        query.where(eq(assets.modelId, Number(modelId)));
+        query = query.where(eq(assets.modelId, Number(modelId)));
       }
 
       // Sorting
       const orderColumn = sortBy === 'plateNumber' ? assets.plateNumber : assets.id;
       const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
-      query.orderBy(orderDirection);
+      query = query.orderBy(orderDirection);
 
       // Pagination
       if (limit) {
-        query.limit(Number(limit));
+        query = query.limit(Number(limit));
         if (offset) {
-          query.offset(Number(offset));
+          query = query.offset(Number(offset));
         }
       }
 
@@ -490,6 +490,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
+  // Vehicles API - Public endpoint
+  app.get("/api/vehicles", async (req, res) => {
+    try {
+      const vehicles = await db.select().from(assets).limit(10);
+      res.json({
+        success: true,
+        message: "Vehicles başarıyla getirildi",
+        data: { vehicles }
+      });
+    } catch (error) {
+      console.error("Vehicles error:", error);
+      res.status(500).json({
+        success: false,
+        error: "VEHICLES_FETCH_ERROR",
+        message: "Vehicles listesi alınırken bir hata oluştu"
+      });
+    }
+  });
+
   // Ülke listesini getir (Public API)
   app.get("/api/getCountries", async (req: Request, res: Response) => {
     try {
@@ -503,10 +523,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Base query
       let query = db.select().from(countries);
+      let whereQuery = db.select().from(countries);
       
       // Add search filter if provided
       if (search && typeof search === 'string') {
-        query.where(ilike(countries.name, `%${search}%`));
+        const searchCondition = ilike(countries.name, `%${search}%`);
+        query = query.where(searchCondition);
+        whereQuery = whereQuery.where(searchCondition);
       }
       
       // Get total count for pagination
@@ -521,14 +544,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
                           : finalSortBy === 'phone_code' ? countries.phoneCode
                           : countries.id;
       
-      query.orderBy(finalSortOrder === 'desc' ? desc(orderByColumn) : asc(orderByColumn));
+      query = finalSortOrder === 'desc' 
+        ? query.orderBy(desc(orderByColumn))
+        : query.orderBy(asc(orderByColumn));
       
       // Add pagination if provided
       if (limit && typeof limit === 'string' && !isNaN(Number(limit))) {
-        query.limit(Number(limit));
+        query = query.limit(Number(limit));
         
         if (offset && typeof offset === 'string' && !isNaN(Number(offset))) {
-          query.offset(Number(offset));
+          query = query.offset(Number(offset));
         }
       }
       
@@ -767,8 +792,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Company Management Route'larını kaydet
   app.use('/api/secure', companyRoutes);
 
-  // Vehicle Management Route'larını kaydet
-  app.use('/api/secure', vehicleRoutes);
+  // Asset Management Route'larını kaydet
+  app.use('/api/secure', assetRoutes);
 
   // Audit Route'larını kaydet
   const { registerAuditRoutes } = await import("./audit-routes");

@@ -594,7 +594,7 @@ export const assetsPersonelAssignment = pgTable("assets_personel_assignment", {
 
 export const assets = pgTable("assets", {
   id: serial("id").primaryKey(),
-  modelId: integer("model_id").notNull().references(() => carModels.id),
+  modelId: integer("model_id").references(() => carModels.id),
   modelYear: integer("model_year").notNull(),
   plateNumber: varchar("plate_number", { length: 20 }).notNull().unique(),
   chassisNo: varchar("chassis_no", { length: 50 }),
@@ -609,6 +609,8 @@ export const assets = pgTable("assets", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   updatedBy: integer("updated_by").references(() => personnel.id),
   isActive: boolean("is_active").notNull().default(true),
+  
+  
 });
 
 // Assets Zod schemas
@@ -618,9 +620,6 @@ export const insertAssetSchema = createInsertSchema(assets).omit({
   updatedAt: true,
   createdBy: true,
   updatedBy: true,
-}).extend({
-  modelYear: z.number().int().min(1950).max(new Date().getFullYear() + 1),
-  plateNumber: z.string().min(1).max(20),
 });
 
 export const updateAssetSchema = createInsertSchema(assets).omit({
@@ -629,9 +628,6 @@ export const updateAssetSchema = createInsertSchema(assets).omit({
   updatedAt: true,
   createdBy: true,
   updatedBy: true,
-}).extend({
-  modelYear: z.number().int().min(1950).max(new Date().getFullYear() + 1).optional(),
-  plateNumber: z.string().min(1).max(20).optional(),
 }).partial();
 
 export type InsertAsset = z.infer<typeof insertAssetSchema>;
@@ -1493,4 +1489,3 @@ export const documentUploadSchema = z.object({
 }).refine(data => data.assetId || data.personnelId, {
   message: "Either assetId or personnelId must be provided"
 });
-
