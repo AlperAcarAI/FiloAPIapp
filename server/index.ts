@@ -9,9 +9,15 @@ import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 
-// Log dizinini oluştur
-const logDirectory = '/var/www/filokiapi/FiloAPIapp/logs';
-fs.existsSync(logDirectory) || fs.mkdirSync(logDirectory);
+// Log dizinini oluştur (development için relative path)
+const logDirectory = process.env.NODE_ENV === 'production' 
+  ? '/var/www/filokiapi/FiloAPIapp/logs' 
+  : './logs';
+
+// Dizini recursive olarak oluştur
+if (!fs.existsSync(logDirectory)) {
+  fs.mkdirSync(logDirectory, { recursive: true });
+}
 
 // Dönen log dosyası için bir stream oluştur
 const accessLogStream = createStream('access.log', {

@@ -809,7 +809,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Proxy Route'larını kaydet
   const proxyRoutes = await import("./proxy-routes.js");
-  app.use(proxyRoutes.default);
+  app.use("/api/proxy", proxyRoutes.default);
 
   const httpServer = createServer(app);
   return httpServer;
