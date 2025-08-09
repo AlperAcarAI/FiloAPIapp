@@ -85,6 +85,19 @@ function isDomainAllowed(requestOrigin: string, allowedDomains: string[]): boole
   
   const normalizedOrigin = requestOrigin.toLowerCase().trim();
   
+  // Development ortamında localhost'a ve IP adreslerine izin ver
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  if (isDevelopment) {
+    const isLocalhost = normalizedOrigin.includes('localhost') || 
+                       normalizedOrigin.includes('127.0.0.1') ||
+                       normalizedOrigin.includes('0.0.0.0') ||
+                       normalizedOrigin.startsWith('http://localhost') ||
+                       normalizedOrigin.startsWith('https://localhost');
+    if (isLocalhost) {
+      return true;
+    }
+  }
+  
   return allowedDomains.some(allowedDomain => {
     const normalizedAllowed = allowedDomain.toLowerCase().trim();
     
