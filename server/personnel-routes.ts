@@ -9,14 +9,14 @@ import {
 // Custom validation schema that accepts tcNo as string and converts to bigint
 const personnelCreateSchema = z.object({
   tcNo: z.string().optional().transform((val) => val ? BigInt(val) : undefined),
-  name: z.string().max(50),
-  surname: z.string().max(50),
-  birthdate: z.string().optional().transform((val) => val ? val : undefined),
-  nationId: z.number().int().optional(),
-  birthplaceId: z.number().int().optional(),
-  address: z.string().max(255).optional(),
-  phoneNo: z.string().max(50).optional(),
-  status: z.string().max(20).optional(),
+  name: z.string().min(1).max(50),
+  surname: z.string().min(1).max(50),
+  birthdate: z.string().optional().nullable(),
+  nationId: z.number().int().positive().optional().nullable(),
+  birthplaceId: z.number().int().positive().optional().nullable(),
+  address: z.string().max(255).optional().nullable(),
+  phoneNo: z.string().max(50).optional().nullable(),
+  status: z.string().max(20).optional().nullable(),
   isActive: z.boolean().optional().default(true)
 });
 import { z } from 'zod';
