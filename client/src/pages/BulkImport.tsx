@@ -88,7 +88,7 @@ export default function BulkImport() {
     const checkStatus = async () => {
       try {
         const response = await fetch(`/api/secure/bulk-import/status/${importId}`, {
-          headers: { 'X-API-Key': apiKey || 'ak_test123key' }
+          headers: { 'X-API-Key': apiKey }
         });
         
         if (response.ok) {
@@ -132,7 +132,7 @@ export default function BulkImport() {
     try {
       const response = await fetch(`/api/secure/bulk-import/stop/${importId}`, {
         method: 'POST',
-        headers: { 'X-API-Key': apiKey || 'ak_test123key' }
+        headers: { 'X-API-Key': apiKey }
       });
       
       if (response.ok) {
@@ -187,7 +187,7 @@ export default function BulkImport() {
     try {
       const response = await fetch(`/api/secure/bulk-import/template/${tableName}`, {
         headers: {
-          'X-API-Key': apiKey || 'ak_test123key'
+          'X-API-Key': apiKey
         }
       });
       
@@ -257,7 +257,7 @@ export default function BulkImport() {
         method: 'POST',
         body: formData,
         headers: {
-          'X-API-Key': apiKey || 'test_hash_123'
+          'X-API-Key': apiKey
         }
       });
 
