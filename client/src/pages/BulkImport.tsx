@@ -230,7 +230,7 @@ export default function BulkImport() {
         method: 'POST',
         body: formData,
         headers: {
-          'X-API-Key': 'ak_test123key'
+          'X-API-Key': 'test_hash_123'
         }
       });
 
