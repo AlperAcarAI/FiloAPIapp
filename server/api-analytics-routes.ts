@@ -116,9 +116,9 @@ router.get('/stats/endpoints', authenticateToken, async (req, res) => {
 });
 
 // 3. Günlük kullanım trendi
-router.get('/stats/daily', async (req, res) => {
+router.get('/stats/daily', authenticateToken, async (req, res) => {
   try {
-    const clientId = req.apiClient?.id;
+    const userId = (req as any).user?.id;
     const { days = 30 } = req.query;
     
     const daysAgo = new Date();
@@ -134,10 +134,7 @@ router.get('/stats/daily', async (req, res) => {
         totalDataTransferred: sum(apiUsageStats.totalDataTransferredBytes)
       })
       .from(apiUsageStats)
-      .where(and(
-        clientId ? eq(apiUsageStats.apiClientId, clientId) : undefined,
-        gte(apiUsageStats.usageDate, daysAgo.toISOString().split('T')[0])
-      ))
+      .where(gte(apiUsageStats.usageDate, daysAgo.toISOString().split('T')[0]))
       .groupBy(apiUsageStats.usageDate)
       .orderBy(asc(apiUsageStats.usageDate));
 
@@ -157,9 +154,9 @@ router.get('/stats/daily', async (req, res) => {
 });
 
 // 4. Detaylı log kayıtları (sayfalama ile)
-router.get('/logs', async (req, res) => {
+router.get('/logs', authenticateToken, async (req, res) => {
   try {
-    const clientId = req.apiClient?.id;
+    const userId = (req as any).user?.id;
     const { 
       page = 1, 
       limit = 50, 
@@ -173,7 +170,6 @@ router.get('/logs', async (req, res) => {
     const offset = (Number(page) - 1) * Number(limit);
     
     let whereConditions = [];
-    if (clientId) whereConditions.push(eq(apiUsageLogs.apiClientId, clientId));
     if (endpoint) whereConditions.push(eq(apiUsageLogs.endpoint, endpoint as string));
     if (method) whereConditions.push(eq(apiUsageLogs.method, method as string));
     if (statusCode) whereConditions.push(eq(apiUsageLogs.statusCode, Number(statusCode)));
