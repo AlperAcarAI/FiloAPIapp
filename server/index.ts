@@ -1,9 +1,23 @@
  import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
+import morgan from "morgan";
+import path from "path";
+import fs from "fs";
+import { createStream } from "rotating-file-stream";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+
+// Log dizinini oluştur
+const logDirectory = '/var/www/filokiapi/FiloAPIapp/logs';
+fs.existsSync(logDirectory) || fs.mkdirSync(logDirectory);
+
+// Dönen log dosyası için bir stream oluştur
+const accessLogStream = createStream('access.log', {
+  interval: '1d', // her gün döndür
+  path: logDirectory
+});
 
 // CORS ayarları - Production domain için
 app.use((req, res, next) => {
@@ -33,35 +47,9 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
-    }
-  });
-
-  next();
-});
+// Morgan'ı hem konsola hem de dosyaya loglama yapacak şekilde ayarla
+app.use(morgan('dev')); // Konsola loglama
+app.use(morgan('combined', { stream: accessLogStream })); // Dosyaya loglama
 
 (async () => {
   const server = await registerRoutes(app);
