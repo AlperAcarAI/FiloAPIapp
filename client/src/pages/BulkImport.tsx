@@ -80,7 +80,22 @@ export default function BulkImport() {
   const pollImportStatus = async (importId: string) => {
     const checkStatus = async () => {
       try {
-        const result = await apiRequest(`/api/secure/bulk-import/status/${importId}`);
+        const authToken = localStorage.getItem('authToken');
+        if (!authToken) return;
+        
+        const response = await fetch(`/api/secure/bulk-import/status/${importId}`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          console.log('Status endpoint error:', response.status);
+          return;
+        }
+        
+        const result = await response.json();
         const status: ImportStatus = result.data;
         
         setActiveImports(prev => {
@@ -91,7 +106,7 @@ export default function BulkImport() {
         });
         
         if (status.status === 'processing') {
-          setTimeout(checkStatus, 3000);
+          setTimeout(checkStatus, 2000);
         } else {
           if (status.status === 'completed') {
             toast({
