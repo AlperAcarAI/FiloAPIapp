@@ -160,7 +160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Yeni token çifti oluştur
       const tokens = await generateTokenPair(
-        { id: tokenData.userId, email: tokenData.userEmail },
+        { id: tokenData.userId, email: tokenData.username },
         ipAddress,
         userAgent
       );
