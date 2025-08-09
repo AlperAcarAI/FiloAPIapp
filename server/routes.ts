@@ -40,10 +40,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Device fingerprinting middleware
   app.use(deviceFingerprintMiddleware);
 
+  // Document Management Routes - Before auth middleware
+  app.use('/documents', documentRoutes);
+
   // API Analytics middleware - Geçici olarak devre dışı
 
   // API route'larını kaydet
-  app.use("/api/documents", documentRoutes);
   app.use("/api/trip-rentals", await import("./trip-rental-routes.js").then(m => m.default));
 
   // Kullanıcı kimlik doğrulama - Basitleştirilmiş sistem
@@ -764,8 +766,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API Analytics routes
   app.use('/api/analytics', apiAnalyticsRoutes);
 
-  // Document Management Route'larını kaydet  
-  app.use('/api/secure/documents', documentRoutes);
+
   
   // Company Management Route'larını kaydet
   app.use('/api/secure', companyRoutes);

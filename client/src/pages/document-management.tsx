@@ -26,18 +26,27 @@ const DocumentManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDocType, setSelectedDocType] = useState<string>('');
 
-  // Dokuman kategorilerini getir
-  const { data: docTypesData, isLoading: docTypesLoading } = useQuery({
-    queryKey: ['/api/secure/getDocTypes'],
+  // Ana dokuman tiplerini getir
+  const { data: mainDocTypesData, isLoading: mainDocTypesLoading } = useQuery({
+    queryKey: ['/documents/main-doc-types'],
     queryFn: async () => {
-      const response = await fetch('/api/secure/getDocTypes', {
-        headers: {
-          'X-API-Key': '' // API key gerekli
-        }
-      });
-      if (!response.ok) throw new Error('Kategoriler yüklenemedi');
+      const response = await fetch('/documents/main-doc-types');
+      if (!response.ok) throw new Error('Ana kategoriler yüklenemedi');
       return response.json();
     }
+  });
+
+  // Alt dokuman tiplerini getir (selected main type'a göre)
+  const [selectedMainType, setSelectedMainType] = useState<string>('');
+  const { data: subDocTypesData, isLoading: subDocTypesLoading } = useQuery({
+    queryKey: ['/documents/types', selectedMainType],
+    queryFn: async () => {
+      if (!selectedMainType) return { success: true, data: [] };
+      const response = await fetch(`/documents/types/${selectedMainType}`);
+      if (!response.ok) throw new Error('Alt kategoriler yüklenemedi');
+      return response.json();
+    },
+    enabled: !!selectedMainType
   });
 
   // Asset dokümanlarını getir
@@ -67,7 +76,8 @@ const DocumentManagement = () => {
     { id: 3, plateNumber: '35DEF456', modelName: 'Volkswagen Crafter' }
   ];
 
-  const docTypes = docTypesData?.data?.docTypes || [];
+  const mainDocTypes = mainDocTypesData?.data || [];
+  const subDocTypes = subDocTypesData?.data || [];
   const documents = documentsData?.data?.documents || [];
 
   // Dosya tipine göre icon
@@ -167,18 +177,63 @@ const DocumentManagement = () => {
 
         {/* Upload Tab */}
         <TabsContent value="upload" className="space-y-4">
-          {docTypesLoading ? (
-            <div className="flex items-center justify-center p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-            </div>
-          ) : (
-            <DocumentUploader
-              assetId={selectedAssetId}
-              docTypes={docTypes}
-              onUploadSuccess={() => {
-                refetchDocuments();
-              }}
-            />
+          <Card>
+            <CardHeader>
+              <CardTitle>Ana Dokuman Kategorileri</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {mainDocTypesLoading ? (
+                  <div className="col-span-full flex items-center justify-center p-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                  </div>
+                ) : (
+                  mainDocTypes.map((mainType: any) => (
+                    <Button
+                      key={mainType.id}
+                      variant={selectedMainType === mainType.id.toString() ? "default" : "outline"}
+                      onClick={() => setSelectedMainType(mainType.id.toString())}
+                      className="h-auto p-4 text-left justify-start"
+                    >
+                      <div>
+                        <div className="font-medium">{mainType.name}</div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          Ana kategori
+                        </div>
+                      </div>
+                    </Button>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {selectedMainType && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Alt Dokuman Tipleri</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+                  {subDocTypesLoading ? (
+                    <div className="col-span-full flex items-center justify-center p-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    </div>
+                  ) : (
+                    subDocTypes.map((subType: any) => (
+                      <Button
+                        key={subType.id}
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto p-3 text-left justify-start text-xs"
+                      >
+                        {subType.name}
+                      </Button>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 
@@ -207,13 +262,11 @@ const DocumentManagement = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">Tüm kategoriler</SelectItem>
-                    {docTypes.map((type: any) => 
-                      type.subTypes.map((subType: any) => (
-                        <SelectItem key={subType.id} value={subType.id.toString()}>
-                          {type.name} / {subType.name}
-                        </SelectItem>
-                      ))
-                    )}
+                    {subDocTypes.map((subType: any) => (
+                      <SelectItem key={subType.id} value={subType.id.toString()}>
+                        {subType.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
 
