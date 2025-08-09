@@ -48,6 +48,7 @@ export default function Login() {
 
       if (data.success && data.data) {
         localStorage.setItem('authToken', data.data.accessToken);
+        localStorage.setItem('refreshToken', data.data.refreshToken);
         localStorage.setItem('user', JSON.stringify(data.data.user));
         
         toast({

@@ -169,7 +169,7 @@ export default function BulkImport() {
     try {
       const response = await fetch(`/api/secure/bulk-import/template/${tableName}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         }
       });
       
