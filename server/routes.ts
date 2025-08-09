@@ -807,6 +807,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Security Route'larını kaydet (Advanced Security System)
   registerSecurityRoutes(app);
 
+  // Proxy Route'larını kaydet
+  const proxyRoutes = await import("./proxy-routes.js");
+  app.use(proxyRoutes.default);
+
   const httpServer = createServer(app);
   return httpServer;
 }
