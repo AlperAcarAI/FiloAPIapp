@@ -66,6 +66,95 @@ function stopAllImports() {
 
 /**
  * @swagger
+ * /api/secure/bulk-import/templates:
+ *   get:
+ *     summary: CSV Template Listesi
+ *     description: Bulk import için kullanılabilir CSV şablonlarını döndürür
+ *     tags: [Bulk Import]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: Template listesi
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     templates:
+ *                       type: array
+ */
+router.get('/bulk-import/templates',
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const templates = [
+        {
+          name: 'assets',
+          displayName: 'Varlık Listesi',
+          description: 'Araç ve ekipman varlıklarının toplu yüklenmesi için şablon',
+          requiredFields: ['plateNumber', 'chassisNo', 'assetType', 'brand', 'model'],
+          optionalFields: ['year', 'fuelType', 'department', 'location'],
+          sampleFile: '/templates/assets_template.csv'
+        },
+        {
+          name: 'personnel', 
+          displayName: 'Personel Listesi',
+          description: 'Personel bilgilerinin toplu yüklenmesi için şablon',
+          requiredFields: ['firstName', 'lastName', 'email', 'department'],
+          optionalFields: ['phone', 'position', 'startDate', 'salary'],
+          sampleFile: '/templates/personnel_template.csv'
+        },
+        {
+          name: 'companies',
+          displayName: 'Şirket Listesi', 
+          description: 'Şirket bilgilerinin toplu yüklenmesi için şablon',
+          requiredFields: ['name', 'taxNo', 'taxOffice'],
+          optionalFields: ['address', 'phone', 'email', 'cityId'],
+          sampleFile: '/templates/companies_template.csv'
+        },
+        {
+          name: 'fuel_records',
+          displayName: 'Yakıt Kayıtları',
+          description: 'Yakıt alım kayıtlarının toplu yüklenmesi için şablon', 
+          requiredFields: ['assetId', 'fuelAmount', 'fuelCost', 'fuelDate'],
+          optionalFields: ['location', 'odometer', 'notes'],
+          sampleFile: '/templates/fuel_template.csv'
+        },
+        {
+          name: 'car_brands_models',
+          displayName: 'Araç Marka/Model',
+          description: 'Araç marka ve model bilgilerinin toplu yüklenmesi için şablon',
+          requiredFields: ['brandName', 'modelName'],
+          optionalFields: ['year', 'engineSize', 'fuelType'],
+          sampleFile: '/templates/car_brands_models_template.csv'
+        }
+      ];
+
+      res.json({
+        success: true,
+        message: 'Bulk import şablonları başarıyla getirildi',
+        data: { templates }
+      });
+
+    } catch (error) {
+      console.error('Template listesi hatası:', error);
+      res.status(500).json({
+        success: false,
+        error: 'TEMPLATE_ERROR',
+        message: 'Şablon listesi getirilemedi'
+      });
+    }
+  }
+);
+
+/**
+ * @swagger
  * /api/secure/bulk-import/csv:
  *   post:
  *     summary: CSV Bulk Import
