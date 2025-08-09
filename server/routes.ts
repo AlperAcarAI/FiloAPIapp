@@ -15,6 +15,8 @@ import documentRoutes from "./document-routes.js";
 import companyRoutes from "./company-routes.js";
 import vehicleRoutes from './vehicle-routes.js';
 import personnelRoutes from './personnel-routes.js';
+import workAreaRoutes from './work-area-routes.js';
+import positionRoutes from './position-routes.js';
 import apiAnalyticsRoutes from "./api-analytics-routes.js";
 import { apiAnalyticsMiddleware } from "./api-analytics-middleware.js";
 import fuelRoutes from "./fuel-routes.js";
@@ -773,6 +775,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Personnel Management Route'larını kaydet
   app.use('/api/secure', personnelRoutes);
+  
+  // Work Area Management Route'larını kaydet
+  app.use('/api/secure', workAreaRoutes);
+  
+  // Position Management Route'larını kaydet
+  app.use('/api/secure', positionRoutes);
 
   // Audit Route'larını kaydet
   const { registerAuditRoutes } = await import("./audit-routes");
