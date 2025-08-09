@@ -7,7 +7,7 @@ import {
   type InsertCompany, type UpdateCompany, type Company
 } from '../shared/schema.js';
 import { z } from 'zod';
-import { authenticateApiKey, authorizeEndpoint } from './api-security.js';
+import { authenticateToken } from './auth.js';
 import { 
   auditableInsert,
   auditableUpdate,
@@ -47,7 +47,7 @@ const router = Router();
  *       401:
  *         description: Geçersiz API anahtarı
  */
-router.get('/companies', authenticateApiKey, authorizeEndpoint(['data:read', 'company:read']), async (req, res) => {
+router.get('/companies', authenticateToken, async (req, res) => {
   try {
     const { search, active, cityId } = req.query;
     
@@ -150,7 +150,7 @@ router.get('/companies', authenticateApiKey, authorizeEndpoint(['data:read', 'co
  *       404:
  *         description: Şirket bulunamadı
  */
-router.get('/companies/:id', authenticateApiKey, authorizeEndpoint(['data:read', 'company:read']), async (req, res) => {
+router.get('/companies/:id', authenticateToken, async (req, res) => {
   try {
     const companyId = parseInt(req.params.id);
     
@@ -256,7 +256,7 @@ router.get('/companies/:id', authenticateApiKey, authorizeEndpoint(['data:read',
  *       401:
  *         description: Geçersiz API anahtarı
  */
-router.post('/companies', authenticateApiKey, authorizeEndpoint(['data:write', 'company:write']), async (req, res) => {
+router.post('/companies', authenticateToken, async (req, res) => {
   try {
     // Body validation
     const validatedData = insertCompanySchema.parse(req.body);
@@ -292,8 +292,8 @@ router.post('/companies', authenticateApiKey, authorizeEndpoint(['data:write', '
 
     // Audit bilgilerini yakala
     const auditInfo = {
-      userId: undefined,
-      apiClientId: (req as any).apiClient?.id,
+      userId: (req as any).user?.id,
+      apiClientId: undefined,
       ipAddress: req.ip,
       userAgent: req.get('User-Agent')
     };
@@ -390,7 +390,7 @@ router.post('/companies', authenticateApiKey, authorizeEndpoint(['data:write', '
  *       404:
  *         description: Şirket bulunamadı
  */
-router.put('/companies/:id', authenticateApiKey, authorizeEndpoint(['data:write', 'company:write']), async (req, res) => {
+router.put('/companies/:id', authenticateToken, async (req, res) => {
   try {
     const companyId = parseInt(req.params.id);
     
@@ -452,10 +452,10 @@ router.put('/companies/:id', authenticateApiKey, authorizeEndpoint(['data:write'
       }
     }
 
-    // Audit bilgilerini yakala
+    // Audit bilgilerini yakala  
     const auditInfo = {
-      userId: undefined,
-      apiClientId: (req as any).apiClient?.id,
+      userId: (req as any).user?.id,
+      apiClientId: undefined,
       ipAddress: req.ip,
       userAgent: req.get('User-Agent')
     };
@@ -516,7 +516,7 @@ router.put('/companies/:id', authenticateApiKey, authorizeEndpoint(['data:write'
  *       404:
  *         description: Şirket bulunamadı
  */
-router.delete('/companies/:id', authenticateApiKey, authorizeEndpoint(['data:delete', 'company:delete']), async (req, res) => {
+router.delete('/companies/:id', authenticateToken, async (req, res) => {
   try {
     const companyId = parseInt(req.params.id);
     
@@ -542,8 +542,8 @@ router.delete('/companies/:id', authenticateApiKey, authorizeEndpoint(['data:del
 
     // Audit bilgilerini yakala
     const auditInfo = {
-      userId: undefined,
-      apiClientId: (req as any).apiClient?.id,
+      userId: (req as any).user?.id,
+      apiClientId: undefined,
       ipAddress: req.ip,
       userAgent: req.get('User-Agent')
     };

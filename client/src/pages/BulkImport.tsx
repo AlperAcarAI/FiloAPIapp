@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Download, FileText, TrendingUp, Clock, CheckCircle, XCircle, StopCircle, Trash2, Database, ArrowLeft, Key } from "lucide-react";
+import { Upload, Download, FileText, TrendingUp, Clock, CheckCircle, XCircle, StopCircle, Trash2, Database, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "wouter";
@@ -32,19 +32,12 @@ export default function BulkImport() {
   const [importing, setImporting] = useState(false);
   const [importStatus, setImportStatus] = useState<ImportStatus | null>(null);
   const [activeImports, setActiveImports] = useState<ImportStatus[]>([]);
-  const [apiKey, setApiKey] = useState<string>("");
   const { toast } = useToast();
 
   // Aktif import'ları yükle ve takip et
   useEffect(() => {
     const loadActiveImports = async () => {
       try {
-        // Load saved API key if exists
-        const savedApiKey = localStorage.getItem('bulkImportApiKey');
-        if (savedApiKey) {
-          setApiKey(savedApiKey);
-        }
-
         // Simulate demo completed import for debugging
         const completedImport: ImportStatus = {
           id: 'import_1753792668405_1lst8z3rz',
@@ -87,36 +80,30 @@ export default function BulkImport() {
   const pollImportStatus = async (importId: string) => {
     const checkStatus = async () => {
       try {
-        const response = await fetch(`/api/secure/bulk-import/status/${importId}`, {
-          headers: { 'X-API-Key': apiKey }
+        const result = await apiRequest(`/api/secure/bulk-import/status/${importId}`);
+        const status: ImportStatus = result.data;
+        
+        setActiveImports(prev => {
+          const updated = prev.map(imp => imp.id === importId ? status : imp);
+          const filtered = updated.filter(imp => imp.status === 'processing');
+          localStorage.setItem('activeImports', JSON.stringify(filtered));
+          return filtered;
         });
         
-        if (response.ok) {
-          const result = await response.json();
-          const status: ImportStatus = result.data;
-          
-          setActiveImports(prev => {
-            const updated = prev.map(imp => imp.id === importId ? status : imp);
-            const filtered = updated.filter(imp => imp.status === 'processing');
-            localStorage.setItem('activeImports', JSON.stringify(filtered));
-            return filtered;
-          });
-          
-          if (status.status === 'processing') {
-            setTimeout(checkStatus, 3000);
-          } else {
-            if (status.status === 'completed') {
-              toast({
-                title: "Import Tamamlandı",
-                description: `${status.processedRows} satır başarıyla işlendi`,
-              });
-            } else if (status.status === 'failed') {
-              toast({
-                title: "Import Başarısız", 
-                description: "Import işlemi hatayla sonuçlandı",
-                variant: "destructive",
-              });
-            }
+        if (status.status === 'processing') {
+          setTimeout(checkStatus, 3000);
+        } else {
+          if (status.status === 'completed') {
+            toast({
+              title: "Import Tamamlandı",
+              description: `${status.processedRows} satır başarıyla işlendi`,
+            });
+          } else if (status.status === 'failed') {
+            toast({
+              title: "Import Başarısız", 
+              description: "Import işlemi hatayla sonuçlandı",
+              variant: "destructive",
+            });
           }
         }
       } catch (error) {
@@ -130,24 +117,19 @@ export default function BulkImport() {
   // Import'u durdurmak için
   const stopImport = async (importId: string) => {
     try {
-      const response = await fetch(`/api/secure/bulk-import/stop/${importId}`, {
-        method: 'POST',
-        headers: { 'X-API-Key': apiKey }
-      });
+      await apiRequest(`/api/secure/bulk-import/stop/${importId}`, 'POST');
       
-      if (response.ok) {
-        toast({
-          title: "Import Durduruldu",
-          description: "Import işlemi başarıyla durduruldu",
-        });
+      toast({
+        title: "Import Durduruldu",
+        description: "Import işlemi başarıyla durduruldu",
+      });
         
-        // Active imports'dan kaldır
-        setActiveImports(prev => {
-          const filtered = prev.filter(imp => imp.id !== importId);
-          localStorage.setItem('activeImports', JSON.stringify(filtered));
-          return filtered;
-        });
-      }
+      // Active imports'dan kaldır
+      setActiveImports(prev => {
+        const filtered = prev.filter(imp => imp.id !== importId);
+        localStorage.setItem('activeImports', JSON.stringify(filtered));
+        return filtered;
+      });
     } catch (error) {
       toast({
         title: "Hata",
@@ -187,7 +169,7 @@ export default function BulkImport() {
     try {
       const response = await fetch(`/api/secure/bulk-import/template/${tableName}`, {
         headers: {
-          'X-API-Key': apiKey
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
       
@@ -216,30 +198,13 @@ export default function BulkImport() {
     }
   };
 
-  const handleApiKeyChange = (value: string) => {
-    setApiKey(value);
-    // Save to localStorage for persistence
-    if (value.trim()) {
-      localStorage.setItem('bulkImportApiKey', value);
-    } else {
-      localStorage.removeItem('bulkImportApiKey');
-    }
-  };
+
 
   const startImport = async () => {
     if (!selectedFile || !targetTable) {
       toast({
         title: "Hata",
         description: "Lütfen dosya ve hedef tablo seçin",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!apiKey.trim()) {
-      toast({
-        title: "Hata",
-        description: "Lütfen API anahtarını girin",
         variant: "destructive",
       });
       return;
@@ -257,7 +222,7 @@ export default function BulkImport() {
         method: 'POST',
         body: formData,
         headers: {
-          'X-API-Key': apiKey
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
 
@@ -300,8 +265,8 @@ export default function BulkImport() {
         description: "Import işlemi başlatılamadı",
         variant: "destructive",
       });
-      setImporting(false);
     }
+    setImporting(false);
   };
 
   return (
@@ -321,35 +286,6 @@ export default function BulkImport() {
           28.000+ satırlık Google Sheets verilerinizi sisteme aktarın
         </p>
       </div>
-
-      {/* API Key Configuration */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Key className="h-5 w-5" />
-            API Anahtarı Yapılandırması
-          </CardTitle>
-          <CardDescription>
-            Güvenli API erişimi için API anahtarınızı girin
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <Label htmlFor="api-key">API Anahtarı</Label>
-            <Input
-              id="api-key"
-              type="text"
-              placeholder="ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-              value={apiKey}
-              onChange={(e) => handleApiKeyChange(e.target.value)}
-              data-testid="input-api-key"
-            />
-            <p className="text-sm text-muted-foreground">
-              API anahtarınızı API Center sayfasından alabilirsiniz
-            </p>
-          </div>
-        </CardContent>
-      </Card>
 
       <div className="grid gap-6">
         {/* Tamamlanan İşlem Bilgisi */}
