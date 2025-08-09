@@ -5,6 +5,20 @@ import {
   personnel, countries, cities, personnelPositions, workAreas, personnelWorkAreas,
   insertPersonnelSchema, type InsertPersonnel, type Personnel
 } from '../shared/schema.js';
+
+// Custom validation schema that accepts tcNo as string and converts to bigint
+const personnelCreateSchema = z.object({
+  tcNo: z.string().optional().transform((val) => val ? BigInt(val) : undefined),
+  name: z.string().max(50),
+  surname: z.string().max(50),
+  birthdate: z.string().optional().transform((val) => val ? val : undefined),
+  nationId: z.number().int().optional(),
+  birthplaceId: z.number().int().optional(),
+  address: z.string().max(255).optional(),
+  phoneNo: z.string().max(50).optional(),
+  status: z.string().max(20).optional(),
+  isActive: z.boolean().optional().default(true)
+});
 import { z } from 'zod';
 import { authenticateToken } from './auth.js';
 
@@ -298,7 +312,7 @@ router.get('/personnel/:id', authenticateJWT, async (req, res) => {
 router.post('/personnel', authenticateJWT, async (req, res) => {
   try {
     // Request body validasyonu
-    const validationResult = insertPersonnelSchema.safeParse(req.body);
+    const validationResult = personnelCreateSchema.safeParse(req.body);
     
     if (!validationResult.success) {
       return res.status(400).json({
@@ -464,8 +478,8 @@ router.put('/personnel/:id', authenticateJWT, async (req, res) => {
       });
     }
     
-    // Request body validasyonu (insert schema'yı partial yapıp kullan)
-    const updateSchema = insertPersonnelSchema.partial();
+    // Request body validasyonu (update schema)
+    const updateSchema = personnelCreateSchema.partial();
     const validationResult = updateSchema.safeParse(req.body);
     
     if (!validationResult.success) {
