@@ -7,9 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Download, FileText, TrendingUp, Clock, CheckCircle, XCircle, StopCircle, Trash2, Database } from "lucide-react";
+import { Upload, Download, FileText, TrendingUp, Clock, CheckCircle, XCircle, StopCircle, Trash2, Database, ArrowLeft, Key } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { Link } from "wouter";
 
 interface ImportStatus {
   id: string;
@@ -31,12 +32,19 @@ export default function BulkImport() {
   const [importing, setImporting] = useState(false);
   const [importStatus, setImportStatus] = useState<ImportStatus | null>(null);
   const [activeImports, setActiveImports] = useState<ImportStatus[]>([]);
+  const [apiKey, setApiKey] = useState<string>("");
   const { toast } = useToast();
 
   // Aktif import'ları yükle ve takip et
   useEffect(() => {
     const loadActiveImports = async () => {
       try {
+        // Load saved API key if exists
+        const savedApiKey = localStorage.getItem('bulkImportApiKey');
+        if (savedApiKey) {
+          setApiKey(savedApiKey);
+        }
+
         // Simulate demo completed import for debugging
         const completedImport: ImportStatus = {
           id: 'import_1753792668405_1lst8z3rz',
@@ -80,7 +88,7 @@ export default function BulkImport() {
     const checkStatus = async () => {
       try {
         const response = await fetch(`/api/secure/bulk-import/status/${importId}`, {
-          headers: { 'X-API-Key': 'ak_test123key' }
+          headers: { 'X-API-Key': apiKey || 'ak_test123key' }
         });
         
         if (response.ok) {
@@ -124,7 +132,7 @@ export default function BulkImport() {
     try {
       const response = await fetch(`/api/secure/bulk-import/stop/${importId}`, {
         method: 'POST',
-        headers: { 'X-API-Key': 'ak_test123key' }
+        headers: { 'X-API-Key': apiKey || 'ak_test123key' }
       });
       
       if (response.ok) {
@@ -179,7 +187,7 @@ export default function BulkImport() {
     try {
       const response = await fetch(`/api/secure/bulk-import/template/${tableName}`, {
         headers: {
-          'X-API-Key': 'ak_test123key'
+          'X-API-Key': apiKey || 'ak_test123key'
         }
       });
       
@@ -208,11 +216,30 @@ export default function BulkImport() {
     }
   };
 
+  const handleApiKeyChange = (value: string) => {
+    setApiKey(value);
+    // Save to localStorage for persistence
+    if (value.trim()) {
+      localStorage.setItem('bulkImportApiKey', value);
+    } else {
+      localStorage.removeItem('bulkImportApiKey');
+    }
+  };
+
   const startImport = async () => {
     if (!selectedFile || !targetTable) {
       toast({
         title: "Hata",
         description: "Lütfen dosya ve hedef tablo seçin",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!apiKey.trim()) {
+      toast({
+        title: "Hata",
+        description: "Lütfen API anahtarını girin",
         variant: "destructive",
       });
       return;
@@ -230,7 +257,7 @@ export default function BulkImport() {
         method: 'POST',
         body: formData,
         headers: {
-          'X-API-Key': 'test_hash_123'
+          'X-API-Key': apiKey || 'test_hash_123'
         }
       });
 
@@ -279,12 +306,50 @@ export default function BulkImport() {
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
+      {/* Header with navigation */}
       <div className="mb-6">
+        <div className="flex items-center gap-4 mb-4">
+          <Link href="/" data-testid="link-home">
+            <Button variant="outline" size="sm" className="flex items-center gap-2" data-testid="button-back-home">
+              <ArrowLeft className="h-4 w-4" />
+              Ana Sayfaya Dön
+            </Button>
+          </Link>
+        </div>
         <h1 className="text-3xl font-bold">Toplu Veri İçe Aktarma</h1>
         <p className="text-muted-foreground mt-2">
           28.000+ satırlık Google Sheets verilerinizi sisteme aktarın
         </p>
       </div>
+
+      {/* API Key Configuration */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Key className="h-5 w-5" />
+            API Anahtarı Yapılandırması
+          </CardTitle>
+          <CardDescription>
+            Güvenli API erişimi için API anahtarınızı girin
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <Label htmlFor="api-key">API Anahtarı</Label>
+            <Input
+              id="api-key"
+              type="text"
+              placeholder="ak_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              value={apiKey}
+              onChange={(e) => handleApiKeyChange(e.target.value)}
+              data-testid="input-api-key"
+            />
+            <p className="text-sm text-muted-foreground">
+              API anahtarınızı API Center sayfasından alabilirsiniz
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6">
         {/* Tamamlanan İşlem Bilgisi */}
