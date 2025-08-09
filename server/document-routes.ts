@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "./db";
-import { documents, docSubTypes, users, personnel, companies, workAreas, assets } from "@shared/schema";
+import { documents, docSubTypes, docMainTypes, users, personnel, companies, workAreas, assets } from "@shared/schema";
 import { insertDocumentSchema, updateDocumentSchema } from "@shared/schema";
 import { eq, and, or, like, desc, asc, sql } from "drizzle-orm";
 import { authenticateToken } from "./auth";
@@ -369,6 +369,111 @@ documentRoutes.get("/entity/:entityType/:entityId", authenticateJWT, hasPermissi
     res.status(500).json({ 
       success: false, 
       error: "Dökümanlar listelenirken hata oluştu" 
+    });
+  }
+});
+
+// Döküman tiplerini listele
+documentRoutes.get("/types", authenticateJWT, hasPermission(["document:read"]), async (req: any, res) => {
+  try {
+    const { isActive = "true" } = req.query;
+    
+    const conditions = [];
+    if (isActive === "true") {
+      conditions.push(eq(docSubTypes.isActive, true));
+      conditions.push(eq(docMainTypes.isActive, true));
+    }
+
+    const documentTypes = await db.select({
+      id: docSubTypes.id,
+      name: docSubTypes.name,
+      mainTypeId: docSubTypes.mainTypeId,
+      mainTypeName: docMainTypes.name,
+      isActive: docSubTypes.isActive
+    })
+    .from(docSubTypes)
+    .leftJoin(docMainTypes, eq(docSubTypes.mainTypeId, docMainTypes.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(asc(docMainTypes.name), asc(docSubTypes.name));
+
+    res.json({
+      success: true,
+      data: documentTypes,
+      message: "Döküman tipleri başarıyla getirildi"
+    });
+  } catch (error) {
+    console.error("Döküman tipleri listesi hatası:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: "Döküman tipleri listelenirken hata oluştu" 
+    });
+  }
+});
+
+// Ana döküman tiplerini listele
+documentRoutes.get("/main-types", authenticateJWT, hasPermission(["document:read"]), async (req: any, res) => {
+  try {
+    const { isActive = "true" } = req.query;
+    
+    const conditions = [];
+    if (isActive === "true") {
+      conditions.push(eq(docMainTypes.isActive, true));
+    }
+
+    const mainTypes = await db.select({
+      id: docMainTypes.id,
+      name: docMainTypes.name,
+      isActive: docMainTypes.isActive
+    })
+    .from(docMainTypes)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(asc(docMainTypes.name));
+
+    res.json({
+      success: true,
+      data: mainTypes,
+      message: "Ana döküman tipleri başarıyla getirildi"
+    });
+  } catch (error) {
+    console.error("Ana döküman tipleri listesi hatası:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: "Ana döküman tipleri listelenirken hata oluştu" 
+    });
+  }
+});
+
+// Belirli ana tipe göre alt tipleri listele
+documentRoutes.get("/types/:mainTypeId", authenticateJWT, hasPermission(["document:read"]), async (req: any, res) => {
+  try {
+    const { mainTypeId } = req.params;
+    const { isActive = "true" } = req.query;
+    
+    const conditions = [eq(docSubTypes.mainTypeId, parseInt(mainTypeId))];
+    if (isActive === "true") {
+      conditions.push(eq(docSubTypes.isActive, true));
+    }
+
+    const subTypes = await db.select({
+      id: docSubTypes.id,
+      name: docSubTypes.name,
+      mainTypeId: docSubTypes.mainTypeId,
+      isActive: docSubTypes.isActive
+    })
+    .from(docSubTypes)
+    .where(and(...conditions))
+    .orderBy(asc(docSubTypes.name));
+
+    res.json({
+      success: true,
+      data: subTypes,
+      message: "Alt döküman tipleri başarıyla getirildi"
+    });
+  } catch (error) {
+    console.error("Alt döküman tipleri listesi hatası:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: "Alt döküman tipleri listelenirken hata oluştu" 
     });
   }
 });
