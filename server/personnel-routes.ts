@@ -8,7 +8,11 @@ import {
 
 // Custom validation schema that accepts tcNo as string and converts to bigint
 const personnelCreateSchema = z.object({
-  tcNo: z.string().optional().transform((val) => val ? BigInt(val) : undefined),
+  tcNo: z.union([
+    z.string().transform((val) => BigInt(val)),
+    z.bigint(),
+    z.undefined()
+  ]).optional(),
   name: z.string().min(1).max(50),
   surname: z.string().min(1).max(50),
   birthdate: z.string().optional().nullable(),
@@ -136,12 +140,18 @@ router.get('/personnel', authenticateJWT, async (req, res) => {
     // Execute query with ordering
     const personnelList = await query.orderBy(desc(personnel.id));
     
+    // Convert BigInt to string for JSON serialization
+    const serializedPersonnelList = personnelList.map(person => ({
+      ...person,
+      tcNo: person.tcNo ? person.tcNo.toString() : null
+    }));
+    
     res.json({
       success: true,
       message: 'Personeller başarıyla getirildi.',
       data: {
-        personnel: personnelList,
-        totalCount: personnelList.length
+        personnel: serializedPersonnelList,
+        totalCount: serializedPersonnelList.length
       }
     });
   } catch (error) {
@@ -210,11 +220,17 @@ router.get('/personnel/:id', authenticateJWT, async (req, res) => {
       });
     }
     
+    // Convert BigInt to string for JSON serialization
+    const responseData = {
+      ...personnelDetail,
+      tcNo: personnelDetail.tcNo ? personnelDetail.tcNo.toString() : null
+    };
+    
     res.json({
       success: true,
       message: 'Personel detayı başarıyla getirildi.',
       data: {
-        personnel: personnelDetail
+        personnel: responseData
       }
     });
   } catch (error) {
@@ -311,8 +327,23 @@ router.get('/personnel/:id', authenticateJWT, async (req, res) => {
  */
 router.post('/personnel', authenticateJWT, async (req, res) => {
   try {
-    // Request body validasyonu
-    const validationResult = personnelCreateSchema.safeParse(req.body);
+    // Preprocess request body to handle tcNo conversion
+    const requestBody = { ...req.body };
+    if (requestBody.tcNo && typeof requestBody.tcNo === 'string') {
+      try {
+        requestBody.tcNo = BigInt(requestBody.tcNo);
+      } catch (e) {
+        return res.status(400).json({
+          success: false,
+          error: 'VALIDATION_ERROR',
+          message: 'Geçersiz TC Kimlik Numarası formatı.'
+        });
+      }
+    }
+    
+    // Request body validasyonu - use original insertPersonnelSchema but omit ID
+    const validationSchema = insertPersonnelSchema.omit({ id: true });
+    const validationResult = validationSchema.safeParse(requestBody);
     
     if (!validationResult.success) {
       return res.status(400).json({
@@ -344,13 +375,45 @@ router.post('/personnel', authenticateJWT, async (req, res) => {
       }
     }
     
+    // Foreign key validation - check if country exists
+    if (personnelData.nationId) {
+      const countryExists = await db
+        .select({ id: countries.id })
+        .from(countries)
+        .where(eq(countries.id, personnelData.nationId));
+        
+      if (countryExists.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_NATION_ID',
+          message: `Belirtilen ülke ID'si (${personnelData.nationId}) bulunamadı.`
+        });
+      }
+    }
+    
+    // Foreign key validation - check if city exists  
+    if (personnelData.birthplaceId) {
+      const cityExists = await db
+        .select({ id: cities.id })
+        .from(cities)
+        .where(eq(cities.id, personnelData.birthplaceId));
+        
+      if (cityExists.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_CITY_ID',
+          message: `Belirtilen şehir ID'si (${personnelData.birthplaceId}) bulunamadı.`
+        });
+      }
+    }
+    
     // Yeni personel oluştur
     const [newPersonnel] = await db
       .insert(personnel)
       .values(personnelData)
       .returning();
     
-    // Yeni oluşturulan personelin detaylı bilgilerini getir
+    // Yeni oluşturulan personelin detaylı bilgilerini getir (BigInt serialize for JSON)
     const [personnelDetail] = await db
       .select({
         id: personnel.id,
@@ -372,21 +435,29 @@ router.post('/personnel', authenticateJWT, async (req, res) => {
       .leftJoin(countries, eq(personnel.nationId, countries.id))
       .leftJoin(cities, eq(personnel.birthplaceId, cities.id))
       .where(eq(personnel.id, newPersonnel.id));
+      
+    // Convert BigInt to string for JSON serialization
+    const responseData = {
+      ...personnelDetail,
+      tcNo: personnelDetail.tcNo ? personnelDetail.tcNo.toString() : null
+    };
     
     res.status(201).json({
       success: true,
       message: 'Personel başarıyla oluşturuldu.',
       data: {
-        personnel: personnelDetail
+        personnel: responseData
       }
     });
     
   } catch (error) {
     console.error('Personel oluşturma hatası:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
     res.status(500).json({
       success: false,
       error: 'PERSONNEL_CREATE_ERROR',
-      message: 'Personel oluşturulurken hata oluştu.'
+      message: 'Personel oluşturulurken hata oluştu.',
+      debug: error instanceof Error ? error.message : String(error)
     });
   }
 });
@@ -478,9 +549,23 @@ router.put('/personnel/:id', authenticateJWT, async (req, res) => {
       });
     }
     
+    // Preprocess request body for update
+    const requestBody = { ...req.body };
+    if (requestBody.tcNo && typeof requestBody.tcNo === 'string') {
+      try {
+        requestBody.tcNo = BigInt(requestBody.tcNo);
+      } catch (e) {
+        return res.status(400).json({
+          success: false,
+          error: 'VALIDATION_ERROR',
+          message: 'Geçersiz TC Kimlik Numarası formatı.'
+        });
+      }
+    }
+    
     // Request body validasyonu (update schema)
-    const updateSchema = personnelCreateSchema.partial();
-    const validationResult = updateSchema.safeParse(req.body);
+    const updateSchema = insertPersonnelSchema.omit({ id: true }).partial();
+    const validationResult = updateSchema.safeParse(requestBody);
     
     if (!validationResult.success) {
       return res.status(400).json({
