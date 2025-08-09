@@ -329,7 +329,9 @@ export const authorizeEndpoint = (requiredPermissions: string[] = []) => {
       }
 
       // Gerekli izinlerin kontrolü
-      const hasRequiredPermissions = requiredPermissions.every(permission => 
+      // "admin" yetkisi tüm izinleri kapsar
+      const hasAdminPermission = clientPermissionNames.includes('admin');
+      const hasRequiredPermissions = hasAdminPermission || requiredPermissions.every(permission => 
         clientPermissionNames.includes(permission)
       );
 
