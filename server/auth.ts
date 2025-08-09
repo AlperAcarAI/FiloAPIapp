@@ -15,14 +15,14 @@ export interface AuthRequest extends Request {
   user?: {
     id: number;
     userId: number;
-    username: string;
+    email: string;
   };
 }
 
 // Access token oluşturma (kısa süreli)
-export const generateAccessToken = (user: { id: number; username: string }) => {
+export const generateAccessToken = (user: { id: number; email: string }) => {
   return jwt.sign(
-    { id: user.id, username: user.username, type: 'access' },
+    { id: user.id, email: user.email, type: 'access' },
     JWT_SECRET,
     { expiresIn: JWT_ACCESS_EXPIRES_IN }
   );
@@ -59,7 +59,7 @@ export const generateRefreshToken = async (
 
 // Token çifti oluşturma (access + refresh)
 export const generateTokenPair = async (
-  user: { id: number; username: string },
+  user: { id: number; email: string },
   ipAddress?: string,
   userAgent?: string
 ) => {
@@ -104,7 +104,7 @@ export const authenticateToken = async (
       });
     }
 
-    req.user = { id: user.id, userId: user.id, username: user.email };
+    req.user = { id: user.id, userId: user.id, email: user.email };
     next();
   } catch (error) {
     return res.status(403).json({
