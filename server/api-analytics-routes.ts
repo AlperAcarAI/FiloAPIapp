@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { db } from './db';
 import { apiUsageLogs, apiUsageStats, apiClients } from '@shared/schema';
 import { eq, and, desc, asc, gte, lte, count, sum, avg, min, max } from 'drizzle-orm';
-import { authenticateApiKey } from './api-security';
+import { authenticateToken } from './auth';
 
 const router = Router();
 
@@ -10,9 +10,9 @@ const router = Router();
 // router.use(authenticateApiKey(['data:read', 'admin:read']));
 
 // 1. API kullanım genel istatistikleri
-router.get('/stats/overview', async (req, res) => {
+router.get('/stats/overview', authenticateToken, async (req, res) => {
   try {
-    const clientId = req.apiClient?.id;
+    const userId = (req as any).user?.id;
     
     // Toplam istek sayısı (son 30 gün)
     const thirtyDaysAgo = new Date();
@@ -21,17 +21,13 @@ router.get('/stats/overview', async (req, res) => {
     const [totalRequests] = await db
       .select({ count: count() })
       .from(apiUsageLogs)
-      .where(and(
-        clientId ? eq(apiUsageLogs.apiClientId, clientId) : undefined,
-        gte(apiUsageLogs.requestTimestamp, thirtyDaysAgo)
-      ));
+      .where(gte(apiUsageLogs.requestTimestamp, thirtyDaysAgo));
 
     // Başarı oranı (son 30 gün)
     const [successRequests] = await db
       .select({ count: count() })
       .from(apiUsageLogs)
       .where(and(
-        clientId ? eq(apiUsageLogs.apiClientId, clientId) : undefined,
         gte(apiUsageLogs.requestTimestamp, thirtyDaysAgo),
         lte(apiUsageLogs.statusCode, 299)
       ));
@@ -40,10 +36,7 @@ router.get('/stats/overview', async (req, res) => {
     const [avgResponseTime] = await db
       .select({ avg: avg(apiUsageLogs.responseTimeMs) })
       .from(apiUsageLogs)
-      .where(and(
-        clientId ? eq(apiUsageLogs.apiClientId, clientId) : undefined,
-        gte(apiUsageLogs.requestTimestamp, thirtyDaysAgo)
-      ));
+      .where(gte(apiUsageLogs.requestTimestamp, thirtyDaysAgo));
 
     // En çok kullanılan endpoint'ler (son 30 gün)
     const topEndpoints = await db
@@ -53,10 +46,7 @@ router.get('/stats/overview', async (req, res) => {
         count: count()
       })
       .from(apiUsageLogs)
-      .where(and(
-        clientId ? eq(apiUsageLogs.apiClientId, clientId) : undefined,
-        gte(apiUsageLogs.requestTimestamp, thirtyDaysAgo)
-      ))
+      .where(gte(apiUsageLogs.requestTimestamp, thirtyDaysAgo))
       .groupBy(apiUsageLogs.endpoint, apiUsageLogs.method)
       .orderBy(desc(count()))
       .limit(10);
@@ -83,13 +73,12 @@ router.get('/stats/overview', async (req, res) => {
 });
 
 // 2. Endpoint bazlı detaylı istatistikler
-router.get('/stats/endpoints', async (req, res) => {
+router.get('/stats/endpoints', authenticateToken, async (req, res) => {
   try {
-    const clientId = req.apiClient?.id;
+    const userId = (req as any).user?.id;
     const { startDate, endDate, endpoint } = req.query;
     
     let whereConditions = [];
-    if (clientId) whereConditions.push(eq(apiUsageLogs.apiClientId, clientId));
     if (startDate) whereConditions.push(gte(apiUsageLogs.requestTimestamp, new Date(startDate as string)));
     if (endDate) whereConditions.push(lte(apiUsageLogs.requestTimestamp, new Date(endDate as string)));
     if (endpoint) whereConditions.push(eq(apiUsageLogs.endpoint, endpoint as string));

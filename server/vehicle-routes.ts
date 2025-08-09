@@ -7,7 +7,7 @@ import {
   type InsertAsset, type UpdateAsset, type Asset
 } from '../shared/schema.js';
 import { z } from 'zod';
-import { authenticateApiKey, authorizeEndpoint } from './api-security.js';
+import { authenticateToken } from './auth.js';
 import { 
   auditableInsert,
   auditableUpdate,
@@ -52,7 +52,7 @@ const router = Router();
  *       401:
  *         description: Geçersiz API anahtarı
  */
-router.get('/vehicles', async (req, res) => {
+router.get('/vehicles', authenticateToken, async (req, res) => {
   try {
     const { search, active, modelId, companyId } = req.query;
     
@@ -155,7 +155,7 @@ router.get('/vehicles', async (req, res) => {
  *       404:
  *         description: Araç bulunamadı
  */
-router.get('/vehicles/:id', authenticateApiKey, authorizeEndpoint(['data:read', 'asset:read']), async (req, res) => {
+router.get('/vehicles/:id', authenticateToken, async (req, res) => {
   try {
     const vehicleId = parseInt(req.params.id);
     
