@@ -28,13 +28,26 @@ const authenticateJWT = (req: any, res: any, next: any) => {
   }
 };
 
-// Proxy middleware to forward requests to external API
-router.use('/api/proxy/*', authenticateJWT, async (req: any, res) => {
+// Proxy middleware to forward requests to external API  
+router.all('/*', authenticateJWT, async (req: any, res) => {
   try {
-    // Extract the target path (everything after /api/proxy/)
-    const targetPath = req.path.replace('/api/proxy/', '');
-    const targetUrl = process.env.EXTERNAL_API_URL || 'https://filokiapi.architectaiagency.com';
-    const fullTargetUrl = `${targetUrl}/api/${targetPath}`;
+    // req.path should now be the remainder after /api/proxy/ is stripped  
+    const targetPath = req.path;
+    console.log(`Debug: Original path: ${req.path}, Extracted targetPath: '${targetPath}'`);
+    // Use localhost for development, production URL for production
+    // Check both NODE_ENV and development conditions
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT;
+    const defaultUrl = isProduction
+      ? 'https://filokiapi.architectaiagency.com' 
+      : 'http://localhost:5000';
+    const targetUrl = process.env.EXTERNAL_API_URL || defaultUrl;
+    
+    console.log(`Environment check - NODE_ENV: ${process.env.NODE_ENV}, isProduction: ${isProduction}, targetUrl: ${targetUrl}`);
+    
+    // Construct target URL properly
+    const cleanTargetUrl = targetUrl.replace(/\/$/, ''); // Remove trailing slash
+    const cleanPath = targetPath.startsWith('/') ? targetPath : `/${targetPath}`;
+    const fullTargetUrl = `${cleanTargetUrl}/api${cleanPath}`;
     
     console.log(`Proxying ${req.method} request to: ${fullTargetUrl}`);
     
@@ -86,17 +99,35 @@ router.use('/api/proxy/*', authenticateJWT, async (req: any, res) => {
     // Try to parse as JSON first
     try {
       const text = await response.text();
+      console.log(`Response text preview: ${text.substring(0, 200)}...`);
+      
       if (contentType.includes('application/json') || text.trim().startsWith('{') || text.trim().startsWith('[')) {
         responseData = JSON.parse(text);
         isJson = true;
       } else {
-        // If not JSON, treat as text
-        responseData = text;
+        // If not JSON, treat as text/HTML
+        console.error('Non-JSON response received:', {
+          contentType,
+          statusCode: response.status,
+          textPreview: text.substring(0, 500)
+        });
+        
+        return res.status(400).json({
+          success: false,
+          message: "Çalışma alanı ataması yapılamadı - API endpoint hatası",
+          error: "API_ENDPOINT_ERROR",
+          details: "External API returned HTML instead of JSON. Check endpoint URL or authentication.",
+          debug: {
+            contentType,
+            targetUrl: fullTargetUrl,
+            statusCode: response.status,
+            responsePreview: text.substring(0, 200)
+          }
+        });
       }
     } catch (parseError) {
       console.error('Failed to parse response:', parseError);
       
-      // If external API returns non-JSON, wrap it in a standard response
       return res.status(500).json({
         success: false,
         message: "API sunucusundan beklenmedik cevap alındı",
@@ -105,7 +136,8 @@ router.use('/api/proxy/*', authenticateJWT, async (req: any, res) => {
         debug: {
           contentType,
           targetUrl: fullTargetUrl,
-          method: req.method
+          method: req.method,
+          parseError: parseError instanceof Error ? parseError.message : "Unknown error"
         }
       });
     }

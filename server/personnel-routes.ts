@@ -648,4 +648,160 @@ router.put('/personnel/:id', authenticateJWT, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/secure/addPersonnelWorkArea:
+ *   post:
+ *     summary: Personel Çalışma Alanı Atama
+ *     description: Mevcut bir personeli bir çalışma alanına atar
+ *     tags: [Personel İşlemleri]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - personnelId
+ *               - workAreaId
+ *               - positionId
+ *               - startDate
+ *             properties:
+ *               personnelId:
+ *                 type: integer
+ *                 description: Personel ID
+ *               workAreaId:
+ *                 type: integer
+ *                 description: Çalışma alanı ID
+ *               positionId:
+ *                 type: integer
+ *                 description: Pozisyon ID
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Başlangıç tarihi (YYYY-MM-DD)
+ *               endDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Bitiş tarihi (YYYY-MM-DD)
+ *               isActive:
+ *                 type: boolean
+ *                 description: Aktif durumu
+ *                 default: true
+ *     responses:
+ *       201:
+ *         description: Personel çalışma alanı ataması başarıyla oluşturuldu
+ *       400:
+ *         description: Geçersiz veri
+ *       404:
+ *         description: Personel, çalışma alanı veya pozisyon bulunamadı
+ *       409:
+ *         description: Personel zaten bu çalışma alanında aktif
+ */
+router.post('/addPersonnelWorkArea', authenticateJWT, async (req, res) => {
+  try {
+    const { personnelId, workAreaId, positionId, startDate, endDate, isActive = true } = req.body;
+    
+    // Required field validation
+    if (!personnelId || !workAreaId || !positionId || !startDate) {
+      return res.status(400).json({
+        success: false,
+        error: 'MISSING_REQUIRED_FIELDS',
+        message: 'personnelId, workAreaId, positionId ve startDate alanları zorunludur.'
+      });
+    }
+
+    // Check if personnel exists
+    const existingPersonnel = await db
+      .select({ id: personnel.id })
+      .from(personnel)
+      .where(eq(personnel.id, personnelId));
+      
+    if (existingPersonnel.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'PERSONNEL_NOT_FOUND',
+        message: 'Belirtilen personel bulunamadı.'
+      });
+    }
+
+    // Check if work area exists
+    const existingWorkArea = await db
+      .select({ id: workAreas.id })
+      .from(workAreas)
+      .where(eq(workAreas.id, workAreaId));
+      
+    if (existingWorkArea.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'WORK_AREA_NOT_FOUND',
+        message: 'Belirtilen çalışma alanı bulunamadı.'
+      });
+    }
+
+    // Check if position exists
+    const existingPosition = await db
+      .select({ id: personnelPositions.id })
+      .from(personnelPositions)
+      .where(eq(personnelPositions.id, positionId));
+      
+    if (existingPosition.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'POSITION_NOT_FOUND',
+        message: 'Belirtilen pozisyon bulunamadı.'
+      });
+    }
+
+    // Check for existing active assignment
+    const existingAssignment = await db
+      .select({ id: personnelWorkAreas.id })
+      .from(personnelWorkAreas)
+      .where(and(
+        eq(personnelWorkAreas.personnelId, personnelId),
+        eq(personnelWorkAreas.workAreaId, workAreaId),
+        eq(personnelWorkAreas.isActive, true)
+      ));
+      
+    if (existingAssignment.length > 0) {
+      return res.status(409).json({
+        success: false,
+        error: 'DUPLICATE_ASSIGNMENT',
+        message: 'Bu personel bu çalışma alanında zaten aktif bir atamaya sahip.'
+      });
+    }
+
+    // Create the assignment
+    const [newAssignment] = await db
+      .insert(personnelWorkAreas)
+      .values({
+        personnelId,
+        workAreaId,
+        positionId,
+        startDate,
+        endDate: endDate || null,
+        isActive
+      })
+      .returning();
+
+    res.status(201).json({
+      success: true,
+      message: 'Personel çalışma alanı ataması başarıyla oluşturuldu.',
+      data: {
+        personnelWorkArea: newAssignment
+      }
+    });
+
+  } catch (error) {
+    console.error('Personnel work area assignment error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'ASSIGNMENT_CREATE_ERROR',
+      message: 'Personel çalışma alanı ataması oluşturulurken hata oluştu.'
+    });
+  }
+});
+
 export default router;
