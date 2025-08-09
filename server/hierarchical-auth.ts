@@ -227,7 +227,7 @@ export const authenticateJWT = async (
     .leftJoin(workAreas, eq(personnelWorkAreas.workAreaId, workAreas.id))
     .leftJoin(personnelPositions, eq(personnelWorkAreas.positionId, personnelPositions.id))
     .where(and(
-      eq(users.id, decoded.userId),
+      eq(users.id, decoded.id),
       eq(users.isActive, true)
     ))
     .limit(1);

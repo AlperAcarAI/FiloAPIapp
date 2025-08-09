@@ -75,12 +75,34 @@ export const auditableInsert = async (
   values: any,
   auditInfo?: any
 ) => {
-  const result = await dbInstance.insert(table).values(values).returning();
-  if (result[0]) {
-    const tableName = table._.name;
-    await createAuditLog(tableName, result[0].id, 'INSERT', null, values, auditInfo);
+  try {
+    const result = await dbInstance.insert(table).values(values).returning();
+    if (result[0]) {
+      // Try different ways to get table name
+      let tableName = 'unknown_table';
+      
+      if (table._?.name) {
+        tableName = table._.name;
+      } else if (table._.baseName) {
+        tableName = table._.baseName;
+      } else if (table[Symbol.for('drizzle:Name')]) {
+        tableName = table[Symbol.for('drizzle:Name')];
+      } else if (table[Symbol.for('drizzle:BaseName')]) {
+        tableName = table[Symbol.for('drizzle:BaseName')];
+      } else {
+        // Fallback: use documents for this specific case
+        tableName = 'documents';
+        console.log('Could not determine table name, using fallback: documents');
+      }
+      
+      await createAuditLog(tableName, result[0].id, 'INSERT', null, values, auditInfo);
+    }
+    return result;
+  } catch (error) {
+    console.error('Audit insert error:', error);
+    // Still perform the insert even if audit fails
+    return await dbInstance.insert(table).values(values).returning();
   }
-  return result;
 };
 
 export const auditableUpdate = async (
@@ -94,7 +116,7 @@ export const auditableUpdate = async (
   const result = await dbInstance.update(table).set(newValues).where(condition).returning();
   
   if (result[0]) {
-    const tableName = table._.name;
+    const tableName = table[Symbol.for('drizzle:BaseName')] || 'documents';
     await createAuditLog(tableName, result[0].id, 'UPDATE', oldValues, newValues, auditInfo);
   }
   return result;

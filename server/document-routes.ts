@@ -6,6 +6,10 @@ import { eq, and, or, like, desc, asc, sql } from "drizzle-orm";
 import { authenticateToken } from "./auth";
 import { hasPermission } from "./permission-management-routes";
 import { authenticateJWT } from "./hierarchical-auth";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import crypto from "crypto";
 
 // Simple mock auth for development
 const mockAuth = (req: any, res: any, next: any) => {
@@ -17,12 +21,143 @@ const mockAuth = (req: any, res: any, next: any) => {
 import { captureAuditInfo, auditableInsert, auditableUpdate, auditableDelete } from "./audit-middleware";
 import { z } from "zod";
 
+// Uploads dizinini oluştur
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Multer configuration for document uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    
+    const dateDir = path.join(uploadsDir, year.toString(), month, day);
+    
+    // Dizini oluştur
+    fs.mkdirSync(dateDir, { recursive: true });
+    cb(null, dateDir);
+  },
+  filename: (req, file, cb) => {
+    // Dosya adını unique yap
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(2, 15);
+    const extension = path.extname(file.originalname);
+    const baseName = path.basename(file.originalname, extension);
+    
+    const fileName = `${baseName}_${timestamp}_${randomId}${extension}`;
+    cb(null, fileName);
+  }
+});
+
+const documentUpload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword', // .doc
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+      'application/vnd.ms-excel', // .xls
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'image/jpeg',
+      'image/jpg', 
+      'image/png',
+      'image/gif',
+      'text/plain'
+    ];
+    
+    const fileExt = path.extname(file.originalname).toLowerCase();
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.gif', '.txt'];
+    
+    if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(fileExt)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Desteklenmeyen dosya formatı. PDF, DOC, DOCX, XLS, XLSX, JPG, PNG dosyaları kabul edilir.'));
+    }
+  }
+});
+
+// Dosya hash hesaplama fonksiyonu
+function calculateFileHash(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha256');
+    const stream = fs.createReadStream(filePath);
+    
+    stream.on('data', (data) => hash.update(data));
+    stream.on('end', () => resolve(hash.digest('hex')));
+    stream.on('error', (error) => reject(error));
+  });
+}
+
 const documentRoutes = Router();
 
 // Test endpoint - no auth
 documentRoutes.get("/test", (req: any, res: any) => {
   console.log("=== DOCUMENT TEST ENDPOINT REACHED ===");
   res.json({ success: true, message: "Document routes working!" });
+});
+
+// Dosya indirme endpoint'i
+documentRoutes.get("/download/:id", authenticateJWT, hasPermission(["document:read"]), async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    
+    const [document] = await db.select()
+      .from(documents)
+      .where(and(
+        eq(documents.id, parseInt(id)),
+        eq(documents.isActive, true)
+      ));
+    
+    if (!document) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Döküman bulunamadı" 
+      });
+    }
+    
+    // Dosya var mı kontrol et
+    if (!fs.existsSync(document.filePath)) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Dosya sunucuda bulunamadı" 
+      });
+    }
+    
+    // Dosya header'larını ayarla
+    res.setHeader('Content-Type', document.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
+    res.setHeader('Content-Length', document.fileSize?.toString() || '0');
+    
+    // Dosyayı stream olarak gönder
+    const fileStream = fs.createReadStream(document.filePath);
+    fileStream.pipe(res);
+    
+    fileStream.on('error', (error) => {
+      console.error('Dosya okuma hatası:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ 
+          success: false, 
+          error: "Dosya okunurken hata oluştu" 
+        });
+      }
+    });
+    
+  } catch (error) {
+    console.error("Dosya indirme hatası:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        success: false, 
+        error: "Dosya indirilirken hata oluştu" 
+      });
+    }
+  }
 });
 
 export default documentRoutes;
@@ -288,6 +423,166 @@ documentRoutes.post("/", authenticateJWT, hasPermission(["document:write"]), asy
     res.status(500).json({ 
       success: false, 
       error: "Döküman eklenirken hata oluştu" 
+    });
+  }
+});
+
+// Multipart form file upload endpoint - MUST be before PUT /:id route
+documentRoutes.post("/upload", authenticateJWT, hasPermission(["document:write"]), documentUpload.single('file'), async (req: any, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Dosya yüklenemedi" 
+      });
+    }
+
+    // Form verilerini al
+    const {
+      entityType,
+      entityId,
+      docTypeId,
+      title,
+      description,
+      validityStartDate,
+      validityEndDate
+    } = req.body;
+
+    // Zorunlu alanları kontrol et
+    if (!entityType || !entityId || !docTypeId || !title) {
+      // Yüklenmiş dosyayı sil (cleanup)
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({ 
+        success: false, 
+        error: "entityType, entityId, docTypeId ve title zorunlu alanlar" 
+      });
+    }
+
+    // Entity ID ve docTypeId'yi integer'a çevir
+    const parsedEntityId = parseInt(entityId);
+    const parsedDocTypeId = parseInt(docTypeId);
+
+    if (isNaN(parsedEntityId) || isNaN(parsedDocTypeId)) {
+      // Cleanup
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({ 
+        success: false, 
+        error: "entityId ve docTypeId sayı olmalı" 
+      });
+    }
+
+    // Entity varlığını kontrol et
+    let entityExists = false;
+    switch (entityType) {
+      case 'personnel':
+        const [person] = await db.select({ id: personnel.id })
+          .from(personnel).where(eq(personnel.id, parsedEntityId));
+        entityExists = !!person;
+        break;
+      case 'company':
+        const [company] = await db.select({ id: companies.id })
+          .from(companies).where(eq(companies.id, parsedEntityId));
+        entityExists = !!company;
+        break;
+      case 'work_area':
+        const [workArea] = await db.select({ id: workAreas.id })
+          .from(workAreas).where(eq(workAreas.id, parsedEntityId));
+        entityExists = !!workArea;
+        break;
+      case 'asset':
+        const [asset] = await db.select({ id: assets.id })
+          .from(assets).where(eq(assets.id, parsedEntityId));
+        entityExists = !!asset;
+        break;
+      default:
+        // Cleanup
+        if (fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+        return res.status(400).json({ 
+          success: false, 
+          error: "Geçersiz entityType. personnel, asset, company veya work_area olmalı" 
+        });
+    }
+
+    if (!entityExists) {
+      // Cleanup
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({ 
+        success: false, 
+        error: `${entityType} entity bulunamadı` 
+      });
+    }
+
+    // Dosya hash'ini hesapla
+    const fileHash = await calculateFileHash(req.file.path);
+
+    // Duplicate kontrolü
+    const [existing] = await db.select({ id: documents.id })
+      .from(documents)
+      .where(eq(documents.fileHash, fileHash));
+
+    if (existing) {
+      // Cleanup
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({ 
+        success: false, 
+        error: "Bu dosya zaten yüklenmiş" 
+      });
+    }
+
+    // Audit bilgilerini topla
+    const auditInfo = captureAuditInfo(req);
+    
+    // Document verisini hazırla
+    const documentData = {
+      entityType,
+      entityId: parsedEntityId,
+      docTypeId: parsedDocTypeId,
+      title,
+      description: description || null,
+      filePath: req.file.path,
+      fileName: req.file.originalname,
+      fileSize: req.file.size,
+      mimeType: req.file.mimetype,
+      fileHash,
+      uploadedBy: req.userContext?.userId || 1,
+      validityStartDate: validityStartDate || null,
+      validityEndDate: validityEndDate || null
+    };
+
+    // Veritabanına kaydet
+    const [newDocument] = await auditableInsert(
+      db,
+      documents,
+      documentData,
+      auditInfo
+    );
+
+    res.status(201).json({ 
+      success: true, 
+      data: newDocument,
+      message: "Dosya başarıyla yüklendi ve döküman kaydı oluşturuldu"
+    });
+
+  } catch (error) {
+    // Hata durumunda dosyayı temizle
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    console.error("Dosya yükleme hatası:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: "Dosya yüklenirken hata oluştu" 
     });
   }
 });

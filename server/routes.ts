@@ -41,7 +41,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(deviceFingerprintMiddleware);
 
   // Document Management Routes - Before auth middleware
-  app.use('/documents', documentRoutes);
+  app.use('/api/documents', documentRoutes);
 
   // API Analytics middleware - Geçici olarak devre dışı
 
