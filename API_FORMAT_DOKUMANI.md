@@ -52,7 +52,7 @@ curl -X GET "http://localhost:5000/documents/main-doc-types?isActive=true"
 }
 ```
 
-## 2. Alt Döküman Tiplerini Getir
+## 2. Alt Döküman Tiplerini Getir (Kimlik Doğrulama Gerektirmez)
 
 ### İstek
 ```http

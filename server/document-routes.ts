@@ -460,8 +460,8 @@ documentRoutes.get("/types", authenticateJWT, hasPermission(["document:read"]), 
 
 
 
-// Belirli ana tipe göre alt tipleri listele
-documentRoutes.get("/types/:mainTypeId", mockAuth, async (req: any, res) => {
+// Belirli ana tipe göre alt tipleri listele - NO AUTH
+documentRoutes.get("/types/:mainTypeId", async (req: any, res) => {
   try {
     const { mainTypeId } = req.params;
     const { isActive = "true" } = req.query;
