@@ -559,6 +559,7 @@ export const personnel = pgTable("personnel", {
   address: varchar("address", { length: 255 }),
   phoneNo: varchar("phone_no", { length: 50 }),
   status: varchar("status", { length: 20 }),
+  companyId: integer("company_id").references(() => companies.id),
   isActive: boolean("is_active").notNull().default(true),
 });
 
@@ -1031,6 +1032,10 @@ export const personnelRelations = relations(personnel, ({ one, many }) => ({
   birthplace: one(cities, {
     fields: [personnel.birthplaceId],
     references: [cities.id],
+  }),
+  company: one(companies, {
+    fields: [personnel.companyId],
+    references: [companies.id],
   }),
   users: many(users),
   personnelWorkAreas: many(personnelWorkAreas),

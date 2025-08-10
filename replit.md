@@ -25,6 +25,7 @@ Preferred communication style: Simple, everyday language.
 - **Cross-Server CORS**: Frontend-backend separation issue resolved by adding frontend domain to CORS allowedOrigins (August 10, 2025)
 - **Document Upload System**: Complete file upload functionality implemented with JWT authentication, duplicate detection, and audit logging (August 9, 2025)
 - **Frontend-Backend Separation**: Cross-origin requests working with proper CORS configuration for separate frontend and backend servers (August 10, 2025)
+- **Personnel Company Integration**: Added company_id field to personnel table for insurance company tracking with proper database relations (August 10, 2025)
 - **API Proxy System**: Secure proxy endpoint `/api/proxy/secure/documents` implemented with JWT authentication, path mapping, and automatic user ID injection (August 10, 2025)
 - **Deployment Date**: August 6, 2025
 
