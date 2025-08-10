@@ -98,9 +98,11 @@ router.get('/companies', authenticateToken, async (req, res) => {
     }
 
     // Apply where conditions if any
-    let finalQuery = companiesWithTypesQuery;
+    let finalQuery;
     if (whereConditions.length > 0) {
       finalQuery = companiesWithTypesQuery.where(and(...whereConditions));
+    } else {
+      finalQuery = companiesWithTypesQuery;
     }
 
     const rawResult = await finalQuery.orderBy(asc(companies.name));
@@ -361,9 +363,9 @@ router.post('/companies', authenticateToken, async (req, res) => {
 
     // Auditable insert
     const [newCompany] = await auditableInsert(
+      db,
       companies,
       validatedData,
-      'companies',
       auditInfo
     );
 
@@ -523,10 +525,11 @@ router.put('/companies/:id', authenticateToken, async (req, res) => {
 
     // Auditable update
     const [updatedCompany] = await auditableUpdate(
+      db,
       companies,
-      eq(companies.id, companyId),
       validatedData,
-      'companies',
+      eq(companies.id, companyId),
+      existingCompany[0],
       auditInfo
     );
 
