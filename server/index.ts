@@ -31,15 +31,16 @@ app.use((req, res, next) => {
   const allowedOrigins = [
     'https://filokiapi.architectaiagency.com',
     'http://localhost:5000',
-    'http://localhost:3000'
+    'http://localhost:3000',
+    'https://b0c96118-25cf-4b36-bd73-c26e525daf3c-00-b95p9o9piblg.spock.replit.dev'
   ];
   
-  if (allowedOrigins.includes(origin || '')) {
-    res.setHeader('Access-Control-Allow-Origin', origin || '');
+  if (allowedOrigins.includes(origin || '') || !origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
   }
   
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-API-Key');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   
   if (req.method === 'OPTIONS') {
@@ -50,8 +51,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Morgan'ı hem konsola hem de dosyaya loglama yapacak şekilde ayarla
 app.use(morgan('dev')); // Konsola loglama
