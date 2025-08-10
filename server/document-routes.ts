@@ -160,8 +160,6 @@ documentRoutes.get("/download/:id", authenticateJWT, hasPermission(["document:re
   }
 });
 
-export default documentRoutes;
-
 // Ana döküman tiplerini listele - NO AUTH (must be before /:id route)
 documentRoutes.get("/main-doc-types", async (req: any, res) => {
   console.log("=== MAIN-DOC-TYPES ENDPOINT CALLED (NO AUTH) ===");
@@ -195,6 +193,8 @@ documentRoutes.get("/main-doc-types", async (req: any, res) => {
     });
   }
 });
+
+export default documentRoutes;
 
 // Tüm dökümanları listele (filtreleme destekli)
 documentRoutes.get("/", authenticateJWT, hasPermission(["document:read"]), async (req: any, res) => {
