@@ -435,6 +435,8 @@ Bu hata genellikle aşağıdaki durumlardan kaynaklanır:
 - Audit logging çalışıyor
 - Duplicate detection aktif
 - Dosya hash hesaplama çalışıyor
+- Permission sistemi düzeltildi ve çalışıyor
+- Son test: Permission Test Success dosyası başarıyla yüklendi (ID: 23)
 
 ## Sonuç
 

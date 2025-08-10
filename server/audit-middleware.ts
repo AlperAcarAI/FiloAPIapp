@@ -18,7 +18,7 @@ export const captureAuditInfo = (req: any) => {
   const apiReq = req as ApiRequest;
   
   return {
-    userId: (apiReq.user?.id || apiReq.apiUser?.id || req.userContext?.userId) || undefined,
+    userId: ((apiReq as any).user?.id || (apiReq as any).apiUser?.id || req.userContext?.userId) || undefined,
     apiClientId: apiReq.apiClient?.id || undefined,
     ipAddress: req.ip || req.socket.remoteAddress || undefined,
     userAgent: req.get('User-Agent') || undefined
@@ -130,11 +130,11 @@ export const auditableDelete = async (
 ) => {
   // Önce silinecek kaydın değerlerini al
   const oldRecord = await db.select().from(table).where(condition).limit(1);
-  const oldValues = oldRecord[0] || null;
+  const oldValues = oldRecord && oldRecord.length > 0 ? oldRecord[0] : null;
   
   const result = await db.delete(table).where(condition).returning();
   
-  if (result[0] && oldValues) {
+  if (result && Array.isArray(result) && result[0] && oldValues) {
     await createAuditLog(tableName, oldValues.id, 'DELETE', oldValues, null, auditInfo);
   }
   return result;
