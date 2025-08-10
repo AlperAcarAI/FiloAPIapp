@@ -164,7 +164,8 @@ function calculatePermissions(userContext: any): string[] {
   }
   
   // Scope permissions ile level permissions'ı birleştir
-  return [...new Set([...levelPermissions, ...scopePermissions])];
+  const combinedPermissions = [...levelPermissions, ...scopePermissions];
+  return Array.from(new Set(combinedPermissions));
 }
 
 // JWT tabanlı hiyerarşik authentication middleware

@@ -83,7 +83,7 @@ export const auditableInsert = async (
       
       if (table._?.name) {
         tableName = table._.name;
-      } else if (table._.baseName) {
+      } else if (table._?.baseName) {
         tableName = table._.baseName;
       } else if (table[Symbol.for('drizzle:Name')]) {
         tableName = table[Symbol.for('drizzle:Name')];

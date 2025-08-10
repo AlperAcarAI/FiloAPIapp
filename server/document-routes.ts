@@ -580,9 +580,13 @@ documentRoutes.post("/upload", authenticateJWT, hasPermission(["document:write"]
     }
     
     console.error("Dosya yükleme hatası:", error);
+    console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+    console.error("Error message:", error instanceof Error ? error.message : error);
+    
     res.status(500).json({ 
       success: false, 
-      error: "Dosya yüklenirken hata oluştu" 
+      error: error instanceof Error ? error.message : "Dosya yüklenirken hata oluştu",
+      message: "Dosya yüklenirken hata oluştu"
     });
   }
 });
