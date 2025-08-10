@@ -2,7 +2,11 @@ import express from 'express';
 
 const router = express.Router();
 
-// JWT Token Authentication middleware (same as personnel routes)
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-development-only';
+
+// JWT Token Authentication middleware with proper verification
 const authenticateJWT = (req: any, res: any, next: any) => {
   const authHeader = req.headers.authorization;
   
@@ -15,12 +19,12 @@ const authenticateJWT = (req: any, res: any, next: any) => {
   
   const token = authHeader.substring(7); // Remove 'Bearer ' prefix
   
-  // For now, accept any valid looking token format
-  // In production, you would verify the JWT token here
-  if (token && token.length > 10) {
-    req.user = { id: 1 }; // Mock user for now
+  try {
+    // Verify JWT token and extract user ID
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    req.user = { id: decoded.id };
     next();
-  } else {
+  } catch (error) {
     return res.status(401).json({
       success: false,
       message: 'Geçersiz token formatı.'
@@ -32,8 +36,17 @@ const authenticateJWT = (req: any, res: any, next: any) => {
 router.all('/*', authenticateJWT, async (req: any, res) => {
   try {
     // req.path should now be the remainder after /api/proxy/ is stripped  
-    const targetPath = req.path;
-    console.log(`Debug: Original path: ${req.path}, Extracted targetPath: '${targetPath}'`);
+    const originalPath = req.path;
+    console.log(`Debug: Original path: ${originalPath}, Extracted targetPath: '${originalPath}'`);
+    
+    // Map proxy paths to actual API endpoints
+    let targetPath = originalPath;
+    if (originalPath.startsWith('/secure/')) {
+      // Remove /secure prefix and use regular API endpoints
+      targetPath = originalPath.replace('/secure', '');
+      console.log(`Mapped secure path: ${originalPath} -> ${targetPath}`);
+    }
+    
     // Use localhost for development, production URL for production
     // Check both NODE_ENV and development conditions
     const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT;
@@ -76,7 +89,18 @@ router.all('/*', authenticateJWT, async (req: any, res) => {
     
     // Add body for POST/PUT requests
     if (req.method !== 'GET' && req.method !== 'HEAD') {
-      fetchOptions.body = JSON.stringify(req.body);
+      let bodyData = req.body;
+      
+      // For document creation requests, inject uploadedBy from JWT token
+      if (targetPath === '/documents' && req.method === 'POST') {
+        bodyData = {
+          ...req.body,
+          uploadedBy: req.user.id
+        };
+        console.log(`Injected uploadedBy: ${req.user.id} for document creation`);
+      }
+      
+      fetchOptions.body = JSON.stringify(bodyData);
     }
     
     // Add query parameters

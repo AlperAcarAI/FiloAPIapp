@@ -23,6 +23,7 @@ Preferred communication style: Simple, everyday language.
   - /api/docs (Swagger documentation)
 - **Recent Fixes**: Database connection issue resolved by switching from @neondatabase/serverless to pg driver
 - **Document Upload System**: Complete file upload functionality implemented with JWT authentication, duplicate detection, and audit logging (August 9, 2025)
+- **API Proxy System**: Secure proxy endpoint `/api/proxy/secure/documents` implemented with JWT authentication, path mapping, and automatic user ID injection (August 10, 2025)
 - **Deployment Date**: August 6, 2025
 
 ## System Architecture
