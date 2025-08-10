@@ -13,6 +13,7 @@ interface AuthResponse {
   message: string;
   data?: {
     accessToken: string;
+    refreshToken?: string;
     user: {
       id: number;
       email: string;
@@ -48,7 +49,9 @@ export default function Login() {
 
       if (data.success && data.data) {
         localStorage.setItem('authToken', data.data.accessToken);
-        localStorage.setItem('refreshToken', data.data.refreshToken);
+        if (data.data.refreshToken) {
+          localStorage.setItem('refreshToken', data.data.refreshToken);
+        }
         localStorage.setItem('user', JSON.stringify(data.data.user));
         
         toast({

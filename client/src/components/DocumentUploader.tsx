@@ -1,388 +1,302 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Upload, FileText, Image, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { Upload, FileText, X } from 'lucide-react';
 
 interface DocumentUploaderProps {
-  assetId: number;
-  docTypes: Array<{
-    id: number;
-    name: string;
-    subTypes: Array<{
-      id: number;
-      name: string;
-      mainTypeId: number;
-    }>;
-  }>;
-  onUploadSuccess?: () => void;
+  entityType?: 'personnel' | 'asset' | 'company' | 'work_area';
+  entityId?: number;
+  onUploadSuccess?: (document: any) => void;
 }
 
-interface UploadFile extends File {
-  id: string;
-  status: 'pending' | 'uploading' | 'success' | 'error';
-  progress: number;
-  error?: string;
-}
-
-const DocumentUploader: React.FC<DocumentUploaderProps> = ({ 
-  assetId, 
-  docTypes, 
+export default function DocumentUploader({ 
+  entityType = 'personnel', 
+  entityId = 1,
   onUploadSuccess 
-}) => {
-  const [files, setFiles] = useState<UploadFile[]>([]);
-  const [selectedMainType, setSelectedMainType] = useState<number | null>(null);
-  const [selectedSubType, setSelectedSubType] = useState<number | null>(null);
-  const [description, setDescription] = useState('');
-  const [dragOver, setDragOver] = useState(false);
-  
+}: DocumentUploaderProps) {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [formData, setFormData] = useState({
+    docTypeId: '1',
+    title: '',
+    description: ''
+  });
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  // Dosya tipine göre icon
-  const getFileIcon = (file: File) => {
-    if (file.type.startsWith('image/')) {
-      return <Image className="w-8 h-8 text-blue-500" />;
-    }
-    return <FileText className="w-8 h-8 text-gray-500" />;
-  };
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Dosya boyutu kontrolü (50MB)
+      if (file.size > 50 * 1024 * 1024) {
+        toast({
+          title: "Dosya Çok Büyük",
+          description: "Maksimum dosya boyutu 50MB olmalıdır",
+          variant: "destructive",
+        });
+        return;
+      }
 
-  // Dosya boyutu formatı
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+      // Dosya tipi kontrolü
+      const allowedTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'image/jpeg',
+        'image/png',
+        'text/plain'
+      ];
 
-  // Dosya seçimi/drop işlemi
-  const handleFileSelect = (selectedFiles: FileList | File[]) => {
-    const fileArray = Array.from(selectedFiles);
-    const newFiles: UploadFile[] = fileArray.map(file => ({
-      ...file,
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      status: 'pending' as const,
-      progress: 0
-    }));
-
-    // Dosya tipini kontrol et
-    const allowedTypes = [
-      'application/pdf',
-      'image/jpeg', 'image/jpg', 'image/png', 'image/gif',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/plain'
-    ];
-
-    const validFiles = newFiles.filter(file => {
       if (!allowedTypes.includes(file.type)) {
         toast({
-          title: 'Desteklenmeyen Dosya',
-          description: `${file.name} desteklenmeyen bir dosya formatında.`,
-          variant: 'destructive'
+          title: "Dosya Formatı Desteklenmiyor",
+          description: "PDF, DOC, DOCX, XLS, XLSX, JPG, PNG dosyaları kabul edilir",
+          variant: "destructive",
         });
-        return false;
-      }
-      if (file.size > 50 * 1024 * 1024) { // 50MB
-        toast({
-          title: 'Dosya Çok Büyük',
-          description: `${file.name} dosyası 50MB'dan büyük olamaz.`,
-          variant: 'destructive'
-        });
-        return false;
-      }
-      return true;
-    });
-
-    setFiles(prev => [...prev, ...validFiles]);
-  };
-
-  // Drag & Drop işlemleri
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    handleFileSelect(e.dataTransfer.files);
-  };
-
-  // Dosya silme
-  const removeFile = (fileId: string) => {
-    setFiles(prev => prev.filter(f => f.id !== fileId));
-  };
-
-  // Alt kategorileri getir
-  const getSubTypes = () => {
-    if (!selectedMainType) return [];
-    const mainType = docTypes.find(dt => dt.id === selectedMainType);
-    return mainType?.subTypes || [];
-  };
-
-  // Upload mutation
-  const uploadMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedSubType) {
-        throw new Error('Dokuman kategorisi seçilmeli');
+        return;
       }
 
-      const formData = new FormData();
-      formData.append('assetId', assetId.toString());
-      formData.append('docTypeId', selectedSubType.toString());
-      if (description) {
-        formData.append('description', description);
+      setSelectedFile(file);
+      // Başlık otomatik doldur
+      if (!formData.title) {
+        setFormData(prev => ({
+          ...prev,
+          title: file.name.replace(/\.[^/.]+$/, "")
+        }));
       }
+    }
+  };
 
-      // Dosyaları ekle
-      files.forEach(file => {
-        formData.append('files', file);
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      toast({
+        title: "Dosya Seçilmedi",
+        description: "Lütfen yüklenecek bir dosya seçin",
+        variant: "destructive",
       });
+      return;
+    }
 
-      const response = await fetch('/api/secure/documents/upload', {
+    if (!formData.title.trim()) {
+      toast({
+        title: "Başlık Gerekli",
+        description: "Lütfen döküman için bir başlık girin",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      // Token'ı localStorage'dan al
+      const authToken = localStorage.getItem('authToken');
+      
+      if (!authToken) {
+        toast({
+          title: "Oturum Hatası",
+          description: "Lütfen tekrar giriş yapın",
+          variant: "destructive",
+        });
+        // Login sayfasına yönlendir
+        window.location.href = '/login';
+        return;
+      }
+
+      // FormData oluştur
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', selectedFile);
+      uploadFormData.append('entityType', entityType);
+      uploadFormData.append('entityId', entityId.toString());
+      uploadFormData.append('docTypeId', formData.docTypeId);
+      uploadFormData.append('title', formData.title.trim());
+      if (formData.description.trim()) {
+        uploadFormData.append('description', formData.description.trim());
+      }
+
+      // API çağrısı
+      const response = await fetch('/api/documents/upload', {
         method: 'POST',
         headers: {
-          'X-API-Key': '' // API key gerekli
+          'Authorization': `Bearer ${authToken}`
         },
-        body: formData
+        body: uploadFormData
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Upload failed');
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        toast({
+          title: "Yükleme Başarılı!",
+          description: result.message || "Dosya başarıyla yüklendi",
+        });
+
+        // Form'u temizle
+        setSelectedFile(null);
+        setFormData({
+          docTypeId: '1',
+          title: '',
+          description: ''
+        });
+        
+        // File input'u temizle
+        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+
+        // Callback çağır
+        if (onUploadSuccess) {
+          onUploadSuccess(result.data);
+        }
+
+      } else {
+        // API error
+        toast({
+          title: "Yükleme Hatası",
+          description: result.message || "Dosya yüklenirken bir hata oluştu",
+          variant: "destructive",
+        });
+
+        // Token süresi dolmuşsa login'e yönlendir
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('refreshToken');
+          window.location.href = '/login';
+        }
       }
 
-      return response.json();
-    },
-    onSuccess: (data) => {
+    } catch (error) {
+      console.error('Upload error:', error);
       toast({
-        title: 'Upload Başarılı',
-        description: `${data.data.successCount} dosya başarıyla yüklendi.`,
+        title: "Bağlantı Hatası",
+        description: "Sunucuya bağlanırken bir hata oluştu",
+        variant: "destructive",
       });
-      
-      // Dosyaları temizle
-      setFiles([]);
-      setDescription('');
-      setSelectedMainType(null);
-      setSelectedSubType(null);
-      
-      // Cache'i invalidate et
-      queryClient.invalidateQueries({ queryKey: ['/api/secure/documents/asset', assetId] });
-      
-      onUploadSuccess?.();
-    },
-    onError: (error: Error) => {
-      toast({
-        title: 'Upload Hatası',
-        description: error.message,
-        variant: 'destructive'
-      });
+    } finally {
+      setUploading(false);
     }
-  });
+  };
 
-  const canUpload = files.length > 0 && selectedSubType && !uploadMutation.isPending;
+  const removeFile = () => {
+    setSelectedFile(null);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  };
 
   return (
-    <Card className="w-full">
+    <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Upload className="w-5 h-5" />
-          Dokuman Yükle
+          <Upload className="h-5 w-5" />
+          Döküman Yükleme
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
-        
-        {/* Kategori Seçimi */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Ana Kategori</Label>
-            <Select
-              value={selectedMainType?.toString()}
-              onValueChange={(value) => {
-                setSelectedMainType(parseInt(value));
-                setSelectedSubType(null);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Ana kategori seçin" />
-              </SelectTrigger>
-              <SelectContent>
-                {docTypes.map(type => (
-                  <SelectItem key={type.id} value={type.id.toString()}>
-                    {type.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <CardContent className="space-y-4">
+        {/* Dosya Seçimi */}
+        <div className="space-y-2">
+          <Label htmlFor="file-upload">Dosya Seç</Label>
+          <Input
+            id="file-upload"
+            type="file"
+            onChange={handleFileChange}
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt"
+            className="cursor-pointer"
+            data-testid="input-file-upload"
+          />
+          <p className="text-sm text-gray-500">
+            Maksimum boyut: 50MB. Desteklenen formatlar: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TXT
+          </p>
+        </div>
 
-          <div className="space-y-2">
-            <Label>Alt Kategori</Label>
-            <Select
-              value={selectedSubType?.toString()}
-              onValueChange={(value) => setSelectedSubType(parseInt(value))}
-              disabled={!selectedMainType}
+        {/* Seçilen Dosya Gösterimi */}
+        {selectedFile && (
+          <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-blue-600" />
+              <span className="text-sm font-medium">{selectedFile.name}</span>
+              <span className="text-xs text-gray-500">
+                ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+              </span>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={removeFile}
+              data-testid="button-remove-file"
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Alt kategori seçin" />
-              </SelectTrigger>
-              <SelectContent>
-                {getSubTypes().map(subType => (
-                  <SelectItem key={subType.id} value={subType.id.toString()}>
-                    {subType.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <X className="h-4 w-4" />
+            </Button>
           </div>
+        )}
+
+        {/* Döküman Tipi */}
+        <div className="space-y-2">
+          <Label htmlFor="doc-type">Döküman Tipi</Label>
+          <Select 
+            value={formData.docTypeId} 
+            onValueChange={(value) => setFormData(prev => ({ ...prev, docTypeId: value }))}
+          >
+            <SelectTrigger data-testid="select-doc-type">
+              <SelectValue placeholder="Döküman tipini seçin" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">Genel Döküman</SelectItem>
+              <SelectItem value="2">Sözleşme</SelectItem>
+              <SelectItem value="3">Fatura</SelectItem>
+              <SelectItem value="4">Rapor</SelectItem>
+              <SelectItem value="5">Kimlik Belgesi</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Başlık */}
+        <div className="space-y-2">
+          <Label htmlFor="title">Başlık *</Label>
+          <Input
+            id="title"
+            type="text"
+            placeholder="Döküman başlığı girin"
+            value={formData.title}
+            onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+            required
+            data-testid="input-document-title"
+          />
         </div>
 
         {/* Açıklama */}
         <div className="space-y-2">
-          <Label>Açıklama (Opsiyonel)</Label>
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Dokuman hakkında kısa açıklama..."
-            className="min-h-[80px]"
+          <Label htmlFor="description">Açıklama (İsteğe bağlı)</Label>
+          <Input
+            id="description"
+            type="text"
+            placeholder="Döküman açıklaması"
+            value={formData.description}
+            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            data-testid="input-document-description"
           />
         </div>
 
-        {/* Drag & Drop Area */}
-        <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            dragOver 
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' 
-              : 'border-gray-300 dark:border-gray-600'
-          }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+        {/* Yükleme Butonu */}
+        <Button 
+          onClick={handleUpload}
+          disabled={uploading || !selectedFile}
+          className="w-full"
+          data-testid="button-upload-document"
         >
-          <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-          <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-            Dosyaları buraya sürükleyin
-          </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            veya
-          </p>
-          <Button
-            variant="outline"
-            onClick={() => {
-              const input = document.createElement('input');
-              input.type = 'file';
-              input.multiple = true;
-              input.accept = '.pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.xls,.xlsx,.txt';
-              input.onchange = (e) => {
-                const target = e.target as HTMLInputElement;
-                if (target.files) {
-                  handleFileSelect(target.files);
-                }
-              };
-              input.click();
-            }}
-          >
-            Dosya Seç
-          </Button>
-          <p className="text-xs text-gray-400 mt-4">
-            PDF, JPG, PNG, DOC, XLS, TXT • Maksimum 50MB
-          </p>
-        </div>
+          {uploading ? 'Yükleniyor...' : 'Dökümanı Yükle'}
+        </Button>
 
-        {/* Seçilen Dosyalar */}
-        {files.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="font-medium">Seçilen Dosyalar ({files.length})</h4>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {files.map(file => (
-                <div key={file.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                  {getFileIcon(file)}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{file.name}</p>
-                    <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
-                  </div>
-                  
-                  {file.status === 'pending' && (
-                    <Badge variant="secondary">Bekliyor</Badge>
-                  )}
-                  {file.status === 'uploading' && (
-                    <div className="w-16">
-                      <Progress value={file.progress} className="h-2" />
-                    </div>
-                  )}
-                  {file.status === 'success' && (
-                    <CheckCircle className="w-5 h-5 text-green-500" />
-                  )}
-                  {file.status === 'error' && (
-                    <AlertCircle className="w-5 h-5 text-red-500" />
-                  )}
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeFile(file.id)}
-                    disabled={uploadMutation.isPending}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Upload Button */}
-        <div className="flex justify-end gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              setFiles([]);
-              setDescription('');
-              setSelectedMainType(null);
-              setSelectedSubType(null);
-            }}
-            disabled={uploadMutation.isPending}
-          >
-            Temizle
-          </Button>
-          
-          <Button
-            onClick={() => uploadMutation.mutate()}
-            disabled={!canUpload}
-            className="min-w-[120px]"
-          >
-            {uploadMutation.isPending ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                Yükleniyor...
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4 mr-2" />
-                Yükle ({files.length})
-              </>
-            )}
-          </Button>
+        {/* Bilgi */}
+        <div className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">
+          <p><strong>Entity Type:</strong> {entityType}</p>
+          <p><strong>Entity ID:</strong> {entityId}</p>
         </div>
       </CardContent>
     </Card>
   );
-};
-
-export default DocumentUploader;
+}

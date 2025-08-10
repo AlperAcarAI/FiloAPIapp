@@ -177,64 +177,14 @@ const DocumentManagement = () => {
 
         {/* Upload Tab */}
         <TabsContent value="upload" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Ana Dokuman Kategorileri</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {mainDocTypesLoading ? (
-                  <div className="col-span-full flex items-center justify-center p-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                  </div>
-                ) : (
-                  mainDocTypes.map((mainType: any) => (
-                    <Button
-                      key={mainType.id}
-                      variant={selectedMainType === mainType.id.toString() ? "default" : "outline"}
-                      onClick={() => setSelectedMainType(mainType.id.toString())}
-                      className="h-auto p-4 text-left justify-start"
-                    >
-                      <div>
-                        <div className="font-medium">{mainType.name}</div>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          Ana kategori
-                        </div>
-                      </div>
-                    </Button>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {selectedMainType && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Alt Dokuman Tipleri</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
-                  {subDocTypesLoading ? (
-                    <div className="col-span-full flex items-center justify-center p-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                    </div>
-                  ) : (
-                    subDocTypes.map((subType: any) => (
-                      <Button
-                        key={subType.id}
-                        variant="ghost"
-                        size="sm"
-                        className="h-auto p-3 text-left justify-start text-xs"
-                      >
-                        {subType.name}
-                      </Button>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <DocumentUploader 
+            entityType="asset" 
+            entityId={selectedAssetId}
+            onUploadSuccess={(document) => {
+              refetchDocuments();
+              console.log('Uploaded document:', document);
+            }}
+          />
         </TabsContent>
 
         {/* List Tab */}
