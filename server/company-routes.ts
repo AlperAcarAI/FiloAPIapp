@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { db } from './db.js';
 import { eq, and, ilike, desc, asc } from 'drizzle-orm';
 import { 
-  companies, cities, countries,
+  companies, cities, countries, companyTypes, companyTypeMatches,
   insertCompanySchema, updateCompanySchema,
   type InsertCompany, type UpdateCompany, type Company
 } from '../shared/schema.js';
@@ -41,6 +41,11 @@ const router = Router();
  *         schema:
  *           type: integer
  *         description: Belirli şehirdeki şirketleri filtrelemek için
+ *       - in: query
+ *         name: companyTypeId
+ *         schema:
+ *           type: integer
+ *         description: Belirli şirket tipindeki şirketleri filtrelemek için
  *     responses:
  *       200:
  *         description: Şirketler başarıyla getirildi
@@ -49,13 +54,13 @@ const router = Router();
  */
 router.get('/companies', authenticateToken, async (req, res) => {
   try {
-    const { search, active, cityId } = req.query;
+    const { search, active, cityId, companyTypeId } = req.query;
     
-    // Base query with joins
-    let query = db
+    // Get companies with their types
+    const companiesWithTypesQuery = db
       .select({
-        id: companies.id,
-        name: companies.name,
+        companyId: companies.id,
+        companyName: companies.name,
         taxNo: companies.taxNo,
         taxOffice: companies.taxOffice,
         address: companies.address,
@@ -63,13 +68,17 @@ router.get('/companies', authenticateToken, async (req, res) => {
         isActive: companies.isActive,
         cityId: companies.cityId,
         cityName: cities.name,
-        countryName: countries.name
+        countryName: countries.name,
+        companyTypeId: companyTypes.id,
+        companyTypeName: companyTypes.name
       })
       .from(companies)
       .leftJoin(cities, eq(companies.cityId, cities.id))
-      .leftJoin(countries, eq(cities.countryId, countries.id));
+      .leftJoin(countries, eq(cities.countryId, countries.id))
+      .leftJoin(companyTypeMatches, eq(companies.id, companyTypeMatches.companyId))
+      .leftJoin(companyTypes, eq(companyTypeMatches.typeId, companyTypes.id));
 
-    // Filters
+    // Apply filters
     const whereConditions = [];
     
     if (search) {
@@ -83,31 +92,55 @@ router.get('/companies', authenticateToken, async (req, res) => {
     if (cityId) {
       whereConditions.push(eq(companies.cityId, parseInt(cityId as string)));
     }
-
-    // Apply where conditions manually since we need to modify the query
-    let finalQuery = query;
-    if (whereConditions.length > 0) {
-      // Rebuild query with where conditions
-      finalQuery = db
-        .select({
-          id: companies.id,
-          name: companies.name,
-          taxNo: companies.taxNo,
-          taxOffice: companies.taxOffice,
-          address: companies.address,
-          phone: companies.phone,
-          isActive: companies.isActive,
-          cityId: companies.cityId,
-          cityName: cities.name,
-          countryName: countries.name
-        })
-        .from(companies)
-        .leftJoin(cities, eq(companies.cityId, cities.id))
-        .leftJoin(countries, eq(cities.countryId, countries.id))
-        .where(and(...whereConditions));
+    
+    if (companyTypeId) {
+      whereConditions.push(eq(companyTypes.id, parseInt(companyTypeId as string)));
     }
 
-    const result = await finalQuery.orderBy(asc(companies.name));
+    // Apply where conditions if any
+    let finalQuery = companiesWithTypesQuery;
+    if (whereConditions.length > 0) {
+      finalQuery = companiesWithTypesQuery.where(and(...whereConditions));
+    }
+
+    const rawResult = await finalQuery.orderBy(asc(companies.name));
+
+    // Group companies with their types
+    const companiesMap = new Map();
+    
+    rawResult.forEach(row => {
+      const companyId = row.companyId;
+      
+      if (!companiesMap.has(companyId)) {
+        companiesMap.set(companyId, {
+          id: row.companyId,
+          name: row.companyName,
+          taxNo: row.taxNo,
+          taxOffice: row.taxOffice,
+          address: row.address,
+          phone: row.phone,
+          isActive: row.isActive,
+          cityId: row.cityId,
+          cityName: row.cityName,
+          countryName: row.countryName,
+          companyTypes: []
+        });
+      }
+      
+      // Add company type if exists
+      if (row.companyTypeId && row.companyTypeName) {
+        const company = companiesMap.get(companyId);
+        const existingType = company.companyTypes.find((ct: any) => ct.id === row.companyTypeId);
+        if (!existingType) {
+          company.companyTypes.push({
+            id: row.companyTypeId,
+            name: row.companyTypeName
+          });
+        }
+      }
+    });
+
+    const result = Array.from(companiesMap.values());
 
     res.json({
       success: true,
@@ -161,10 +194,11 @@ router.get('/companies/:id', authenticateToken, async (req, res) => {
       });
     }
 
-    const [company] = await db
+    // Get company with types
+    const companyWithTypesQuery = await db
       .select({
-        id: companies.id,
-        name: companies.name,
+        companyId: companies.id,
+        companyName: companies.name,
         taxNo: companies.taxNo,
         taxOffice: companies.taxOffice,
         address: companies.address,
@@ -172,20 +206,47 @@ router.get('/companies/:id', authenticateToken, async (req, res) => {
         isActive: companies.isActive,
         cityId: companies.cityId,
         cityName: cities.name,
-        countryName: countries.name
+        countryName: countries.name,
+        companyTypeId: companyTypes.id,
+        companyTypeName: companyTypes.name
       })
       .from(companies)
       .leftJoin(cities, eq(companies.cityId, cities.id))
       .leftJoin(countries, eq(cities.countryId, countries.id))
-      .where(eq(companies.id, companyId))
-      .limit(1);
+      .leftJoin(companyTypeMatches, eq(companies.id, companyTypeMatches.companyId))
+      .leftJoin(companyTypes, eq(companyTypeMatches.typeId, companyTypes.id))
+      .where(eq(companies.id, companyId));
 
-    if (!company) {
+    if (companyWithTypesQuery.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Şirket bulunamadı.'
       });
     }
+
+    // Build company object with types
+    const firstRow = companyWithTypesQuery[0];
+    const company = {
+      id: firstRow.companyId,
+      name: firstRow.companyName,
+      taxNo: firstRow.taxNo,
+      taxOffice: firstRow.taxOffice,
+      address: firstRow.address,
+      phone: firstRow.phone,
+      isActive: firstRow.isActive,
+      cityId: firstRow.cityId,
+      cityName: firstRow.cityName,
+      countryName: firstRow.countryName,
+      companyTypes: companyWithTypesQuery
+        .filter(row => row.companyTypeId && row.companyTypeName)
+        .map(row => ({
+          id: row.companyTypeId,
+          name: row.companyTypeName
+        }))
+        .filter((type, index, self) => 
+          index === self.findIndex(t => t.id === type.id)
+        ) // Remove duplicates
+    };
 
     res.json({
       success: true,
@@ -568,6 +629,237 @@ router.delete('/companies/:id', authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Şirket silinirken hata oluştu.',
+      error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/secure/company-types:
+ *   get:
+ *     summary: Şirket Tiplerini Listele
+ *     description: Tüm şirket tiplerini listeler
+ *     tags: [Şirket İşlemleri]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: Şirket tipleri başarıyla getirildi
+ */
+router.get('/company-types', authenticateToken, async (req, res) => {
+  try {
+    const types = await db
+      .select({
+        id: companyTypes.id,
+        name: companyTypes.name
+      })
+      .from(companyTypes)
+      .orderBy(asc(companyTypes.name));
+
+    res.json({
+      success: true,
+      message: 'Şirket tipleri başarıyla getirildi.',
+      data: { companyTypes: types }
+    });
+
+  } catch (error) {
+    console.error('Company types fetch error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Şirket tipleri getirilirken hata oluştu.',
+      error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/secure/companies/{id}/types:
+ *   post:
+ *     summary: Şirkete Tip Ata
+ *     description: Bir şirkete şirket tipi atar
+ *     tags: [Şirket İşlemleri]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Şirket ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [typeId]
+ *             properties:
+ *               typeId:
+ *                 type: integer
+ *                 description: Şirket tip ID
+ *                 example: 1
+ *     responses:
+ *       201:
+ *         description: Şirket tipi başarıyla atandı
+ *       400:
+ *         description: Geçersiz veri veya tip zaten atanmış
+ *       404:
+ *         description: Şirket veya tip bulunamadı
+ */
+router.post('/companies/:id/types', authenticateToken, async (req, res) => {
+  try {
+    const companyId = parseInt(req.params.id);
+    const { typeId } = req.body;
+
+    if (isNaN(companyId) || !typeId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Geçersiz şirket ID veya tip ID.'
+      });
+    }
+
+    // Check if company exists
+    const company = await db.select({ id: companies.id })
+      .from(companies)
+      .where(eq(companies.id, companyId))
+      .limit(1);
+
+    if (company.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Şirket bulunamadı.'
+      });
+    }
+
+    // Check if type exists
+    const type = await db.select({ id: companyTypes.id })
+      .from(companyTypes)
+      .where(eq(companyTypes.id, typeId))
+      .limit(1);
+
+    if (type.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Şirket tipi bulunamadı.'
+      });
+    }
+
+    // Check if already assigned
+    const existing = await db.select({ id: companyTypeMatches.id })
+      .from(companyTypeMatches)
+      .where(and(
+        eq(companyTypeMatches.companyId, companyId),
+        eq(companyTypeMatches.typeId, typeId)
+      ))
+      .limit(1);
+
+    if (existing.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bu tip zaten şirkete atanmış.'
+      });
+    }
+
+    // Assign type to company
+    const [assignment] = await db.insert(companyTypeMatches)
+      .values({
+        companyId,
+        typeId
+      })
+      .returning();
+
+    res.status(201).json({
+      success: true,
+      message: 'Şirket tipi başarıyla atandı.',
+      data: { assignment }
+    });
+
+  } catch (error) {
+    console.error('Company type assignment error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Şirket tipi atanırken hata oluştu.',
+      error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/secure/companies/{id}/types/{typeId}:
+ *   delete:
+ *     summary: Şirketten Tip Kaldır
+ *     description: Bir şirketten şirket tipini kaldırır
+ *     tags: [Şirket İşlemleri]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Şirket ID
+ *       - in: path
+ *         name: typeId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Şirket Tip ID
+ *     responses:
+ *       200:
+ *         description: Şirket tipi başarıyla kaldırıldı
+ *       404:
+ *         description: Şirket, tip veya atama bulunamadı
+ */
+router.delete('/companies/:id/types/:typeId', authenticateToken, async (req, res) => {
+  try {
+    const companyId = parseInt(req.params.id);
+    const typeId = parseInt(req.params.typeId);
+
+    if (isNaN(companyId) || isNaN(typeId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Geçersiz şirket ID veya tip ID.'
+      });
+    }
+
+    // Check if assignment exists
+    const assignment = await db.select({ id: companyTypeMatches.id })
+      .from(companyTypeMatches)
+      .where(and(
+        eq(companyTypeMatches.companyId, companyId),
+        eq(companyTypeMatches.typeId, typeId)
+      ))
+      .limit(1);
+
+    if (assignment.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Şirket tip ataması bulunamadı.'
+      });
+    }
+
+    // Remove assignment
+    await db.delete(companyTypeMatches)
+      .where(and(
+        eq(companyTypeMatches.companyId, companyId),
+        eq(companyTypeMatches.typeId, typeId)
+      ));
+
+    res.json({
+      success: true,
+      message: 'Şirket tipi başarıyla kaldırıldı.'
+    });
+
+  } catch (error) {
+    console.error('Company type removal error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Şirket tipi kaldırılırken hata oluştu.',
       error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
     });
   }
