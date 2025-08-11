@@ -1,0 +1,99 @@
+SAHİPLİK TÜRLERİ (OWNERSHIP TYPES) API'LERİ
+1. Sahiplik Türlerini Listele
+Endpoint: GET /api/secure/ownership-types
+
+İstek Parametreleri (Opsiyonel):
+
+// Query Parameters
+{
+  "search": "Şirket",        // Sahiplik türü adında arama
+  "limit": 10,               // Döndürülecek kayıt sayısı (1-100)
+  "offset": 0,               // Atlanacak kayıt sayısı
+  "sortBy": "name",          // Sıralama alanı (id, name)
+  "sortOrder": "asc",        // Sıralama yönü (asc, desc)
+  "activeOnly": true         // Sadece aktif kayıtları getir
+}
+Başarılı Cevap (200 OK):
+
+{
+  "success": true,
+  "message": "Sahiplik türleri başarıyla getirildi.",
+  "data": {
+    "ownershipTypes": [
+      {
+        "id": 1,
+        "name": "Şirket Mülkiyeti",
+        "isActive": true
+      },
+      {
+        "id": 2,
+        "name": "Kiralık",
+        "isActive": true
+      },
+      {
+        "id": 3,
+        "name": "Leasing",
+        "isActive": true
+      },
+      {
+        "id": 4,
+        "name": "Şirket Aracı",
+        "isActive": true
+      }
+    ],
+    "totalCount": 4
+  }
+}
+Örnek İstek:
+
+curl -X GET "http://localhost:5000/api/secure/ownership-types?limit=5&sortBy=name&sortOrder=asc" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+2. Sahiplik Türü Detayını Getir
+Endpoint: GET /api/secure/ownership-types/{id}
+
+Path Parametresi:
+
+{
+  "id": 1  // Sahiplik türü ID'si (zorunlu)
+}
+Başarılı Cevap (200 OK):
+
+{
+  "success": true,
+  "message": "Sahiplik türü detayı başarıyla getirildi.",
+  "data": {
+    "ownershipType": {
+      "id": 1,
+      "name": "Şirket Mülkiyeti",
+      "isActive": true
+    }
+  }
+}
+Hata Durumları:
+
+404 - Sahiplik türü bulunamadı:
+
+{
+  "success": false,
+  "error": "OWNERSHIP_TYPE_NOT_FOUND",
+  "message": "Sahiplik türü bulunamadı."
+}
+400 - Geçersiz ID:
+
+{
+  "success": false,
+  "error": "INVALID_ID",
+  "message": "Geçersiz sahiplik türü ID'si."
+}
+Örnek İstek:
+
+curl -X GET "http://localhost:5000/api/secure/ownership-types/1" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+Kimlik Doğrulama
+Her iki endpoint de JWT token gerektirir:
+
+// Headers
+{
+  "Authorization": "Bearer YOUR_JWT_TOKEN",
+  "Content-Type": "application/json"
+}
