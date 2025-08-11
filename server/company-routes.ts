@@ -11,7 +11,8 @@ import { authenticateToken } from './auth.js';
 import { 
   auditableInsert,
   auditableUpdate,
-  auditableDelete
+  auditableDelete,
+  createAuditLog
 } from './audit-middleware.js';
 
 const router = Router();
@@ -641,14 +642,24 @@ router.delete('/companies/:id', authenticateToken, async (req, res) => {
       userAgent: req.get('User-Agent')
     };
 
-    // Soft delete (isActive = false)
-    const [deletedCompany] = await auditableUpdate(
-      companies,
-      eq(companies.id, companyId),
-      { isActive: false },
-      'companies',
-      auditInfo
-    );
+    // Soft delete (isActive = false) - direct database update
+    const [deletedCompany] = await db
+      .update(companies)
+      .set({ isActive: false })
+      .where(eq(companies.id, companyId))
+      .returning();
+
+    // Manuel audit log oluştur
+    if (deletedCompany) {
+      await createAuditLog(
+        'companies',
+        deletedCompany.id,
+        'UPDATE',
+        existingCompany[0],
+        { isActive: false },
+        auditInfo
+      );
+    }
 
     res.json({
       success: true,
