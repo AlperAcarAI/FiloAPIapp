@@ -805,4 +805,251 @@ router.get('/car-models/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// =============================================
+// SAHİPLİK TÜRLERİ (OWNERSHIP TYPES) API'LERİ
+// =============================================
+
+/**
+ * @swagger
+ * /api/secure/ownership-types:
+ *   get:
+ *     summary: Sahiplik türlerini listele
+ *     description: Tüm sahiplik türlerini getirir (filtreleme ve sayfalama destekli)
+ *     tags: [Sahiplik Türleri]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         description: Sahiplik türü adında arama yapın
+ *         schema:
+ *           type: string
+ *           example: "Şirket"
+ *       - in: query
+ *         name: limit
+ *         description: Döndürülecek kayıt sayısı
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           example: 10
+ *       - in: query
+ *         name: offset
+ *         description: Atlanacak kayıt sayısı
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           example: 0
+ *       - in: query
+ *         name: sortBy
+ *         description: Sıralama alanı
+ *         schema:
+ *           type: string
+ *           enum: [id, name]
+ *           example: "name"
+ *       - in: query
+ *         name: sortOrder
+ *         description: Sıralama yönü
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           example: "asc"
+ *       - in: query
+ *         name: activeOnly
+ *         description: Sadece aktif kayıtları getir
+ *         schema:
+ *           type: boolean
+ *           example: true
+ *     responses:
+ *       200:
+ *         description: Sahiplik türleri başarıyla getirildi
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Sahiplik türleri başarıyla getirildi."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     ownershipTypes:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                             example: 1
+ *                           name:
+ *                             type: string
+ *                             example: "Şirket Mülkiyeti"
+ *                           isActive:
+ *                             type: boolean
+ *                             example: true
+ *                     totalCount:
+ *                       type: integer
+ *                       example: 5
+ */
+router.get('/ownership-types', authenticateToken, async (req, res) => {
+  try {
+    const { search, limit, offset, sortBy = 'name', sortOrder = 'asc', activeOnly } = req.query;
+    
+    // Build where conditions
+    const whereConditions = [];
+    
+    if (search) {
+      whereConditions.push(ilike(ownershipTypes.name, `%${search}%`));
+    }
+    
+    if (activeOnly === 'true') {
+      whereConditions.push(eq(ownershipTypes.isActive, true));
+    }
+    
+    // Build base query
+    let baseQuery = db
+      .select({
+        id: ownershipTypes.id,
+        name: ownershipTypes.name,
+        isActive: ownershipTypes.isActive
+      })
+      .from(ownershipTypes);
+    
+    // Apply conditions
+    if (whereConditions.length > 0) {
+      baseQuery = baseQuery.where(and(...whereConditions));
+    }
+    
+    // Apply sorting
+    const orderColumn = sortBy === 'id' ? ownershipTypes.id : ownershipTypes.name;
+    const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
+    baseQuery = baseQuery.orderBy(orderDirection);
+    
+    // Apply pagination
+    if (limit) {
+      baseQuery = baseQuery.limit(Number(limit));
+      if (offset) {
+        baseQuery = baseQuery.offset(Number(offset));
+      }
+    }
+    
+    const ownershipTypesList = await baseQuery;
+    
+    res.json({
+      success: true,
+      message: 'Sahiplik türleri başarıyla getirildi.',
+      data: {
+        ownershipTypes: ownershipTypesList,
+        totalCount: ownershipTypesList.length
+      }
+    });
+  } catch (error) {
+    console.error('Sahiplik türleri getirme hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: 'OWNERSHIP_TYPES_FETCH_ERROR',
+      message: 'Sahiplik türleri getirilirken hata oluştu.'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/secure/ownership-types/{id}:
+ *   get:
+ *     summary: Sahiplik türü detayını getir
+ *     description: Belirtilen ID'ye sahip sahiplik türünün detaylarını getirir
+ *     tags: [Sahiplik Türleri]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Sahiplik türü ID'si
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *     responses:
+ *       200:
+ *         description: Sahiplik türü detayı başarıyla getirildi
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Sahiplik türü detayı başarıyla getirildi."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     ownershipType:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                           example: 1
+ *                         name:
+ *                           type: string
+ *                           example: "Şirket Mülkiyeti"
+ *                         isActive:
+ *                           type: boolean
+ *                           example: true
+ *       404:
+ *         description: Sahiplik türü bulunamadı
+ */
+router.get('/ownership-types/:id', authenticateToken, async (req, res) => {
+  try {
+    const ownershipTypeId = parseInt(req.params.id);
+    
+    if (isNaN(ownershipTypeId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_ID',
+        message: 'Geçersiz sahiplik türü ID\'si.'
+      });
+    }
+    
+    const [ownershipTypeDetail] = await db
+      .select({
+        id: ownershipTypes.id,
+        name: ownershipTypes.name,
+        isActive: ownershipTypes.isActive
+      })
+      .from(ownershipTypes)
+      .where(eq(ownershipTypes.id, ownershipTypeId));
+    
+    if (!ownershipTypeDetail) {
+      return res.status(404).json({
+        success: false,
+        error: 'OWNERSHIP_TYPE_NOT_FOUND',
+        message: 'Sahiplik türü bulunamadı.'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Sahiplik türü detayı başarıyla getirildi.',
+      data: {
+        ownershipType: ownershipTypeDetail
+      }
+    });
+  } catch (error) {
+    console.error('Sahiplik türü detayı getirme hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: 'OWNERSHIP_TYPE_DETAIL_ERROR',
+      message: 'Sahiplik türü detayı getirilirken hata oluştu.'
+    });
+  }
+});
+
 export default router;
