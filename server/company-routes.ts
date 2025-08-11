@@ -322,7 +322,8 @@ router.get('/companies/:id', authenticateToken, async (req, res) => {
 router.post('/companies', authenticateToken, async (req, res) => {
   try {
     // Body validation
-    const validatedData = insertCompanySchema.parse(req.body);
+    const { companyTypeId, ...companyData } = insertCompanySchema.parse(req.body);
+    const validatedData = companyData;
 
     // Duplicate kontrolü
     const existingCompany = await db.select({ id: companies.id })
@@ -353,6 +354,21 @@ router.post('/companies', authenticateToken, async (req, res) => {
       }
     }
 
+    // Company type kontrolü (eğer companyTypeId verilmişse)
+    if (companyTypeId) {
+      const typeExists = await db.select({ id: companyTypes.id })
+        .from(companyTypes)
+        .where(eq(companyTypes.id, companyTypeId))
+        .limit(1);
+
+      if (typeExists.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Belirtilen şirket tipi bulunamadı.'
+        });
+      }
+    }
+
     // Audit bilgilerini yakala
     const auditInfo = {
       userId: (req as any).user?.id,
@@ -368,6 +384,19 @@ router.post('/companies', authenticateToken, async (req, res) => {
       validatedData,
       auditInfo
     );
+
+    // Company type ataması (eğer belirtilmişse)
+    if (companyTypeId && newCompany) {
+      await auditableInsert(
+        db,
+        companyTypeMatches,
+        {
+          companyId: newCompany.id,
+          typeId: companyTypeId
+        },
+        auditInfo
+      );
+    }
 
     res.status(201).json({
       success: true,

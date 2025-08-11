@@ -1130,6 +1130,8 @@ export const insertUserSchema = createInsertSchema(users).omit({
 
 export const insertCompanySchema = createInsertSchema(companies).omit({
   id: true,
+}).extend({
+  companyTypeId: z.number().optional() // Şirket oluştururken tip ataması için opsiyonel
 });
 
 export const insertCompanyTypeSchema = createInsertSchema(companyTypes).omit({
