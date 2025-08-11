@@ -404,4 +404,414 @@ router.post('/vehicles', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/secure/car-brands:
+ *   get:
+ *     summary: Araç Marka Listesi
+ *     description: Tüm araç markalarını listeler
+ *     tags: [Araç Marka/Model İşlemleri]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Marka adında arama yapmak için
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Maksimum sonuç sayısı
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *         description: Sayfalama için başlangıç noktası
+ *     responses:
+ *       200:
+ *         description: Markalar başarıyla getirildi
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Araç markaları başarıyla getirildi"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     brands:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                             example: 1
+ *                           name:
+ *                             type: string
+ *                             example: "ALFA ROMEO"
+ *                           isActive:
+ *                             type: boolean
+ *                             example: true
+ *                     totalCount:
+ *                       type: integer
+ *                       example: 50
+ */
+router.get('/car-brands', authenticateToken, async (req, res) => {
+  try {
+    const { search, limit, offset, sortBy = 'name', sortOrder = 'asc' } = req.query;
+    
+    // Base query
+    let query = db
+      .select({
+        id: carBrands.id,
+        name: carBrands.name,
+        isActive: carBrands.isActive,
+        createdAt: carBrands.createdAt,
+        updatedAt: carBrands.updatedAt
+      })
+      .from(carBrands);
+    
+    // Filters
+    const whereConditions = [];
+    
+    if (search) {
+      whereConditions.push(ilike(carBrands.name, `%${search}%`));
+    }
+    
+    if (whereConditions.length > 0) {
+      query.where(and(...whereConditions));
+    }
+    
+    // Sorting
+    const orderColumn = sortBy === 'id' ? carBrands.id : carBrands.name;
+    const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
+    query.orderBy(orderDirection);
+    
+    // Pagination
+    if (limit) {
+      query.limit(Number(limit));
+      if (offset) {
+        query.offset(Number(offset));
+      }
+    }
+    
+    const brandsList = await query;
+    
+    res.json({
+      success: true,
+      message: 'Araç markaları başarıyla getirildi.',
+      data: {
+        brands: brandsList,
+        totalCount: brandsList.length
+      }
+    });
+  } catch (error) {
+    console.error('Araç markaları getirme hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: 'CAR_BRANDS_FETCH_ERROR',
+      message: 'Araç markaları getirilirken hata oluştu.'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/secure/car-brands/{id}:
+ *   get:
+ *     summary: Araç Marka Detayı
+ *     description: Belirli bir araç markasının detaylı bilgilerini getirir
+ *     tags: [Araç Marka/Model İşlemleri]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Marka ID
+ *     responses:
+ *       200:
+ *         description: Marka detayı başarıyla getirildi
+ *       404:
+ *         description: Marka bulunamadı
+ */
+router.get('/car-brands/:id', authenticateToken, async (req, res) => {
+  try {
+    const brandId = parseInt(req.params.id);
+    
+    const [brandDetail] = await db
+      .select({
+        id: carBrands.id,
+        name: carBrands.name,
+        isActive: carBrands.isActive,
+        createdAt: carBrands.createdAt,
+        updatedAt: carBrands.updatedAt
+      })
+      .from(carBrands)
+      .where(eq(carBrands.id, brandId));
+    
+    if (!brandDetail) {
+      return res.status(404).json({
+        success: false,
+        error: 'BRAND_NOT_FOUND',
+        message: 'Araç markası bulunamadı.'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Araç markası detayı başarıyla getirildi.',
+      data: {
+        brand: brandDetail
+      }
+    });
+  } catch (error) {
+    console.error('Araç markası detayı getirme hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: 'BRAND_DETAIL_ERROR',
+      message: 'Araç markası detayı getirilirken hata oluştu.'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/secure/car-models:
+ *   get:
+ *     summary: Araç Model Listesi
+ *     description: Araç modellerini listeler (marka bilgisi ile birlikte)
+ *     tags: [Araç Marka/Model İşlemleri]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Model adında arama yapmak için
+ *       - in: query
+ *         name: brandId
+ *         schema:
+ *           type: integer
+ *         description: Belirli markaya ait modelleri filtrelemek için
+ *       - in: query
+ *         name: typeId
+ *         schema:
+ *           type: integer
+ *         description: Belirli araç tipine göre filtrelemek için
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Maksimum sonuç sayısı
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *         description: Sayfalama için başlangıç noktası
+ *     responses:
+ *       200:
+ *         description: Modeller başarıyla getirildi
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Araç modelleri başarıyla getirildi"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     models:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                             example: 1
+ *                           name:
+ *                             type: string
+ *                             example: "GT 2.0 JTS DISTINCTIVE"
+ *                           brandId:
+ *                             type: integer
+ *                             example: 1
+ *                           brandName:
+ *                             type: string
+ *                             example: "ALFA ROMEO"
+ *                           typeId:
+ *                             type: integer
+ *                             example: 1
+ *                           typeName:
+ *                             type: string
+ *                             example: "Otomobil"
+ *                           capacity:
+ *                             type: string
+ *                             example: "5 kişi"
+ *                     totalCount:
+ *                       type: integer
+ *                       example: 150
+ */
+router.get('/car-models', authenticateToken, async (req, res) => {
+  try {
+    const { search, brandId, typeId, limit, offset, sortBy = 'name', sortOrder = 'asc' } = req.query;
+    
+    // Base query with joins
+    let query = db
+      .select({
+        id: carModels.id,
+        name: carModels.name,
+        brandId: carModels.brandId,
+        typeId: carModels.typeId,
+        capacity: carModels.capacity,
+        detail: carModels.detail,
+        isActive: carModels.isActive,
+        createdAt: carModels.createdAt,
+        updatedAt: carModels.updatedAt,
+        // Join data
+        brandName: carBrands.name,
+        typeName: carTypes.name
+      })
+      .from(carModels)
+      .leftJoin(carBrands, eq(carModels.brandId, carBrands.id))
+      .leftJoin(carTypes, eq(carModels.typeId, carTypes.id));
+    
+    // Filters
+    const whereConditions = [];
+    
+    if (search) {
+      whereConditions.push(ilike(carModels.name, `%${search}%`));
+    }
+    
+    if (brandId) {
+      whereConditions.push(eq(carModels.brandId, parseInt(brandId as string)));
+    }
+    
+    if (typeId) {
+      whereConditions.push(eq(carModels.typeId, parseInt(typeId as string)));
+    }
+    
+    if (whereConditions.length > 0) {
+      query.where(and(...whereConditions));
+    }
+    
+    // Sorting
+    const orderColumn = sortBy === 'id' ? carModels.id : carModels.name;
+    const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
+    query.orderBy(orderDirection);
+    
+    // Pagination
+    if (limit) {
+      query.limit(Number(limit));
+      if (offset) {
+        query.offset(Number(offset));
+      }
+    }
+    
+    const modelsList = await query;
+    
+    res.json({
+      success: true,
+      message: 'Araç modelleri başarıyla getirildi.',
+      data: {
+        models: modelsList,
+        totalCount: modelsList.length
+      }
+    });
+  } catch (error) {
+    console.error('Araç modelleri getirme hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: 'CAR_MODELS_FETCH_ERROR',
+      message: 'Araç modelleri getirilirken hata oluştu.'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/secure/car-models/{id}:
+ *   get:
+ *     summary: Araç Model Detayı
+ *     description: Belirli bir araç modelinin detaylı bilgilerini getirir
+ *     tags: [Araç Marka/Model İşlemleri]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Model ID
+ *     responses:
+ *       200:
+ *         description: Model detayı başarıyla getirildi
+ *       404:
+ *         description: Model bulunamadı
+ */
+router.get('/car-models/:id', authenticateToken, async (req, res) => {
+  try {
+    const modelId = parseInt(req.params.id);
+    
+    const [modelDetail] = await db
+      .select({
+        id: carModels.id,
+        name: carModels.name,
+        brandId: carModels.brandId,
+        typeId: carModels.typeId,
+        capacity: carModels.capacity,
+        detail: carModels.detail,
+        isActive: carModels.isActive,
+        createdAt: carModels.createdAt,
+        updatedAt: carModels.updatedAt,
+        // Join data
+        brandName: carBrands.name,
+        typeName: carTypes.name
+      })
+      .from(carModels)
+      .leftJoin(carBrands, eq(carModels.brandId, carBrands.id))
+      .leftJoin(carTypes, eq(carModels.typeId, carTypes.id))
+      .where(eq(carModels.id, modelId));
+    
+    if (!modelDetail) {
+      return res.status(404).json({
+        success: false,
+        error: 'MODEL_NOT_FOUND',
+        message: 'Araç modeli bulunamadı.'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Araç modeli detayı başarıyla getirildi.',
+      data: {
+        model: modelDetail
+      }
+    });
+  } catch (error) {
+    console.error('Araç modeli detayı getirme hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: 'MODEL_DETAIL_ERROR',
+      message: 'Araç modeli detayı getirilirken hata oluştu.'
+    });
+  }
+});
+
 export default router;
