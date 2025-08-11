@@ -1240,6 +1240,29 @@ export const insertTripRentalSchema = createInsertSchema(tripRentals).omit({
 
 export const updateTripRentalSchema = insertTripRentalSchema.partial();
 
+// Rental Agreements Schemas
+export const insertRentalAgreementSchema = createInsertSchema(rentalAgreements).omit({
+  id: true,
+}).extend({
+  agreementNumber: z.string().min(1).max(50),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır"),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır").optional(),
+});
+
+export const updateRentalAgreementSchema = insertRentalAgreementSchema.partial();
+
+// Rental Assets Schemas
+export const insertRentalAssetSchema = createInsertSchema(rentalAssets).omit({
+  id: true,
+}).extend({
+  mountCents: z.number().int().min(0),
+  vatPercent: z.string(), // decimal as string
+  kmHourLimit: z.number().int().min(0),
+  kmTotalLimit: z.number().int().min(0),
+});
+
+export const updateRentalAssetSchema = insertRentalAssetSchema.partial();
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
@@ -1303,6 +1326,16 @@ export type UpdateDocument = z.infer<typeof updateDocumentSchema>;
 export type TripRental = typeof tripRentals.$inferSelect;
 export type InsertTripRental = z.infer<typeof insertTripRentalSchema>;
 export type UpdateTripRental = z.infer<typeof updateTripRentalSchema>;
+
+// Rental Agreements Types
+export type RentalAgreement = typeof rentalAgreements.$inferSelect;
+export type InsertRentalAgreement = z.infer<typeof insertRentalAgreementSchema>;
+export type UpdateRentalAgreement = z.infer<typeof updateRentalAgreementSchema>;
+
+// Rental Assets Types
+export type RentalAsset = typeof rentalAssets.$inferSelect;
+export type InsertRentalAsset = z.infer<typeof insertRentalAssetSchema>;
+export type UpdateRentalAsset = z.infer<typeof updateRentalAssetSchema>;
 
 export type PolicyType = typeof policyTypes.$inferSelect;
 export type DamageType = typeof damageTypes.$inferSelect;

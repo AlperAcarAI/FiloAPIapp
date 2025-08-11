@@ -47,6 +47,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // API route'larını kaydet
   app.use("/api/trip-rentals", await import("./trip-rental-routes.js").then(m => m.default));
+  app.use("/api/rental-agreements", await import("./rental-agreements-routes.js").then(m => m.default));
+  app.use("/api/rental-assets", await import("./rental-assets-routes.js").then(m => m.default));
 
   // Kullanıcı kimlik doğrulama - Basitleştirilmiş sistem
   app.post("/api/auth/login", async (req: SecurityRequest, res: Response) => {
