@@ -345,11 +345,10 @@ router.post('/vehicles', authenticateToken, async (req, res) => {
     
     // Yeni araç oluştur
     const [newVehicle] = await auditableInsert(
+      db,
       assets,
       { ...assetData, ...auditInfo },
-      (req as any).user?.id,
-      req.ip,
-      req.get('User-Agent')
+      auditInfo
     );
     
     // Yeni oluşturulan aracın detaylı bilgilerini getir
@@ -473,9 +472,7 @@ router.get('/car-brands', authenticateToken, async (req, res) => {
       .select({
         id: carBrands.id,
         name: carBrands.name,
-        isActive: carBrands.isActive,
-        createdAt: carBrands.createdAt,
-        updatedAt: carBrands.updatedAt
+        isActive: carBrands.isActive
       })
       .from(carBrands);
     
@@ -553,9 +550,7 @@ router.get('/car-brands/:id', authenticateToken, async (req, res) => {
       .select({
         id: carBrands.id,
         name: carBrands.name,
-        isActive: carBrands.isActive,
-        createdAt: carBrands.createdAt,
-        updatedAt: carBrands.updatedAt
+        isActive: carBrands.isActive
       })
       .from(carBrands)
       .where(eq(carBrands.id, brandId));
@@ -671,27 +666,7 @@ router.get('/car-models', authenticateToken, async (req, res) => {
   try {
     const { search, brandId, typeId, limit, offset, sortBy = 'name', sortOrder = 'asc' } = req.query;
     
-    // Base query with joins
-    let query = db
-      .select({
-        id: carModels.id,
-        name: carModels.name,
-        brandId: carModels.brandId,
-        typeId: carModels.typeId,
-        capacity: carModels.capacity,
-        detail: carModels.detail,
-        isActive: carModels.isActive,
-        createdAt: carModels.createdAt,
-        updatedAt: carModels.updatedAt,
-        // Join data
-        brandName: carBrands.name,
-        typeName: carTypes.name
-      })
-      .from(carModels)
-      .leftJoin(carBrands, eq(carModels.brandId, carBrands.id))
-      .leftJoin(carTypes, eq(carModels.typeId, carTypes.id));
-    
-    // Filters
+    // Build where conditions
     const whereConditions = [];
     
     if (search) {
@@ -706,24 +681,42 @@ router.get('/car-models', authenticateToken, async (req, res) => {
       whereConditions.push(eq(carModels.typeId, parseInt(typeId as string)));
     }
     
+    // Build base query
+    let baseQuery = db
+      .select({
+        id: carModels.id,
+        name: carModels.name,
+        brandId: carModels.brandId,
+        typeId: carModels.typeId,
+        capacity: carModels.capacity,
+        detail: carModels.detail,
+        isActive: carModels.isActive,
+        brandName: carBrands.name,
+        typeName: carTypes.name
+      })
+      .from(carModels)
+      .leftJoin(carBrands, eq(carModels.brandId, carBrands.id))
+      .leftJoin(carTypes, eq(carModels.typeId, carTypes.id));
+    
+    // Apply conditions dynamically
     if (whereConditions.length > 0) {
-      query.where(and(...whereConditions));
+      baseQuery = baseQuery.where(and(...whereConditions));
     }
     
-    // Sorting
+    // Apply sorting
     const orderColumn = sortBy === 'id' ? carModels.id : carModels.name;
     const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
-    query.orderBy(orderDirection);
+    baseQuery = baseQuery.orderBy(orderDirection);
     
-    // Pagination
+    // Apply pagination
     if (limit) {
-      query.limit(Number(limit));
+      baseQuery = baseQuery.limit(Number(limit));
       if (offset) {
-        query.offset(Number(offset));
+        baseQuery = baseQuery.offset(Number(offset));
       }
     }
     
-    const modelsList = await query;
+    const modelsList = await baseQuery;
     
     res.json({
       success: true,
@@ -778,8 +771,6 @@ router.get('/car-models/:id', authenticateToken, async (req, res) => {
         capacity: carModels.capacity,
         detail: carModels.detail,
         isActive: carModels.isActive,
-        createdAt: carModels.createdAt,
-        updatedAt: carModels.updatedAt,
         // Join data
         brandName: carBrands.name,
         typeName: carTypes.name
