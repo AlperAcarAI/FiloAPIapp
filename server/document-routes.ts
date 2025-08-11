@@ -42,13 +42,15 @@ const storage = multer.diskStorage({
     cb(null, dateDir);
   },
   filename: (req, file, cb) => {
-    // Dosya adını unique yap
+    // Kullanıcı ID'si ve tarih damgası ile unique dosya adı oluştur
+    const userId = (req as any).userContext?.userId || (req as any).user?.id || 'unknown';
     const timestamp = Date.now();
-    const randomId = Math.random().toString(36).substring(2, 15);
+    const dateStr = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+    const randomId = Math.random().toString(36).substring(2, 8);
     const extension = path.extname(file.originalname);
     const baseName = path.basename(file.originalname, extension);
     
-    const fileName = `${baseName}_${timestamp}_${randomId}${extension}`;
+    const fileName = `${baseName}_user${userId}_${dateStr}_${randomId}${extension}`;
     cb(null, fileName);
   }
 });
@@ -520,24 +522,8 @@ documentRoutes.post("/upload", authenticateJWT, hasPermission(["document:write"]
       });
     }
 
-    // Dosya hash'ini hesapla
+    // Dosya hash'ini hesapla (izleme amaçlı, duplicate kontrolü yok)
     const fileHash = await calculateFileHash(req.file.path);
-
-    // Duplicate kontrolü
-    const [existing] = await db.select({ id: documents.id })
-      .from(documents)
-      .where(eq(documents.fileHash, fileHash));
-
-    if (existing) {
-      // Cleanup
-      if (fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-      return res.status(400).json({ 
-        success: false, 
-        error: "Bu dosya zaten yüklenmiş" 
-      });
-    }
 
     // Audit bilgilerini topla
     const auditInfo = captureAuditInfo(req);
