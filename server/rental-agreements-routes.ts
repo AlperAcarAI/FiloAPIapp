@@ -3,7 +3,7 @@ import { db } from "./db";
 import { rentalAgreements, rentalAssets, assets, companies } from "@shared/schema";
 import { insertRentalAgreementSchema, updateRentalAgreementSchema } from "@shared/schema";
 import { eq, and, or, like, desc, asc, sql, between, gte, lte } from "drizzle-orm";
-import { authenticateToken, type AuthRequest } from "./auth";
+import { authenticateJWT, type AuthRequest } from "./hierarchical-auth";
 import { hasPermission } from "./permission-management-routes";
 import { captureAuditInfo, auditableInsert, auditableUpdate, auditableDelete } from "./audit-middleware";
 import { z } from "zod";
@@ -13,7 +13,7 @@ const rentalAgreementsRoutes = Router();
 export default rentalAgreementsRoutes;
 
 // Tüm kiralama sözleşmelerini listele (filtreleme destekli)
-rentalAgreementsRoutes.get("/", authenticateToken, hasPermission(["fleet:read"]), async (req, res) => {
+rentalAgreementsRoutes.get("/", authenticateJWT, hasPermission(["fleet:read"]), async (req, res) => {
   try {
     const { 
       rentalCompanyId,
@@ -119,7 +119,7 @@ rentalAgreementsRoutes.get("/", authenticateToken, hasPermission(["fleet:read"])
 });
 
 // Belirli bir kiralama sözleşmesini getir
-rentalAgreementsRoutes.get("/:id", authenticateToken, hasPermission(["fleet:read"]), async (req, res) => {
+rentalAgreementsRoutes.get("/:id", authenticateJWT, hasPermission(["fleet:read"]), async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -180,7 +180,7 @@ rentalAgreementsRoutes.get("/:id", authenticateToken, hasPermission(["fleet:read
 });
 
 // Yeni kiralama sözleşmesi oluştur
-rentalAgreementsRoutes.post("/", authenticateToken, hasPermission(["fleet:write"]), async (req, res) => {
+rentalAgreementsRoutes.post("/", authenticateJWT, hasPermission(["fleet:write"]), async (req, res) => {
   try {
     const validatedData = insertRentalAgreementSchema.parse(req.body);
     const auditInfo = captureAuditInfo(req);
@@ -228,7 +228,7 @@ rentalAgreementsRoutes.post("/", authenticateToken, hasPermission(["fleet:write"
 });
 
 // Kiralama sözleşmesi güncelle
-rentalAgreementsRoutes.put("/:id", authenticateToken, hasPermission(["fleet:write"]), async (req, res) => {
+rentalAgreementsRoutes.put("/:id", authenticateJWT, hasPermission(["fleet:write"]), async (req, res) => {
   try {
     const { id } = req.params;
     const validatedData = updateRentalAgreementSchema.parse(req.body);
@@ -296,7 +296,7 @@ rentalAgreementsRoutes.put("/:id", authenticateToken, hasPermission(["fleet:writ
 });
 
 // Kiralama sözleşmesini deaktif et
-rentalAgreementsRoutes.delete("/:id", authenticateToken, hasPermission(["fleet:delete"]), async (req, res) => {
+rentalAgreementsRoutes.delete("/:id", authenticateJWT, hasPermission(["fleet:delete"]), async (req, res) => {
   try {
     const { id } = req.params;
     const auditInfo = captureAuditInfo(req);
@@ -336,7 +336,7 @@ rentalAgreementsRoutes.delete("/:id", authenticateToken, hasPermission(["fleet:d
 });
 
 // Sözleşme özeti - aktif sözleşme sayıları
-rentalAgreementsRoutes.get("/summary/stats", authenticateToken, hasPermission(["fleet:read"]), async (req, res) => {
+rentalAgreementsRoutes.get("/summary/stats", authenticateJWT, hasPermission(["fleet:read"]), async (req, res) => {
   try {
     const summary = await db.select({
       totalAgreements: sql`count(*)::int`.as('totalAgreements'),
