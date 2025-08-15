@@ -841,10 +841,10 @@ export const rentalAssets = pgTable("rental_assets", {
   assetId: integer("asset_id").notNull().references(() => assets.id),
   mountCents: integer("mount_cents").notNull(),
   vatPercent: decimal("vat_percent", { precision: 5, scale: 2 }).notNull(),
-  kmHourLimit: integer("km_hour_limit").notNull(),
+  kmMonthLimit: integer("km_month_limit").notNull(),
   kmTotalLimit: integer("km_total_limit").notNull(),
 }, (table) => ({
-  vatKmIdx: index("idx_rental_assets_vat_kmh").on(table.vatPercent, table.kmHourLimit),
+  vatKmIdx: index("idx_rental_assets_vat_kmh").on(table.vatPercent, table.kmMonthLimit),
 }));
 
 export const penalties = pgTable("penalties", {
@@ -1257,7 +1257,7 @@ export const insertRentalAssetSchema = createInsertSchema(rentalAssets).omit({
 }).extend({
   mountCents: z.number().int().min(0),
   vatPercent: z.string(), // decimal as string
-  kmHourLimit: z.number().int().min(0),
+  kmMonthLimit: z.number().int().min(0),
   kmTotalLimit: z.number().int().min(0),
 });
 

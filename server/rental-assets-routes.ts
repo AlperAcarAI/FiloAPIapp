@@ -21,8 +21,8 @@ rentalAssetsRoutes.get("/", authenticateToken, async (req, res) => {
       maxMountCents,
       minVatPercent,
       maxVatPercent,
-      minKmHourLimit,
-      maxKmHourLimit,
+      minKmMonthLimit,
+      maxKmMonthLimit,
       search,
       sortBy = "id",
       sortOrder = "desc",
@@ -56,12 +56,12 @@ rentalAssetsRoutes.get("/", authenticateToken, async (req, res) => {
       conditions.push(lte(rentalAssets.vatPercent, maxVatPercent as string));
     }
     
-    if (minKmHourLimit) {
-      conditions.push(gte(rentalAssets.kmHourLimit, parseInt(minKmHourLimit as string)));
+    if (minKmMonthLimit) {
+      conditions.push(gte(rentalAssets.kmMonthLimit, parseInt(minKmMonthLimit as string)));
     }
     
-    if (maxKmHourLimit) {
-      conditions.push(lte(rentalAssets.kmHourLimit, parseInt(maxKmHourLimit as string)));
+    if (maxKmMonthLimit) {
+      conditions.push(lte(rentalAssets.kmMonthLimit, parseInt(maxKmMonthLimit as string)));
     }
     
     if (search) {
@@ -75,7 +75,7 @@ rentalAssetsRoutes.get("/", authenticateToken, async (req, res) => {
 
     const orderByColumn = sortBy === "mountCents" ? rentalAssets.mountCents :
                          sortBy === "vatPercent" ? rentalAssets.vatPercent :
-                         sortBy === "kmHourLimit" ? rentalAssets.kmHourLimit :
+                         sortBy === "kmMonthLimit" ? rentalAssets.kmMonthLimit :
                          sortBy === "kmTotalLimit" ? rentalAssets.kmTotalLimit :
                          rentalAssets.id;
     
@@ -90,7 +90,7 @@ rentalAssetsRoutes.get("/", authenticateToken, async (req, res) => {
         plateNumber: assets.plateNumber,
         mountCents: rentalAssets.mountCents,
         vatPercent: rentalAssets.vatPercent,
-        kmHourLimit: rentalAssets.kmHourLimit,
+        kmMonthLimit: rentalAssets.kmMonthLimit,
         kmTotalLimit: rentalAssets.kmTotalLimit,
         // Sözleşme şirket bilgileri
         rentalCompanyId: rentalAgreements.rentalCompanyId,
@@ -154,7 +154,7 @@ rentalAssetsRoutes.get("/:id", authenticateToken, async (req, res) => {
       plateNumber: assets.plateNumber,
       mountCents: rentalAssets.mountCents,
       vatPercent: rentalAssets.vatPercent,
-      kmHourLimit: rentalAssets.kmHourLimit,
+      kmMonthLimit: rentalAssets.kmMonthLimit,
       kmTotalLimit: rentalAssets.kmTotalLimit,
       // Sözleşme detayları
       rentalCompanyId: rentalAgreements.rentalCompanyId,
@@ -416,7 +416,7 @@ rentalAssetsRoutes.get("/by-agreement/:agreementId", authenticateToken, async (r
       plateNumber: assets.plateNumber,
       mountCents: rentalAssets.mountCents,
       vatPercent: rentalAssets.vatPercent,
-      kmHourLimit: rentalAssets.kmHourLimit,
+      kmMonthLimit: rentalAssets.kmMonthLimit,
       kmTotalLimit: rentalAssets.kmTotalLimit,
       // Toplam maliyet hesaplama
       totalCostWithVat: sql`ROUND(${rentalAssets.mountCents} * (1 + ${rentalAssets.vatPercent}/100))::int`.as('totalCostWithVat')
@@ -431,7 +431,7 @@ rentalAssetsRoutes.get("/by-agreement/:agreementId", authenticateToken, async (r
       totalAssets: sql`count(*)::int`.as('totalAssets'),
       totalMountCents: sql`sum(mount_cents)::int`.as('totalMountCents'),
       avgVatPercent: sql`avg(vat_percent)::numeric`.as('avgVatPercent'),
-      totalKmHourLimit: sql`sum(km_hour_limit)::int`.as('totalKmHourLimit'),
+      totalKmMonthLimit: sql`sum(km_month_limit)::int`.as('totalKmMonthLimit'),
       totalKmTotalLimit: sql`sum(km_total_limit)::int`.as('totalKmTotalLimit')
     })
     .from(rentalAssets)
@@ -446,7 +446,7 @@ rentalAssetsRoutes.get("/by-agreement/:agreementId", authenticateToken, async (r
           totalAssets: 0,
           totalMountCents: 0,
           avgVatPercent: 0,
-          totalKmHourLimit: 0,
+          totalKmMonthLimit: 0,
           totalKmTotalLimit: 0
         }
       }

@@ -22,6 +22,7 @@ Preferred communication style: Simple, everyday language.
   - /api/health (200 OK)
   - /api/docs (Swagger documentation)
 - **Recent Fixes**: Database connection issue resolved by switching from @neondatabase/serverless to pg driver
+- **Column Rename (Aug 14, 2025)**: Successfully renamed `km_hour_limit` to `km_month_limit` in rental_assets table with complete API updates
 - **Cross-Server CORS**: Frontend-backend separation issue resolved by adding frontend domain to CORS allowedOrigins (August 10, 2025)
 - **Document Upload System**: Complete file upload functionality implemented with JWT authentication, duplicate detection, and audit logging (August 9, 2025)
 - **Frontend-Backend Separation**: Cross-origin requests working with proper CORS configuration for separate frontend and backend servers (August 10, 2025)
