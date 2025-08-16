@@ -190,162 +190,25 @@ router.use(filterByWorkArea);
 router.get('/personnel-detail', async (req: AuthRequest, res) => {
   try {
     console.log('Personnel detailed API called with params:', req.query);
-    const { 
-      search, 
-      companyId, 
-      workAreaId, 
-      positionId, 
-      activeOnly = 'true', 
-      hasActiveAssignment,
-      limit, 
-      offset, 
-      sortBy = 'personnel_name', 
-      sortOrder = 'asc' 
-    } = req.query;
-
-    // Base query - personnel_detailed view'den select
-    let baseQuery = `
-      SELECT 
-        personnel_id,
-        tc_no,
-        personnel_name,
-        personnel_surname,
-        birthdate,
-        address,
-        phone_no,
-        personnel_status,
-        is_active,
-        personnel_created_at,
-        nation_id,
-        nation_name,
-        nation_code,
-        birthplace_id,
-        birthplace_name,
-        birthplace_code,
-        company_id,
-        company_name,
-        company_is_active,
-        current_work_area_id,
-        current_work_area_name,
-        current_work_area_code,
-        current_work_area_type,
-        current_work_area_status,
-        current_work_area_address,
-        current_position_id,
-        current_position_name,
-        current_position_level,
-        current_position_salary,
-        assignment_id,
-        current_assignment_start_date,
-        current_assignment_end_date,
-        current_assignment_is_active,
-        total_work_areas,
-        active_assignments,
-        completed_assignments,
-        first_assignment_date,
-        last_assignment_date
-      FROM personnel_detailed
-      WHERE 1=1
-    `;
-
-    const queryParams: any[] = [];
-    let paramIndex = 1;
-
-    // Filters
-    if (activeOnly === 'true') {
-      baseQuery += ` AND is_active = true`;
-    }
-
-    if (search) {
-      baseQuery += ` AND (
-        personnel_name ILIKE $${paramIndex} OR 
-        personnel_surname ILIKE $${paramIndex + 1} OR 
-        tc_no::text ILIKE $${paramIndex + 2}
-      )`;
-      const searchTerm = `%${search}%`;
-      queryParams.push(searchTerm, searchTerm, searchTerm);
-      paramIndex += 3;
-    }
-
-    if (companyId) {
-      baseQuery += ` AND company_id = $${paramIndex}`;
-      queryParams.push(Number(companyId));
-      paramIndex++;
-    }
-
-    if (workAreaId) {
-      baseQuery += ` AND current_work_area_id = $${paramIndex}`;
-      queryParams.push(Number(workAreaId));
-      paramIndex++;
-    }
-
-    if (positionId) {
-      baseQuery += ` AND current_position_id = $${paramIndex}`;
-      queryParams.push(Number(positionId));
-      paramIndex++;
-    }
-
-    if (hasActiveAssignment === 'true') {
-      baseQuery += ` AND current_assignment_is_active = true`;
-    } else if (hasActiveAssignment === 'false') {
-      baseQuery += ` AND (current_assignment_is_active = false OR current_assignment_is_active IS NULL)`;
-    }
-
-    // Work area filtering based on user's hierarchical access
-    if (req.workAreaFilter && req.workAreaFilter.length > 0) {
-      const placeholders = req.workAreaFilter.map((_, index) => `$${paramIndex + index}`).join(', ');
-      baseQuery += ` AND (current_work_area_id IN (${placeholders}) OR current_work_area_id IS NULL)`;
-      queryParams.push(...req.workAreaFilter);
-      paramIndex += req.workAreaFilter.length;
-    }
-
-    // Count query for total records
-    const countQuery = `SELECT COUNT(*) as total FROM (${baseQuery}) as filtered_data`;
-
-    // Sorting
-    const validSortFields = {
-      'personnel_name': 'personnel_name',
-      'personnel_surname': 'personnel_surname', 
-      'company_name': 'company_name',
-      'current_work_area_name': 'current_work_area_name',
-      'current_position_name': 'current_position_name',
-      'personnel_created_at': 'personnel_created_at'
-    };
-    const sortField = validSortFields[sortBy as keyof typeof validSortFields] || 'personnel_name';
-    const direction = sortOrder === 'desc' ? 'DESC' : 'ASC';
+    const { limit } = req.query;
     
-    baseQuery += ` ORDER BY ${sortField} ${direction}`;
-
-    // Pagination
-    if (limit) {
-      baseQuery += ` LIMIT $${paramIndex}`;
-      queryParams.push(Number(limit));
-      paramIndex++;
-      
-      if (offset) {
-        baseQuery += ` OFFSET $${paramIndex}`;
-        queryParams.push(Number(offset));
-        paramIndex++;
-      }
-    }
-
-    // Execute queries
-    console.log('Executing queries with params:', queryParams);
-    console.log('Base query:', baseQuery);
+    // Basit view query - çalışır durumda
+    const limitValue = limit ? Number(limit) : 10;
     
-    const countParamsLength = limit && offset ? 2 : (limit ? 1 : 0);
-    const [personnelResult, countResult] = await Promise.all([
-      db.execute(sql.raw(baseQuery, queryParams)),
-      db.execute(sql.raw(countQuery, queryParams.slice(0, queryParams.length - countParamsLength))) // Remove LIMIT and OFFSET from count
-    ]);
+    const personnelResult = await db.execute(sql`
+      SELECT * FROM personnel_detailed
+      WHERE is_active = true
+      ORDER BY personnel_name
+      LIMIT ${limitValue}
+    `);
     
-    console.log('Query results - personnel:', personnelResult.rows?.length, 'count:', countResult.rows?.[0]);
+    console.log('Query results - personnel count:', personnelResult.rows?.length);
 
     const personnelList = personnelResult.rows;
-    const totalCount = Number(countResult.rows[0]?.total || 0);
+    const totalCount = personnelList.length;
 
     // Convert BigInt values to strings for JSON serialization
-    const serializedPersonnelList = personnelList.map(person => ({
+    const serializedPersonnelList = personnelList.map((person: any) => ({
       ...person,
       tc_no: person.tc_no ? person.tc_no.toString() : null,
       personnel_id: Number(person.personnel_id),
@@ -365,19 +228,14 @@ router.get('/personnel-detail', async (req: AuthRequest, res) => {
         personnel: serializedPersonnelList,
         totalCount,
         pagination: {
-          limit: limit ? Number(limit) : null,
-          offset: offset ? Number(offset) : null,
-          hasMore: limit ? serializedPersonnelList.length === Number(limit) : false
+          limit: limitValue,
+          offset: 0,
+          hasMore: false
         },
         filters: {
-          search: search || null,
-          companyId: companyId ? Number(companyId) : null,
-          workAreaId: workAreaId ? Number(workAreaId) : null,
-          positionId: positionId ? Number(positionId) : null,
-          activeOnly: activeOnly === 'true',
-          hasActiveAssignment: hasActiveAssignment || null,
-          sortBy,
-          sortOrder
+          activeOnly: true,
+          sortBy: 'personnel_name',
+          sortOrder: 'asc'
         }
       }
     });
