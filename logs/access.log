@@ -2903,3 +2903,5 @@
 127.0.0.1 - - [16/Aug/2025:14:25:50 +0000] "GET /api/penalties HTTP/1.1" 200 607 "-" "curl/8.14.1"
 127.0.0.1 - - [16/Aug/2025:14:25:50 +0000] "GET /api/penalties HTTP/1.1" 200 607 "-" "FiloAPI-Proxy/1.0"
 127.0.0.1 - - [16/Aug/2025:14:25:50 +0000] "GET /api/proxy/penalties HTTP/1.1" 200 607 "-" "curl/8.14.1"
+127.0.0.1 - - [16/Aug/2025:14:26:30 +0000] "POST /api/auth/login HTTP/1.1" 200 639 "-" "curl/8.14.1"
+127.0.0.1 - - [16/Aug/2025:14:26:31 +0000] "POST /api/penalties HTTP/1.1" 201 371 "-" "curl/8.14.1"
