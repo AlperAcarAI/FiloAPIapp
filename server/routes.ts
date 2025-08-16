@@ -49,6 +49,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/trip-rentals", await import("./trip-rental-routes.js").then(m => m.default));
   app.use("/api/rental-agreements", await import("./rental-agreements-routes.js").then(m => m.default));
   app.use("/api/rental-assets", await import("./rental-assets-routes.js").then(m => m.default));
+  // Policy management routes
+  const policyRoutes = await import("./policy-routes.js").then(m => m.default);
+  app.use("/api/policy-types", policyRoutes);
+  app.use("/api/policies", policyRoutes);
 
   // Kullanıcı kimlik doğrulama - Basitleştirilmiş sistem
   app.post("/api/auth/login", async (req: SecurityRequest, res: Response) => {

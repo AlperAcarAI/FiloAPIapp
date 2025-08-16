@@ -374,4 +374,41 @@ Content-Type: application/json
 6. **Filtreleme**: Gelişmiş filtreleme ve sıralama özellikleri
 7. **Pagination**: Sayfalama desteği (limit/offset)
 
+## ✅ **Çalışan API Endpoint'leri**
+
+### **Poliçe Türleri (Policy Types)**
+```bash
+# Tüm poliçe türlerini listele
+GET /api/policy-types
+GET /api/proxy/policy-types  # Proxy üzerinden
+
+# Yeni poliçe türü ekle
+POST /api/policy-types
+{
+  "name": "Sağlık Sigortası"
+}
+
+# Poliçe türü güncelle
+PUT /api/policy-types/1
+{
+  "name": "Güncellenmiş İsim",
+  "isActive": true
+}
+
+# Poliçe türü sil (soft delete)
+DELETE /api/policy-types/1
+```
+
+### **Mevcut Poliçe Türleri**
+- Zorunlu Trafik Sigortası
+- Kasko Sigortası  
+- Trafik Sigortası
+- Nakliye Sigortası
+- İş Makinesi Sigortası
+- Yol Yardım Sigortası
+- Ferdi Kaza
+- Cam Kırılması
+- Hukuksal Koruma Sigortası
+- İhtiyari Mali Mesuliyet
+
 Bu API'ler poliçe yönetimi, hasar takibi ve sigorta işlemlerinin tamamını kapsamaktadır.
