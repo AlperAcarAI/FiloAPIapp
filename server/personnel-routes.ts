@@ -1,10 +1,15 @@
 import { Router } from 'express';
 import { db } from './db.js';
-import { eq, and, ilike, desc, asc, like, or, ne } from 'drizzle-orm';
+import { eq, and, ilike, desc, asc, like, or, ne, inArray } from 'drizzle-orm';
 import { 
   personnel, countries, cities, personnelPositions, workAreas, personnelWorkAreas,
   insertPersonnelSchema, type InsertPersonnel, type Personnel
 } from '../shared/schema.js';
+import { 
+  authenticateJWT, 
+  filterByWorkArea,
+  type AuthRequest 
+} from './hierarchical-auth.js';
 
 // Custom validation schema that accepts tcNo as string and converts to bigint
 const personnelCreateSchema = z.object({
@@ -24,33 +29,6 @@ const personnelCreateSchema = z.object({
   isActive: z.boolean().optional().default(true)
 });
 import { z } from 'zod';
-import { authenticateToken } from './auth.js';
-
-// JWT Token Authentication middleware
-const authenticateJWT = (req: any, res: any, next: any) => {
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({
-      success: false,
-      message: 'Erişim token bulunamadı. Lütfen giriş yapın.'
-    });
-  }
-  
-  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-  
-  // For now, accept any valid looking token format
-  // In production, you would verify the JWT token here
-  if (token && token.length > 10) {
-    req.user = { id: 1 }; // Mock user for now
-    next();
-  } else {
-    return res.status(401).json({
-      success: false,
-      message: 'Geçersiz token formatı.'
-    });
-  }
-};
 import { 
   auditableInsert,
   auditableUpdate,
@@ -58,6 +36,10 @@ import {
 } from './audit-middleware.js';
 
 const router = Router();
+
+// Apply hierarchical authentication and work area filtering to all routes
+router.use(authenticateJWT);
+router.use(filterByWorkArea);
 
 /**
  * @swagger
@@ -90,11 +72,11 @@ const router = Router();
  *       401:
  *         description: Geçersiz API anahtarı
  */
-router.get('/personnel', authenticateJWT, async (req, res) => {
+router.get('/personnel', async (req: AuthRequest, res) => {
   try {
     const { search, active, workAreaId } = req.query;
     
-    // Base query with joins
+    // Base query with joins - include work area information
     let query = db
       .select({
         id: personnel.id,
@@ -106,16 +88,32 @@ router.get('/personnel', authenticateJWT, async (req, res) => {
         phoneNo: personnel.phoneNo,
         status: personnel.status,
         isActive: personnel.isActive,
+        companyId: personnel.companyId,
         // Join data
         nationName: countries.name,
-        birthplaceName: cities.name
+        birthplaceName: cities.name,
+        // Work area information
+        currentWorkAreaId: personnelWorkAreas.workAreaId,
+        workAreaName: workAreas.name,
+        positionName: personnelPositions.name
       })
       .from(personnel)
       .leftJoin(countries, eq(personnel.nationId, countries.id))
-      .leftJoin(cities, eq(personnel.birthplaceId, cities.id));
+      .leftJoin(cities, eq(personnel.birthplaceId, cities.id))
+      .leftJoin(personnelWorkAreas, and(
+        eq(personnel.id, personnelWorkAreas.personnelId),
+        eq(personnelWorkAreas.isActive, true)
+      ))
+      .leftJoin(workAreas, eq(personnelWorkAreas.workAreaId, workAreas.id))
+      .leftJoin(personnelPositions, eq(personnelWorkAreas.positionId, personnelPositions.id));
 
     // Filters
     const whereConditions = [];
+    
+    // Work area filtering based on user's permissions
+    if (req.workAreaFilter && req.workAreaFilter.length > 0) {
+      whereConditions.push(inArray(personnelWorkAreas.workAreaId, req.workAreaFilter));
+    }
     
     if (search) {
       whereConditions.push(
@@ -134,7 +132,7 @@ router.get('/personnel', authenticateJWT, async (req, res) => {
     }
 
     if (whereConditions.length > 0) {
-      query.where(and(...whereConditions));
+      query = query.where(and(...whereConditions));
     }
 
     // Execute query with ordering
@@ -186,7 +184,7 @@ router.get('/personnel', authenticateJWT, async (req, res) => {
  *       404:
  *         description: Personel bulunamadı
  */
-router.get('/personnel/:id', authenticateJWT, async (req, res) => {
+router.get('/personnel/:id', async (req: AuthRequest, res) => {
   try {
     const personnelId = parseInt(req.params.id);
     

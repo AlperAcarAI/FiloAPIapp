@@ -25,6 +25,7 @@ export interface UserContext {
 
 export interface AuthRequest extends Request {
   userContext?: UserContext;
+  workAreaFilter?: number[] | null;
 }
 
 // JWT token oluşturma (login sonrası)
