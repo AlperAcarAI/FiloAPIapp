@@ -15,7 +15,7 @@ GET /api/secure/personnel
 ```bash
 # Gerekli Headers:
 Authorization: Bearer {JWT_TOKEN}
-x-api-key: filoki-api-master-key-2025
+# API Key artık gerekli değil!
 ```
 
 ---
@@ -113,7 +113,7 @@ GET /api/secure/personnel?search=ahmet&active=true&workAreaId=2
 ## ⚠️ **Breaking Changes:**
 
 1. **Endpoint Path**: `/api/personnel` → `/api/secure/personnel`
-2. **API Key Required**: `x-api-key` header zorunlu
+2. **API Key Removed**: `x-api-key` header artık gerekli değil
 3. **Hierarchical Auth**: Kullanıcının access level'ına göre filtreleme
 4. **Response Structure**: Yeni work area alanları eklendi
 
@@ -141,8 +141,8 @@ const response = await fetch('/api/personnel', {
 // YENİ:
 const response = await fetch('/api/secure/personnel', {
   headers: {
-    'Authorization': `Bearer ${token}`,
-    'x-api-key': 'filoki-api-master-key-2025'
+    'Authorization': `Bearer ${token}`
+    // API Key artık gerekli değil!
   }
 });
 ```

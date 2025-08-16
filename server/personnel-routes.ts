@@ -49,7 +49,7 @@ router.use(filterByWorkArea);
  *     description: Tüm personelleri listeler (ülke, şehir, pozisyon bilgileri ile birlikte)
  *     tags: [Personel İşlemleri]
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: query
  *         name: search
@@ -170,7 +170,7 @@ router.get('/personnel', async (req: AuthRequest, res) => {
  *     description: Belirli bir personelin detaylı bilgilerini getirir
  *     tags: [Personel İşlemleri]
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -249,7 +249,7 @@ router.get('/personnel/:id', async (req: AuthRequest, res) => {
  *     description: Yeni bir personel kaydı oluşturur
  *     tags: [Personel İşlemleri]
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -468,7 +468,7 @@ router.post('/personnel', authenticateJWT, async (req, res) => {
  *     description: Mevcut bir personelin bilgilerini günceller
  *     tags: [Personel İşlemleri]
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -654,7 +654,7 @@ router.put('/personnel/:id', authenticateJWT, async (req, res) => {
  *     description: Mevcut bir personeli bir çalışma alanına atar
  *     tags: [Personel İşlemleri]
  *     security:
- *       - ApiKeyAuth: []
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
