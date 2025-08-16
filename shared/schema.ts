@@ -150,6 +150,48 @@ export const docSubTypes = pgTable("doc_sub_types", {
   isActive: boolean("is_active").notNull().default(true),
 });
 
+// Projects Table - Proje Yönetimi
+export const projects = pgTable("projects", {
+  id: serial("id").primaryKey(),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  poCompanyId: integer("po_company_id").notNull().references(() => companies.id),
+  ppCompanyId: integer("pp_company_id").notNull().references(() => companies.id),
+  workAreaId: integer("work_area_id").references(() => workAreas.id),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  status: varchar("status", { length: 20 }).notNull().default('planned'), // planned, active, completed, cancelled
+  cityId: integer("city_id").references(() => cities.id),
+  projectTotalPrice: decimal("project_total_price", { precision: 15, scale: 2 }),
+  completetRate: decimal("complete_rate", { precision: 5, scale: 2 }).default('0'), // 0-100 percentage
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedBy: integer("updated_by").references(() => users.id),
+  isActive: boolean("is_active").notNull().default(true),
+}, (table) => ({
+  codeIdx: index("idx_projects_code").on(table.code),
+  poCompanyIdx: index("idx_projects_po_company").on(table.poCompanyId),
+  ppCompanyIdx: index("idx_projects_pp_company").on(table.ppCompanyId),
+  workAreaIdx: index("idx_projects_work_area").on(table.workAreaId),
+  statusIdx: index("idx_projects_status").on(table.status),
+  datesIdx: index("idx_projects_dates").on(table.startDate, table.endDate),
+}));
+
+// Projects Zod schemas
+export const insertProjectSchema = createInsertSchema(projects).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const updateProjectSchema = createInsertSchema(projects).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).partial();
+export type InsertProject = z.infer<typeof insertProjectSchema>;
+export type UpdateProject = z.infer<typeof updateProjectSchema>;
+export type Project = typeof projects.$inferSelect;
+
 export const penaltyTypes = pgTable("penalty_types", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 100 }).notNull(),
@@ -579,10 +621,18 @@ export const personnelWorkAreas = pgTable("personnel_work_areas", {
   personnelId: integer("personnel_id").notNull().references(() => personnel.id),
   workAreaId: integer("work_area_id").notNull().references(() => workAreas.id),
   positionId: integer("position_id").notNull().references(() => personnelPositions.id),
+  projectId: integer("project_id").references(() => projects.id),
   startDate: date("start_date").notNull(),
   endDate: date("end_date"),
   isActive: boolean("is_active").notNull().default(true),
-});
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  personnelWorkAreaIdx: index("idx_personnel_work_areas_personnel").on(table.personnelId),
+  workAreaIdx: index("idx_personnel_work_areas_work_area").on(table.workAreaId),
+  projectIdx: index("idx_personnel_work_areas_project").on(table.projectId),
+  activeIdx: index("idx_personnel_work_areas_active").on(table.isActive),
+}));
 
 export const assetsPersonelAssignment = pgTable("assets_personel_assignment", {
   id: serial("id").primaryKey(),
