@@ -255,11 +255,11 @@ router.delete("/:id", async (req: Request, res: Response) => {
 });
 
 // ========================
-// ASSETS POLICIES API
+// ASSETS POLICIES API (for /api/policies route)
 // ========================
 
 // GET /api/policies - List asset policies
-router.get("/", async (req: Request, res: Response) => {
+router.get("/policies", async (req: Request, res: Response) => {
   try {
     const { 
       assetId,
@@ -362,8 +362,84 @@ router.get("/", async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/policies - Create new asset policy
+router.post("/policies", async (req: Request, res: Response) => {
+  try {
+    const { 
+      assetId, 
+      policyTypeId, 
+      sellerCompanyId, 
+      insuranceCompanyId,
+      policyNumber,
+      amountCents,
+      startDate,
+      endDate 
+    } = req.body;
+
+    // Validation
+    if (!assetId || !policyTypeId || !sellerCompanyId || !insuranceCompanyId || !policyNumber || !amountCents || !startDate) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'Gerekli alanlar eksik: assetId, policyTypeId, sellerCompanyId, insuranceCompanyId, policyNumber, amountCents, startDate'
+      });
+    }
+
+    // Check for duplicate policy number for this asset
+    const existingPolicy = await db
+      .select()
+      .from(assetsPolicies)
+      .where(and(
+        eq(assetsPolicies.assetId, Number(assetId)),
+        eq(assetsPolicies.policyNumber, policyNumber),
+        eq(assetsPolicies.isActive, true)
+      ))
+      .limit(1);
+
+    if (existingPolicy.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'DUPLICATE_POLICY',
+        message: 'Bu araç için aynı poliçe numarası zaten mevcut.'
+      });
+    }
+
+    const auditInfo = captureAuditInfo(req);
+    
+    const [newPolicy] = await auditableInsert(
+      db,
+      assetsPolicies,
+      { 
+        assetId: Number(assetId),
+        policyTypeId: Number(policyTypeId),
+        sellerCompanyId: Number(sellerCompanyId),
+        insuranceCompanyId: Number(insuranceCompanyId),
+        policyNumber: policyNumber.trim(),
+        amountCents: Number(amountCents),
+        startDate,
+        endDate: endDate || null,
+        isActive: true
+      },
+      auditInfo
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Poliçe başarıyla oluşturuldu.',
+      data: newPolicy
+    });
+  } catch (error) {
+    console.error('Poliçe oluşturma hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: 'POLICY_CREATE_ERROR',
+      message: 'Poliçe oluşturulurken hata oluştu.'
+    });
+  }
+});
+
 // GET /api/policies/:id - Get policy details
-router.get("/:id", async (req: Request, res: Response) => {
+router.get("/policies/:id", async (req: Request, res: Response) => {
   try {
     const policyId = parseInt(req.params.id);
 

@@ -53,6 +53,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const policyRoutes = await import("./policy-routes.js").then(m => m.default);
   app.use("/api/policy-types", policyRoutes);
   app.use("/api/policies", policyRoutes);
+  
+  // Assets policies routes
+  app.use("/api/assets-policies", await import("./assets-policies-routes.js").then(m => m.default));
 
   // Kullanıcı kimlik doğrulama - Basitleştirilmiş sistem
   app.post("/api/auth/login", async (req: SecurityRequest, res: Response) => {
