@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { db } from './db.js';
 import { eq, and, ilike, desc, asc, like, or, ne, inArray } from 'drizzle-orm';
 import { 
-  personnel, countries, cities, personnelPositions, workAreas, personnelWorkAreas,
+  personnel, countries, cities, personnelPositions, workAreas, personnelWorkAreas, projects,
   insertPersonnelSchema, type InsertPersonnel, type Personnel
 } from '../shared/schema.js';
 import { 
@@ -95,7 +95,11 @@ router.get('/personnel', async (req: AuthRequest, res) => {
         // Work area information
         currentWorkAreaId: personnelWorkAreas.workAreaId,
         workAreaName: workAreas.name,
-        positionName: personnelPositions.name
+        positionName: personnelPositions.name,
+        // Project information
+        currentProjectId: personnelWorkAreas.projectId,
+        projectCode: projects.code,
+        projectStatus: projects.status
       })
       .from(personnel)
       .leftJoin(countries, eq(personnel.nationId, countries.id))
@@ -105,7 +109,8 @@ router.get('/personnel', async (req: AuthRequest, res) => {
         eq(personnelWorkAreas.isActive, true)
       ))
       .leftJoin(workAreas, eq(personnelWorkAreas.workAreaId, workAreas.id))
-      .leftJoin(personnelPositions, eq(personnelWorkAreas.positionId, personnelPositions.id));
+      .leftJoin(personnelPositions, eq(personnelWorkAreas.positionId, personnelPositions.id))
+      .leftJoin(projects, eq(personnelWorkAreas.projectId, projects.id));
 
     // Filters
     const whereConditions = [];
@@ -676,6 +681,9 @@ router.put('/personnel/:id', authenticateJWT, async (req, res) => {
  *               positionId:
  *                 type: integer
  *                 description: Pozisyon ID
+ *               projectId:
+ *                 type: integer
+ *                 description: Proje ID (isteğe bağlı)
  *               startDate:
  *                 type: string
  *                 format: date
@@ -700,7 +708,7 @@ router.put('/personnel/:id', authenticateJWT, async (req, res) => {
  */
 router.post('/addPersonnelWorkArea', authenticateJWT, async (req, res) => {
   try {
-    const { personnelId, workAreaId, positionId, startDate, endDate, isActive = true } = req.body;
+    const { personnelId, workAreaId, positionId, projectId, startDate, endDate, isActive = true } = req.body;
     
     // Required field validation
     if (!personnelId || !workAreaId || !positionId || !startDate) {
@@ -753,6 +761,22 @@ router.post('/addPersonnelWorkArea', authenticateJWT, async (req, res) => {
       });
     }
 
+    // Check if project exists (if projectId provided)
+    if (projectId) {
+      const existingProject = await db
+        .select({ id: projects.id })
+        .from(projects)
+        .where(eq(projects.id, projectId));
+        
+      if (existingProject.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'PROJECT_NOT_FOUND',
+          message: 'Belirtilen proje bulunamadı.'
+        });
+      }
+    }
+
     // Check for existing active assignment
     const existingAssignment = await db
       .select({ id: personnelWorkAreas.id })
@@ -771,13 +795,14 @@ router.post('/addPersonnelWorkArea', authenticateJWT, async (req, res) => {
       });
     }
 
-    // Create the assignment
+    // Create the assignment with project reference
     const [newAssignment] = await db
       .insert(personnelWorkAreas)
       .values({
         personnelId,
         workAreaId,
         positionId,
+        projectId: projectId || null,
         startDate,
         endDate: endDate || null,
         isActive

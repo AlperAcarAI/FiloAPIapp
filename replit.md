@@ -32,6 +32,7 @@ Preferred communication style: Simple, everyday language.
 - **API Proxy System**: Secure proxy endpoint `/api/proxy/secure/documents` implemented with JWT authentication, path mapping, and automatic user ID injection (August 10, 2025)
 - **Vehicle Brand/Model APIs**: Complete implementation of car brands and models APIs with Turkish documentation, filtering, pagination, and detailed views (August 11, 2025)
 - **Personnel Detailed View API**: Comprehensive personnel_detailed PostgreSQL view with /api/secure/personnel-detail endpoint providing complete personnel, company, work area, and position data - fully operational (August 16, 2025)
+- **Projects Table & Personnel Integration**: Added projects table with PO/PP company tracking, personnel work areas updated with project_id integration, full API support for project-based personnel assignments (August 16, 2025)
 - **Deployment Date**: August 6, 2025
 
 ## System Architecture
