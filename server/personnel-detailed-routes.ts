@@ -190,22 +190,102 @@ router.use(filterByWorkArea);
 router.get('/personnel-detail', async (req: AuthRequest, res) => {
   try {
     console.log('Personnel detailed API called with params:', req.query);
-    const { limit } = req.query;
+    console.log('User work area filter:', req.workAreaFilter);
     
-    // Basit view query - çalışır durumda
-    const limitValue = limit ? Number(limit) : 10;
+    const { 
+      search, 
+      companyId, 
+      workAreaId, 
+      positionId, 
+      activeOnly = 'true',
+      hasActiveAssignment,
+      limit = '20', 
+      offset = '0',
+      sortBy = 'Ad',
+      sortOrder = 'asc'
+    } = req.query;
     
-    const personnelResult = await db.execute(sql`
-      SELECT * FROM personnel_detailed
-      WHERE "Aktif" = true
-      ORDER BY "Ad"
-      LIMIT ${limitValue}
-    `);
+    const limitValue = limit ? Number(limit) : 20;
+    const offsetValue = offset ? Number(offset) : 0;
+    
+    // Start with basic query and build filters
+    let baseQuery = 'SELECT * FROM personnel_detailed';
+    let countQuery = 'SELECT COUNT(*) as total FROM personnel_detailed';
+    let whereConditions = [];
+    
+    // Active filter (default true)
+    if (activeOnly === 'true') {
+      whereConditions.push(`"Aktif" = true`);
+    } else if (activeOnly === 'false') {
+      whereConditions.push(`"Aktif" = false`);
+    }
+    
+    // Work area filtering based on hierarchical permissions
+    if (req.workAreaFilter && req.workAreaFilter.length > 0) {
+      const workAreaIds = req.workAreaFilter.map(id => Number(id)).join(',');
+      whereConditions.push(`"Personel ID" IN (
+        SELECT DISTINCT pwa.personnel_id 
+        FROM personnel_work_areas pwa 
+        WHERE pwa.work_area_id IN (${workAreaIds}) 
+        AND pwa.is_active = true
+      )`);
+    }
+    
+    // Search filter
+    if (search) {
+      const searchTerm = search.replace(/'/g, "''");
+      whereConditions.push(`(
+        "Ad" ILIKE '%${searchTerm}%' OR 
+        "Soyad" ILIKE '%${searchTerm}%' OR 
+        "TC"::text ILIKE '%${searchTerm}%'
+      )`);
+    }
+    
+    // Company filter
+    if (companyId) {
+      whereConditions.push(`"Personel ID" IN (
+        SELECT id FROM personnel WHERE company_id = ${Number(companyId)}
+      )`);
+    }
+    
+    // Work area filter (specific work area)
+    if (workAreaId) {
+      whereConditions.push(`"Personel ID" IN (
+        SELECT personnel_id FROM personnel_work_areas 
+        WHERE work_area_id = ${Number(workAreaId)} AND is_active = true
+      )`);
+    }
+    
+    // Has active assignment filter
+    if (hasActiveAssignment === 'true') {
+      whereConditions.push(`"Şantiye" IS NOT NULL`);
+    } else if (hasActiveAssignment === 'false') {
+      whereConditions.push(`"Şantiye" IS NULL`);
+    }
+    
+    // Build WHERE clause
+    const whereClause = whereConditions.length > 0 ? 
+      ` WHERE ${whereConditions.join(' AND ')}` : '';
+    
+    // Build ORDER BY clause
+    const validSortColumns = ['Ad', 'Soyad', 'Şirket', 'Şantiye', 'Pozisyon', 'Atama Tarihi'];
+    const sortColumn = validSortColumns.includes(sortBy as string) ? sortBy : 'Ad';
+    const sortDirection = sortOrder === 'desc' ? 'DESC' : 'ASC';
+    
+    // Final queries
+    const queryText = `${baseQuery}${whereClause} ORDER BY "${sortColumn}" ${sortDirection} LIMIT ${limitValue} OFFSET ${offsetValue}`;
+    const countQueryText = `${countQuery}${whereClause}`;
+    
+    console.log('Executing query:', queryText);
+    
+    // Execute queries using basic SQL
+    const personnelResult = await db.execute(sql`${sql.raw(queryText)}`);
+    const countResult = await db.execute(sql`${sql.raw(countQueryText)}`);
     
     console.log('Query results - personnel count:', personnelResult.rows?.length);
 
     const personnelList = personnelResult.rows;
-    const totalCount = personnelList.length;
+    const totalCount = Number(countResult.rows[0]?.total || 0);
 
     // Convert BigInt values and include ALL columns from view exactly as they are
     const serializedPersonnelList = personnelList.map((person: any) => {
@@ -251,13 +331,20 @@ router.get('/personnel-detail', async (req: AuthRequest, res) => {
         totalCount,
         pagination: {
           limit: limitValue,
-          offset: 0,
-          hasMore: false
+          offset: offsetValue,
+          hasMore: offsetValue + limitValue < totalCount,
+          totalCount
         },
         filters: {
-          activeOnly: true,
-          sortBy: 'Ad',
-          sortOrder: 'asc'
+          search: search || null,
+          companyId: companyId ? Number(companyId) : null,
+          workAreaId: workAreaId ? Number(workAreaId) : null,
+          positionId: positionId ? Number(positionId) : null,
+          activeOnly: activeOnly === 'true',
+          hasActiveAssignment: hasActiveAssignment || null,
+          sortBy: sortColumn,
+          sortOrder: sortDirection.toLowerCase(),
+          workAreaFilter: req.workAreaFilter || []
         }
       }
     });
