@@ -4,18 +4,13 @@ import { eq, and, ilike, desc, asc, or, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { 
   projects, companies, workAreas, cities, users,
-  createInsertSchema, type InsertProject
+  insertProjectSchema, type InsertProject
 } from '../shared/schema.js';
 import { 
   authenticateJWT, 
   filterByWorkArea,
   type AuthRequest 
 } from './hierarchical-auth.js';
-import { 
-  auditableInsert,
-  auditableUpdate,
-  auditableDelete
-} from './audit-middleware.js';
 
 const router = Router();
 
@@ -24,14 +19,6 @@ router.use(authenticateJWT);
 router.use(filterByWorkArea);
 
 // Project validation schemas
-const insertProjectSchema = createInsertSchema(projects).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  createdBy: true,
-  updatedBy: true,
-});
-
 const projectCreateSchema = insertProjectSchema.extend({
   code: z.string().min(1).max(50),
   poCompanyId: z.number().int().positive(),
@@ -147,7 +134,7 @@ router.get('/projects', async (req: AuthRequest, res) => {
     }
     
     if (status) {
-      whereConditions.push(eq(projects.status, status));
+      whereConditions.push(eq(projects.status, status as string));
     }
     
     if (poCompanyId) {
@@ -165,7 +152,7 @@ router.get('/projects', async (req: AuthRequest, res) => {
     }
 
     if (whereConditions.length > 0) {
-      query = query.where(and(...whereConditions));
+      query = query.where(and(...whereConditions)) as any;
     }
 
     // Execute query with ordering, limit and offset
@@ -442,18 +429,14 @@ router.post('/projects', authenticateJWT, async (req: AuthRequest, res) => {
     }
     
     // Create new project with user tracking
-    const [newProject] = await auditableInsert(
-      db,
-      projects,
-      {
+    const [newProject] = await db
+      .insert(projects)
+      .values({
         ...projectData,
         createdBy: req.user?.id,
         updatedBy: req.user?.id,
-      },
-      req.user?.id,
-      'projects',
-      'CREATE'
-    );
+      })
+      .returning();
     
     // Get the created project with joined details
     const [projectDetail] = await db
@@ -564,20 +547,15 @@ router.put('/projects/:id', authenticateJWT, async (req: AuthRequest, res) => {
     }
     
     // Update project
-    const [updatedProject] = await auditableUpdate(
-      db,
-      projects,
-      eq(projects.id, projectId),
-      {
+    const [updatedProject] = await db
+      .update(projects)
+      .set({
         ...req.body,
         updatedBy: req.user?.id,
         updatedAt: new Date(),
-      },
-      req.user?.id,
-      'projects',
-      'UPDATE',
-      { projectId }
-    );
+      })
+      .where(eq(projects.id, projectId))
+      .returning();
     
     res.json({
       success: true,
