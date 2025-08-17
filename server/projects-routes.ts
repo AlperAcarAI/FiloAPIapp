@@ -25,6 +25,12 @@ const projectCreateSchema = insertProjectSchema.extend({
   ppCompanyId: z.number().int().positive(),
   startDate: z.string(),
   status: z.enum(['planned', 'active', 'completed', 'cancelled']).default('planned'),
+  projectTotalPrice: z.union([z.string(), z.number()]).optional().transform(val => 
+    val !== undefined && val !== null ? String(val) : undefined
+  ),
+  completeRate: z.union([z.string(), z.number()]).optional().transform(val => 
+    val !== undefined && val !== null ? String(val) : undefined
+  ),
   isActive: z.boolean().default(true),
 });
 
@@ -337,8 +343,17 @@ router.get('/projects/:id', async (req: AuthRequest, res) => {
  */
 router.post('/projects', authenticateJWT, async (req: AuthRequest, res) => {
   try {
+    // Preprocess request body to handle number-to-string conversion for decimal fields
+    const requestBody = { ...req.body };
+    if (requestBody.projectTotalPrice && typeof requestBody.projectTotalPrice === 'number') {
+      requestBody.projectTotalPrice = String(requestBody.projectTotalPrice);
+    }
+    if (requestBody.completeRate && typeof requestBody.completeRate === 'number') {
+      requestBody.completeRate = String(requestBody.completeRate);
+    }
+    
     // Request body validation
-    const validationResult = projectCreateSchema.safeParse(req.body);
+    const validationResult = projectCreateSchema.safeParse(requestBody);
     
     if (!validationResult.success) {
       return res.status(400).json({
