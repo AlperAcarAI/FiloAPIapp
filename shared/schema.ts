@@ -600,6 +600,7 @@ export const personnel = pgTable("personnel", {
   birthplaceId: integer("birthplace_id").references(() => cities.id),
   address: varchar("address", { length: 255 }),
   phoneNo: varchar("phone_no", { length: 50 }),
+  iban: varchar("iban", { length: 34 }), // IBAN field added
   status: varchar("status", { length: 20 }),
   companyId: integer("company_id").references(() => companies.id),
   isActive: boolean("is_active").notNull().default(true),

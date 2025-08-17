@@ -32,6 +32,7 @@ Preferred communication style: Simple, everyday language.
 - **API Proxy System**: Secure proxy endpoint `/api/proxy/secure/documents` implemented with JWT authentication, path mapping, and automatic user ID injection (August 10, 2025)
 - **Vehicle Brand/Model APIs**: Complete implementation of car brands and models APIs with Turkish documentation, filtering, pagination, and detailed views (August 11, 2025)
 - **Personnel Detailed View API**: Advanced personnel_detailed PostgreSQL view with continuous work period tracking using CTEs, window functions, and gap analysis. Turkish column names, first start date calculation, comprehensive analytics, and hierarchical work area filtering - fully operational (August 17, 2025)
+- **Personnel IBAN Integration**: Added IBAN field to personnel table and APIs for financial information management. Complete integration includes database schema update, validation, and API support for all CRUD operations. IBAN field included in both list and detail GET endpoints, POST creation, and search functionality (August 17, 2025)
 - **Projects Table & Personnel Integration**: Added projects table with PO/PP company tracking, personnel work areas updated with project_id integration, full API support for project-based personnel assignments (August 16, 2025)
 - **Deployment Date**: August 6, 2025
 

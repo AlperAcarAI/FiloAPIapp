@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from './db.js';
-import { eq, and, ilike, desc, asc, like, or, ne, inArray } from 'drizzle-orm';
+import { eq, and, ilike, desc, asc, like, or, ne, inArray, sql } from 'drizzle-orm';
 import { 
   personnel, countries, cities, personnelPositions, workAreas, personnelWorkAreas, projects,
   insertPersonnelSchema, type InsertPersonnel, type Personnel
@@ -25,6 +25,7 @@ const personnelCreateSchema = z.object({
   birthplaceId: z.number().int().positive().optional().nullable(),
   address: z.string().max(255).optional().nullable(),
   phoneNo: z.string().max(50).optional().nullable(),
+  iban: z.string().max(34).optional().nullable(), // IBAN field validation
   status: z.string().max(20).optional().nullable(),
   isActive: z.boolean().optional().default(true)
 });
@@ -86,6 +87,7 @@ router.get('/personnel', async (req: AuthRequest, res) => {
         birthdate: personnel.birthdate,
         address: personnel.address,
         phoneNo: personnel.phoneNo,
+        iban: personnel.iban, // IBAN field added
         status: personnel.status,
         isActive: personnel.isActive,
         companyId: personnel.companyId,
@@ -125,7 +127,7 @@ router.get('/personnel', async (req: AuthRequest, res) => {
         or(
           ilike(personnel.name, `%${search}%`),
           ilike(personnel.surname, `%${search}%`),
-          ilike(personnel.tcNo, `%${search}%`)
+          sql`CAST(${personnel.tcNo} AS TEXT) ILIKE ${`%${search}%`}` // Cast bigint to text for search
         )
       );
     }
@@ -204,6 +206,7 @@ router.get('/personnel/:id', async (req: AuthRequest, res) => {
         birthplaceId: personnel.birthplaceId,
         address: personnel.address,
         phoneNo: personnel.phoneNo,
+        iban: personnel.iban, // IBAN field added
         status: personnel.status,
         isActive: personnel.isActive,
         // Join data
