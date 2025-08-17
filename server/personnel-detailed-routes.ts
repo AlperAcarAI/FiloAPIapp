@@ -207,24 +207,41 @@ router.get('/personnel-detail', async (req: AuthRequest, res) => {
     const personnelList = personnelResult.rows;
     const totalCount = personnelList.length;
 
-    // Convert BigInt values to strings for JSON serialization and map Turkish column names
-    const serializedPersonnelList = personnelList.map((person: any) => ({
-      personnelId: Number(person["Personel ID"]),
-      tcNo: person["TC"] ? person["TC"].toString() : null,
-      name: person["Ad"],
-      surname: person["Soyad"],
-      birthdate: person["Doğum Tarihi"],
-      address: person["Adres"],
-      phoneNo: person["Telefon"],
-      status: person["Durum"],
-      isActive: person["Aktif"],
-      companyName: person["Şirket"],
-      birthplaceName: person["Doğum Yeri"],
-      positionName: person["Pozisyon"],
-      workAreaName: person["Şantiye"],
-      assignmentDate: person["Atama Tarihi"],
-      firstStartDate: person["İlk İşe Başlangıç Tarihi"]
-    }));
+    // Convert BigInt values and include ALL columns from view exactly as they are
+    const serializedPersonnelList = personnelList.map((person: any) => {
+      // Create a new object with all original columns
+      const result: any = {};
+      
+      // Copy all columns from the view result
+      Object.keys(person).forEach(key => {
+        if (key === "TC" && person[key]) {
+          result[key] = person[key].toString(); // Convert BigInt TC to string
+        } else if (key === "Personel ID") {
+          result[key] = Number(person[key]); // Convert ID to number
+        } else {
+          result[key] = person[key]; // Keep original value
+        }
+      });
+      
+      // Add English mapped names for convenience (additional fields)
+      result.personnelId = Number(person["Personel ID"]);
+      result.tcNo = person["TC"] ? person["TC"].toString() : null;
+      result.name = person["Ad"];
+      result.surname = person["Soyad"];
+      result.birthdate = person["Doğum Tarihi"];
+      result.address = person["Adres"];
+      result.phoneNo = person["Telefon"];
+      result.status = person["Durum"];
+      result.isActive = person["Aktif"];
+      result.companyName = person["Şirket"];
+      result.birthplaceName = person["Doğum Yeri"];
+      result.positionName = person["Pozisyon"];
+      result.workAreaName = person["Şantiye"];
+      result.assignmentDate = person["Atama Tarihi"];
+      result.firstStartDate = person["İlk İşe Başlangıç Tarihi"];
+      
+      return result;
+    });
     
     res.json({
       success: true,
