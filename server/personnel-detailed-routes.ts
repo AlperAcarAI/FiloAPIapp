@@ -197,8 +197,8 @@ router.get('/personnel-detail', async (req: AuthRequest, res) => {
     
     const personnelResult = await db.execute(sql`
       SELECT * FROM personnel_detailed
-      WHERE is_active = true
-      ORDER BY personnel_name
+      WHERE "Aktif" = true
+      ORDER BY "Ad"
       LIMIT ${limitValue}
     `);
     
@@ -207,18 +207,23 @@ router.get('/personnel-detail', async (req: AuthRequest, res) => {
     const personnelList = personnelResult.rows;
     const totalCount = personnelList.length;
 
-    // Convert BigInt values to strings for JSON serialization
+    // Convert BigInt values to strings for JSON serialization and map Turkish column names
     const serializedPersonnelList = personnelList.map((person: any) => ({
-      ...person,
-      tc_no: person.tc_no ? person.tc_no.toString() : null,
-      personnel_id: Number(person.personnel_id),
-      company_id: person.company_id ? Number(person.company_id) : null,
-      current_work_area_id: person.current_work_area_id ? Number(person.current_work_area_id) : null,
-      current_position_id: person.current_position_id ? Number(person.current_position_id) : null,
-      assignment_id: person.assignment_id ? Number(person.assignment_id) : null,
-      total_work_areas: person.total_work_areas ? Number(person.total_work_areas) : 0,
-      active_assignments: person.active_assignments ? Number(person.active_assignments) : 0,
-      completed_assignments: person.completed_assignments ? Number(person.completed_assignments) : 0
+      personnelId: Number(person["Personel ID"]),
+      tcNo: person["TC"] ? person["TC"].toString() : null,
+      name: person["Ad"],
+      surname: person["Soyad"],
+      birthdate: person["Doğum Tarihi"],
+      address: person["Adres"],
+      phoneNo: person["Telefon"],
+      status: person["Durum"],
+      isActive: person["Aktif"],
+      companyName: person["Şirket"],
+      birthplaceName: person["Doğum Yeri"],
+      positionName: person["Pozisyon"],
+      workAreaName: person["Şantiye"],
+      assignmentDate: person["Atama Tarihi"],
+      firstStartDate: person["İlk İşe Başlangıç Tarihi"]
     }));
     
     res.json({
@@ -234,7 +239,7 @@ router.get('/personnel-detail', async (req: AuthRequest, res) => {
         },
         filters: {
           activeOnly: true,
-          sortBy: 'personnel_name',
+          sortBy: 'Ad',
           sortOrder: 'asc'
         }
       }
