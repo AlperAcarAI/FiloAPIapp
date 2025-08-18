@@ -88,7 +88,7 @@ const projectCreateSchema = insertProjectSchema.extend({
  */
 router.get('/projects', async (req: AuthRequest, res) => {
   try {
-    const { search, status, poCompanyId, ppCompanyId, active, limit = '50', offset = '0' } = req.query;
+    const { search, status, poCompanyId, ppCompanyId, workAreaId, active, limit = '50', offset = '0' } = req.query;
     
     // Base query with joins
     let query = db
@@ -149,6 +149,10 @@ router.get('/projects', async (req: AuthRequest, res) => {
     
     if (ppCompanyId) {
       whereConditions.push(eq(projects.ppCompanyId, parseInt(ppCompanyId as string)));
+    }
+    
+    if (workAreaId) {
+      whereConditions.push(eq(projects.workAreaId, parseInt(workAreaId as string)));
     }
     
     if (active === 'true') {
