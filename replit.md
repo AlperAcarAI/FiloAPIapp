@@ -34,6 +34,7 @@ Preferred communication style: Simple, everyday language.
 - **Personnel Detailed View API**: Advanced personnel_detailed PostgreSQL view with continuous work period tracking using CTEs, window functions, and gap analysis. Turkish column names, first start date calculation, comprehensive analytics, and hierarchical work area filtering - fully operational (August 17, 2025)
 - **Personnel IBAN Integration**: Added IBAN field to personnel table and APIs for financial information management. Complete integration includes database schema update, validation, and API support for all CRUD operations. IBAN field included in both list and detail GET endpoints, POST creation, and search functionality (August 17, 2025)
 - **Projects Table & Personnel Integration**: Added projects table with PO/PP company tracking, personnel work areas updated with project_id integration, full API support for project-based personnel assignments (August 16, 2025)
+- **Personnel Work Areas Direct API**: Dedicated API endpoints for direct access to personnel_work_areas table data with JWT authentication, hierarchical filtering, comprehensive join data (personnel names, work area info, position details, project codes), and advanced filtering by personnelId, workAreaId, projectId. Includes both list and detail endpoints with pagination support (August 18, 2025)
 - **Deployment Date**: August 6, 2025
 
 ## System Architecture
