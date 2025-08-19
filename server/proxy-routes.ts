@@ -41,10 +41,10 @@ router.all('/*', authenticateJWT, async (req: any, res) => {
     
     // Map proxy paths to actual API endpoints
     let targetPath = originalPath;
-    // Remove /secure/ prefix for secure endpoints - they're just regular API endpoints
+    // Keep /secure/ prefix for secure endpoints - they need the secure path
     if (originalPath.startsWith('/secure/')) {
-      console.log(`Removing secure prefix from: ${originalPath}`);
-      targetPath = originalPath.replace('/secure', ''); // Remove the /secure/ prefix
+      console.log(`Keeping secure prefix for: ${originalPath}`);
+      targetPath = originalPath; // Keep the full /secure/ prefix
     }
     
     // Use localhost for development, production URL for production
