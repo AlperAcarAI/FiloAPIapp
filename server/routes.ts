@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
 import { authenticateToken, type AuthRequest } from "./auth";
-import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset, cities, type City, companies, users } from "@shared/schema";
+import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset, cities, type City, companies, users, personnel } from "@shared/schema";
 import { generateTokenPair, validateRefreshToken, revokeRefreshToken, revokeAllUserRefreshTokens } from "./auth";
 import { z } from "zod";
 import { db } from "./db";
@@ -229,20 +229,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Kullanıcı kayıt - Basitleştirilmiş sistem with company creation
+  // Kullanıcı kayıt - TC kimlik numarası doğrulaması ile
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
-      const { email, password, companyName, companyId } = req.body;
+      const { email, password, tcNo, companyName, companyId } = req.body;
       
-      if (!password || !email) {
+      if (!password || !email || !tcNo) {
         return res.status(400).json({
           success: false,
           error: "MISSING_FIELDS",
-          message: "Email ve şifre gereklidir"
+          message: "Email, şifre ve TC kimlik numarası gereklidir"
         });
       }
+
+      // TC kimlik numarası doğrulaması
+      const tcNumber = String(tcNo).trim();
       
-      let finalCompanyId = companyId || 1; // Default company ID
+      // TC kimlik numarası format kontrolü (11 haneli olmalı)
+      if (!/^\d{11}$/.test(tcNumber)) {
+        return res.status(400).json({
+          success: false,
+          error: "INVALID_TC_FORMAT",
+          message: "TC kimlik numarası 11 haneli olmalıdır"
+        });
+      }
+
+      // Personel tablosunda TC kimlik numarası kontrolü
+      const [existingPersonnel] = await db
+        .select({
+          id: personnel.id,
+          name: personnel.name,
+          surname: personnel.surname,
+          tcNo: personnel.tcNo,
+          isActive: personnel.isActive,
+          companyId: personnel.companyId
+        })
+        .from(personnel)
+        .where(eq(personnel.tcNo, BigInt(tcNumber)));
+
+      if (!existingPersonnel) {
+        return res.status(403).json({
+          success: false,
+          error: "TC_NOT_AUTHORIZED",
+          message: "Bu TC kimlik numarası ile kayıt yetkiniz bulunmamaktadır. Lütfen yöneticinizle iletişime geçin."
+        });
+      }
+
+      if (!existingPersonnel.isActive) {
+        return res.status(403).json({
+          success: false,
+          error: "PERSONNEL_INACTIVE",
+          message: "Personel kaydınız aktif değildir. Lütfen yöneticinizle iletişime geçin."
+        });
+      }
+
+      // Bu personnel_id'ye sahip kullanıcı zaten var mı kontrol et
+      const [existingUser] = await db
+        .select({ id: users.id, email: users.email })
+        .from(users)
+        .where(eq(users.personnelId, existingPersonnel.id));
+
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          error: "PERSONNEL_ALREADY_REGISTERED",
+          message: "Bu personel için zaten bir kullanıcı hesabı mevcut."
+        });
+      }
+
+      // Email zaten kullanılıyor mu kontrol et
+      const [existingEmailUser] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.email, email));
+
+      if (existingEmailUser) {
+        return res.status(409).json({
+          success: false,
+          error: "EMAIL_ALREADY_EXISTS",
+          message: "Bu email adresi zaten kullanılmaktadır."
+        });
+      }
+
+      let finalCompanyId = existingPersonnel.companyId || companyId || 1;
       
       // If companyName is provided, create new company
       if (companyName && companyName.trim()) {
@@ -266,18 +335,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // User creation
+      // User creation with personnel_id
       const user = await storage.createUser({
         email,
         passwordHash: await bcrypt.hash(password, 10),
-        companyId: finalCompanyId
+        companyId: finalCompanyId,
+        personnelId: existingPersonnel.id
       });
       
       res.status(201).json({
         success: true,
-        message: companyName ? "Kullanıcı ve şirket başarıyla oluşturuldu" : "Kullanıcı başarıyla oluşturuldu",
+        message: "Kullanıcı başarıyla oluşturuldu ve personel bilgileri eşleştirildi",
         data: { 
           user,
+          personnel: {
+            id: existingPersonnel.id,
+            name: existingPersonnel.name,
+            surname: existingPersonnel.surname,
+            fullName: `${existingPersonnel.name} ${existingPersonnel.surname}`
+          },
           companyId: finalCompanyId
         }
       });
