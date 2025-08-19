@@ -13,7 +13,7 @@ Bu API, personelin tüm çalışma geçmişini kronolojik olarak listeler ve det
 **Açıklama:** Belirli bir personelin tüm çalışma geçmişini kronolojik olarak listeler
 
 **Path Parametreleri:**
-- `personnelId` (zorunlu): Personel ID
+- `personnelId` (zorunlu): Herhangi bir geçerli personel ID (örnek: 1, 3, 19, 123)
 
 **Query Parametreleri:**
 - `includeActive` (isteğe bağlı): Aktif atamaları da dahil et (varsayılan: true)
@@ -126,7 +126,7 @@ curl -X GET "http://localhost:5000/api/secure/personnel-work-history/1" \
 **Açıklama:** Personelin çalışma geçmişinin özet istatistiklerini getirir
 
 **Path Parametreleri:**
-- `personnelId` (zorunlu): Personel ID
+- `personnelId` (zorunlu): Herhangi bir geçerli personel ID (örnek: 1, 3, 19, 123)
 
 **Örnek İstek:**
 ```bash
@@ -194,24 +194,47 @@ curl -X GET "http://localhost:5000/api/secure/personnel-work-history-summary/1" 
 
 ## Kullanım Senaryoları
 
-### 1. İnsan Kaynakları Analizi
+### 1. Herhangi Bir Personelin Çalışma Geçmişi
+```bash
+# 19 ID'li personelin çalışma geçmişi
+curl -X GET "http://localhost:5000/api/secure/personnel-work-history/19" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# 1 ID'li personelin çalışma geçmişi  
+curl -X GET "http://localhost:5000/api/secure/personnel-work-history/1" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# 3 ID'li personelin çalışma geçmişi
+curl -X GET "http://localhost:5000/api/secure/personnel-work-history/3" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### 2. İnsan Kaynakları Analizi
 ```bash
 # Personelin toplam deneyimini analiz et
 curl -X GET "http://localhost:5000/api/secure/personnel-work-history-summary/19" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-### 2. Proje Geçmişi İnceleme
+### 3. Proje Geçmişi İnceleme
 ```bash
 # Personelin hangi projelerde çalıştığını gör
 curl -X GET "http://localhost:5000/api/secure/personnel-work-history/19?includeActive=true" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-### 3. Şantiye Deneyimi Değerlendirmesi
+### 4. Şantiye Deneyimi Değerlendirmesi
 ```bash
 # Sadece tamamlanmış atamaları gör
 curl -X GET "http://localhost:5000/api/secure/personnel-work-history/19?includeActive=false" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### 5. Dinamik Personel Sorgulama
+```bash
+# Herhangi bir personel ID'si ile çalışır
+PERSONNEL_ID=123
+curl -X GET "http://localhost:5000/api/secure/personnel-work-history/${PERSONNEL_ID}" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -224,12 +247,15 @@ curl -X GET "http://localhost:5000/api/secure/personnel-work-history/19?includeA
 
 ## Test Edilmiş Senaryolar
 
-✅ Personel ID 1 için çalışma geçmişi  
-✅ Özet istatistikler hesaplama  
-✅ Aktif/pasif atama filtreleme  
-✅ Çalışma günü hesaplama  
-✅ Hiyerarşik yetkilendirme  
-✅ Şantiye ve proje detayları  
+✅ **Dinamik Personel ID**: API herhangi bir personel ID'si ile çalışır  
+✅ **Personel ID 1**: Çalışma geçmişi var - tam veri dönüşü  
+✅ **Personel ID 3**: Personel var ama çalışma geçmişi yok - boş array  
+✅ **Personel ID 19**: Personel bulunamadı - 404 hatası  
+✅ **Özet İstatistikler**: Toplam atama, gün, şantiye, proje sayısı hesaplama  
+✅ **Aktif/Pasif Atama Filtreleme**: includeActive parametresi  
+✅ **Çalışma Günü Hesaplama**: Otomatik tarih aritmetiği  
+✅ **Hiyerarşik Yetkilendirme**: JWT ve çalışma alanı filtreleme  
+✅ **Şantiye ve Proje Detayları**: Join'li tam veri  
 
 ## İlgili Dosyalar
 
