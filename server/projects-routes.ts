@@ -28,7 +28,7 @@ const projectCreateSchema = insertProjectSchema.extend({
   projectTotalPrice: z.union([z.string(), z.number()]).optional().transform(val => 
     val !== undefined && val !== null ? String(val) : undefined
   ),
-  completeRate: z.union([z.string(), z.number()]).optional().transform(val => 
+  completionRate: z.union([z.string(), z.number()]).optional().transform(val => 
     val !== undefined && val !== null ? String(val) : undefined
   ),
   isActive: z.boolean().default(true),
@@ -103,7 +103,7 @@ router.get('/projects', async (req: AuthRequest, res) => {
         status: projects.status,
         cityId: projects.cityId,
         projectTotalPrice: projects.projectTotalPrice,
-        completeRate: projects.completetRate,
+        completionRate: projects.completionRate,
         isActive: projects.isActive,
         createdAt: projects.createdAt,
         updatedAt: projects.updatedAt,
@@ -229,7 +229,7 @@ router.get('/projects/:id', async (req: AuthRequest, res) => {
         status: projects.status,
         cityId: projects.cityId,
         projectTotalPrice: projects.projectTotalPrice,
-        completeRate: projects.completetRate,
+        completionRate: projects.completionRate,
         isActive: projects.isActive,
         createdAt: projects.createdAt,
         updatedAt: projects.updatedAt,
@@ -330,7 +330,7 @@ router.get('/projects/:id', async (req: AuthRequest, res) => {
  *               projectTotalPrice:
  *                 type: number
  *                 description: Proje toplam tutarı
- *               completeRate:
+ *               completionRate:
  *                 type: number
  *                 description: Tamamlanma oranı (0-100)
  *               isActive:
@@ -452,8 +452,8 @@ router.post('/projects', authenticateJWT, async (req: AuthRequest, res) => {
       .insert(projects)
       .values({
         ...projectData,
-        createdBy: req.user?.id,
-        updatedBy: req.user?.id,
+        createdBy: req.userContext?.userId,
+        updatedBy: req.userContext?.userId,
       })
       .returning();
     
@@ -470,7 +470,7 @@ router.post('/projects', authenticateJWT, async (req: AuthRequest, res) => {
         status: projects.status,
         cityId: projects.cityId,
         projectTotalPrice: projects.projectTotalPrice,
-        completeRate: projects.completetRate,
+        completionRate: projects.completionRate,
         isActive: projects.isActive,
         createdAt: projects.createdAt,
         updatedAt: projects.updatedAt,
@@ -537,7 +537,7 @@ router.post('/projects', authenticateJWT, async (req: AuthRequest, res) => {
  *                 format: date
  *               projectTotalPrice:
  *                 type: number
- *               completeRate:
+ *               completionRate:
  *                 type: number
  *               isActive:
  *                 type: boolean
@@ -570,7 +570,7 @@ router.put('/projects/:id', authenticateJWT, async (req: AuthRequest, res) => {
       .update(projects)
       .set({
         ...req.body,
-        updatedBy: req.user?.id,
+        updatedBy: req.userContext?.userId,
         updatedAt: new Date(),
       })
       .where(eq(projects.id, projectId))

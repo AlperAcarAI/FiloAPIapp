@@ -886,6 +886,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Project Management Route'larını kaydet
   app.use('/api/secure', await import('./projects-routes.js').then(m => m.default));
+  app.use('/api/secure', await import('./project-completion-routes.js').then(m => m.default));
 
   // Audit Route'larını kaydet
   const { registerAuditRoutes } = await import("./audit-routes");

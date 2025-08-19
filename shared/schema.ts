@@ -162,7 +162,7 @@ export const projects = pgTable("projects", {
   status: varchar("status", { length: 20 }).notNull().default('planned'), // planned, active, completed, cancelled
   cityId: integer("city_id").references(() => cities.id),
   projectTotalPrice: decimal("project_total_price", { precision: 15, scale: 2 }),
-  completetRate: decimal("complete_rate", { precision: 5, scale: 2 }).default('0'), // 0-100 percentage
+  completionRate: decimal("completion_rate", { precision: 5, scale: 2 }).default('0'), // 0-100 percentage
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   createdBy: integer("created_by").references(() => users.id),
