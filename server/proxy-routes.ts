@@ -51,7 +51,7 @@ router.all('/*', authenticateJWT, async (req: any, res) => {
     // Check both NODE_ENV and development conditions
     const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT;
     const defaultUrl = isProduction
-      ? 'https://filokiapi.architectaiagency.com' 
+      ? 'http://localhost:5000'  // Production'da da localhost kullan (aynı sunucuda)
       : 'http://localhost:5000';
     const targetUrl = process.env.EXTERNAL_API_URL || defaultUrl;
     
