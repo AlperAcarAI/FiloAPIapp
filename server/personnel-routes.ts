@@ -830,4 +830,127 @@ router.post('/addPersonnelWorkArea', authenticateJWT, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/secure/personnel/{id}:
+ *   delete:
+ *     summary: Personel Silme (Soft Delete)
+ *     description: Personeli soft delete yapar (isActive = false). Personelin çalışma alanı atamalarını da sonlandırır.
+ *     tags: [Personel İşlemleri]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Silinecek personelin ID'si
+ *     responses:
+ *       200:
+ *         description: Personel başarıyla silindi (soft delete)
+ *       404:
+ *         description: Personel bulunamadı
+ *       500:
+ *         description: Sunucu hatası
+ */
+router.delete('/personnel/:id', async (req: AuthRequest, res) => {
+  try {
+    const personnelId = parseInt(req.params.id);
+    
+    if (isNaN(personnelId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_PERSONNEL_ID',
+        message: 'Geçersiz personel ID\'si.'
+      });
+    }
+
+    // Check if personnel exists and is active
+    const [existingPersonnel] = await db
+      .select({
+        id: personnel.id,
+        name: personnel.name,
+        surname: personnel.surname,
+        isActive: personnel.isActive
+      })
+      .from(personnel)
+      .where(eq(personnel.id, personnelId));
+
+    if (!existingPersonnel) {
+      return res.status(404).json({
+        success: false,
+        error: 'PERSONNEL_NOT_FOUND',
+        message: 'Belirtilen personel bulunamadı.'
+      });
+    }
+
+    if (!existingPersonnel.isActive) {
+      return res.status(400).json({
+        success: false,
+        error: 'PERSONNEL_ALREADY_DELETED',
+        message: 'Bu personel zaten silinmiş durumda.'
+      });
+    }
+
+    // Soft delete the personnel (set isActive = false)
+    await auditableUpdate(
+      db,
+      personnel,
+      { isActive: false },
+      eq(personnel.id, personnelId),
+      req.user?.id || null,
+      req.headers['x-api-key'] as string || null
+    );
+
+    // Also deactivate all active work area assignments for this personnel
+    await auditableUpdate(
+      db,
+      personnelWorkAreas,
+      { 
+        isActive: false,
+        endDate: new Date().toISOString().split('T')[0] // Set end date to today
+      },
+      and(
+        eq(personnelWorkAreas.personnelId, personnelId),
+        eq(personnelWorkAreas.isActive, true)
+      ),
+      req.user?.id || null,
+      req.headers['x-api-key'] as string || null
+    );
+
+    // Get updated personnel data for response
+    const [deletedPersonnel] = await db
+      .select({
+        id: personnel.id,
+        name: personnel.name,
+        surname: personnel.surname,
+        fullName: sql`CONCAT(${personnel.name}, ' ', ${personnel.surname})`.as('fullName'),
+        tcNo: personnel.tcNo,
+        isActive: personnel.isActive
+      })
+      .from(personnel)
+      .where(eq(personnel.id, personnelId));
+
+    res.json({
+      success: true,
+      message: 'Personel başarıyla silindi. Tüm aktif çalışma alanı atamaları sonlandırıldı.',
+      data: {
+        personnel: {
+          ...deletedPersonnel,
+          tcNo: deletedPersonnel.tcNo ? deletedPersonnel.tcNo.toString() : null
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('Personel silme hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: 'PERSONNEL_DELETE_ERROR',
+      message: 'Personel silinirken hata oluştu.'
+    });
+  }
+});
+
 export default router;
