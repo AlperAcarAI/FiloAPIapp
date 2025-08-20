@@ -700,19 +700,19 @@ router.get('/car-models', authenticateToken, async (req, res) => {
     
     // Apply conditions dynamically
     if (whereConditions.length > 0) {
-      baseQuery = baseQuery.where(and(...whereConditions));
+      baseQuery = baseQuery.where(and(...whereConditions)) as any;
     }
     
     // Apply sorting
     const orderColumn = sortBy === 'id' ? carModels.id : carModels.name;
     const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
-    baseQuery = baseQuery.orderBy(orderDirection);
+    baseQuery = baseQuery.orderBy(orderDirection) as any;
     
     // Apply pagination
     if (limit) {
-      baseQuery = baseQuery.limit(Number(limit));
+      baseQuery = baseQuery.limit(Number(limit)) as any;
       if (offset) {
-        baseQuery = baseQuery.offset(Number(offset));
+        baseQuery = baseQuery.offset(Number(offset)) as any;
       }
     }
     
@@ -921,19 +921,19 @@ router.get('/ownership-types', authenticateToken, async (req, res) => {
     
     // Apply conditions
     if (whereConditions.length > 0) {
-      baseQuery = baseQuery.where(and(...whereConditions));
+      baseQuery = baseQuery.where(and(...whereConditions)) as any;
     }
     
     // Apply sorting
     const orderColumn = sortBy === 'id' ? ownershipTypes.id : ownershipTypes.name;
     const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
-    baseQuery = baseQuery.orderBy(orderDirection);
+    baseQuery = baseQuery.orderBy(orderDirection) as any;
     
     // Apply pagination
     if (limit) {
-      baseQuery = baseQuery.limit(Number(limit));
+      baseQuery = baseQuery.limit(Number(limit)) as any;
       if (offset) {
-        baseQuery = baseQuery.offset(Number(offset));
+        baseQuery = baseQuery.offset(Number(offset)) as any;
       }
     }
     
