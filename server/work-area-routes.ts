@@ -69,7 +69,7 @@ const router = Router();
  */
 router.get('/getWorkAreas', authenticateJWT, async (req, res) => {
   try {
-    const { search, isActive, cityId } = req.query;
+    const { search, isActive, cityId, managerId, managerName } = req.query;
     
     // Base query with joins
     let query = db
@@ -111,6 +111,21 @@ router.get('/getWorkAreas', authenticateJWT, async (req, res) => {
 
     if (cityId) {
       whereConditions.push(eq(workAreas.cityId, parseInt(cityId as string)));
+    }
+
+    // Yönetici ID ile filtreleme
+    if (managerId) {
+      whereConditions.push(eq(workAreas.managerId, parseInt(managerId as string)));
+    }
+
+    // Yönetici adı ile filtreleme
+    if (managerName) {
+      whereConditions.push(
+        or(
+          ilike(personnel.name, `%${managerName}%`),
+          ilike(personnel.surname, `%${managerName}%`)
+        )
+      );
     }
 
     if (whereConditions.length > 0) {
