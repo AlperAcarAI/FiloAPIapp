@@ -7,7 +7,7 @@ import {
   type InsertWorkArea, type UpdateWorkArea, type WorkArea
 } from '../shared/schema.js';
 import { z } from 'zod';
-import { authenticateJWT, filterByWorkArea, type AuthRequest } from './hierarchical-auth.js';
+import { authenticateJWT, filterByWorkArea, requireAdmin, type AuthRequest } from './hierarchical-auth.js';
 
 const router = Router();
 
@@ -426,8 +426,8 @@ router.put('/updateWorkArea/:id', authenticateJWT, filterByWorkArea, async (req:
  * @swagger
  * /api/secure/deleteWorkArea/{id}:
  *   delete:
- *     summary: Çalışma Alanı Silme
- *     description: Çalışma alanını soft delete yapar (isActive = false)
+ *     summary: Çalışma Alanı Silme (Sadece Admin)
+ *     description: Mevcut bir çalışma alanını siler. Bu işlem sadece CORPORATE seviyesindeki adminler tarafından yapılabilir.
  *     tags: [Çalışma Alanı İşlemleri]
  *     security:
  *       - ApiKeyAuth: []
@@ -437,17 +437,64 @@ router.put('/updateWorkArea/:id', authenticateJWT, filterByWorkArea, async (req:
  *         required: true
  *         schema:
  *           type: integer
- *         description: Çalışma alanı ID
+ *         description: Silinecek çalışma alanının ID'si
+ *     responses:
+ *       200:
+ *         description: Çalışma alanı başarıyla silindi
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Çalışma alanı başarıyla silindi."
+ *       403:
+ *         description: Admin yetkisi gerekli
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "ADMIN_ACCESS_REQUIRED"
+ *                 message:
+ *                   type: string
+ *                   example: "Bu işlem için admin yetkisine sahip olmanız gerekiyor."
+ *       404:
+ *         description: Çalışma alanı bulunamadı
+ *       500:
+ *         description: Sunucu hatası
  */
-router.delete('/deleteWorkArea/:id', authenticateJWT, async (req, res) => {
+router.delete('/deleteWorkArea/:id', authenticateJWT, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const workAreaId = parseInt(req.params.id);
     
+    if (isNaN(workAreaId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_WORK_AREA_ID',
+        message: 'Geçersiz çalışma alanı ID\'si.'
+      });
+    }
+    
     // Çalışma alanının var olduğunu kontrol et
     const existingWorkArea = await db
-      .select({ id: workAreas.id })
+      .select({ 
+        id: workAreas.id,
+        name: workAreas.name,
+        isActive: workAreas.isActive
+      })
       .from(workAreas)
-      .where(eq(workAreas.id, workAreaId));
+      .where(eq(workAreas.id, workAreaId))
+      .limit(1);
       
     if (existingWorkArea.length === 0) {
       return res.status(404).json({
@@ -456,23 +503,37 @@ router.delete('/deleteWorkArea/:id', authenticateJWT, async (req, res) => {
         message: 'Çalışma alanı bulunamadı.'
       });
     }
-    
-    // Soft delete - isActive durumunu false yap
-    await db
+
+    // Soft delete - isActive false yapıp silinmiş olarak işaretle
+    const result = await db
       .update(workAreas)
-      .set({ isActive: false })
-      .where(eq(workAreas.id, workAreaId));
-    
+      .set({ 
+        isActive: false
+      })
+      .where(eq(workAreas.id, workAreaId))
+      .returning({ id: workAreas.id });
+
+    if (result.length === 0) {
+      return res.status(500).json({
+        success: false,
+        error: 'DELETE_FAILED',
+        message: 'Çalışma alanı silinirken hata oluştu.'
+      });
+    }
+
+    // Audit log kaydı
+    console.log(`[ADMIN DELETE] Work Area ${workAreaId} (${existingWorkArea[0].name}) deleted by admin user ${req.userContext?.userId}`);
+
     res.json({
       success: true,
-      message: 'Çalışma alanı başarıyla silindi.'
+      message: `Çalışma alanı "${existingWorkArea[0].name}" başarıyla silindi.`
     });
-    
+
   } catch (error) {
-    console.error('Çalışma alanı silme hatası:', error);
+    console.error('Work area deletion error:', error);
     res.status(500).json({
       success: false,
-      error: 'WORK_AREA_DELETE_ERROR',
+      error: 'DELETE_ERROR',
       message: 'Çalışma alanı silinirken hata oluştu.'
     });
   }

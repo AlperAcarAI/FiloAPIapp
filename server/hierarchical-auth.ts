@@ -26,6 +26,7 @@ export interface UserContext {
 export interface AuthRequest extends Request {
   userContext?: UserContext;
   workAreaFilter?: number[] | null;
+  user?: { id: number; email: string; }; // JWT decoded user için
 }
 
 // JWT token oluşturma (login sonrası)
@@ -438,6 +439,39 @@ export const loadUserContext = async (userId: number): Promise<UserContext | nul
   } catch (error) {
     console.error('Load user context error:', error);
     return null;
+  }
+};
+
+// Admin kontrolü - sadece CORPORATE seviyesi
+export const requireAdmin = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.userContext) {
+      return res.status(401).json({
+        success: false,
+        error: 'UNAUTHORIZED',
+        message: 'Oturum açmanız gerekiyor.'
+      });
+    }
+
+    // UserContext'ten direkt accessLevel kontrolü yap
+    if (req.userContext.accessLevel !== 'CORPORATE') {
+      console.log(`[ADMIN CHECK] User ${req.userContext.userId} with access level ${req.userContext.accessLevel} tried to access admin-only resource`);
+      return res.status(403).json({
+        success: false,
+        error: 'ADMIN_ACCESS_REQUIRED',
+        message: 'Bu işlem için admin yetkisine sahip olmanız gerekiyor.'
+      });
+    }
+
+    console.log(`[ADMIN CHECK] Admin access granted to user ${req.userContext.userId} (CORPORATE level)`);
+    next();
+  } catch (error) {
+    console.error('Admin access check failed:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'AUTHORIZATION_ERROR',
+      message: 'Yetki kontrolü sırasında hata oluştu.'
+    });
   }
 };
 
