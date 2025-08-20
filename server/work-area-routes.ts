@@ -114,7 +114,7 @@ router.get('/getWorkAreas', authenticateJWT, async (req, res) => {
     }
 
     if (whereConditions.length > 0) {
-      query = query.where(and(...whereConditions));
+      query = query.where(and(...whereConditions)) as any;
     }
 
     // Execute query with ordering
