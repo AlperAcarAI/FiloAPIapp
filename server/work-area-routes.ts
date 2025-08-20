@@ -1,38 +1,13 @@
 import { Router } from 'express';
 import { db } from './db.js';
-import { eq, and, ilike, desc, asc, like, or, ne } from 'drizzle-orm';
+import { eq, and, ilike, desc, asc, like, or, ne, inArray } from 'drizzle-orm';
 import { 
   workAreas, cities, personnel, personnelPositions,
   insertWorkAreaSchema, updateWorkAreaSchema,
   type InsertWorkArea, type UpdateWorkArea, type WorkArea
 } from '../shared/schema.js';
 import { z } from 'zod';
-
-// JWT Token Authentication middleware
-const authenticateJWT = (req: any, res: any, next: any) => {
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({
-      success: false,
-      message: 'Erişim token bulunamadı. Lütfen giriş yapın.'
-    });
-  }
-  
-  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-  
-  // For now, accept any valid looking token format
-  // In production, you would verify the JWT token here
-  if (token && token.length > 10) {
-    req.user = { id: 1 }; // Mock user for now
-    next();
-  } else {
-    return res.status(401).json({
-      success: false,
-      message: 'Geçersiz token formatı.'
-    });
-  }
-};
+import { authenticateJWT, filterByWorkArea, type AuthRequest } from './hierarchical-auth.js';
 
 const router = Router();
 
@@ -67,7 +42,7 @@ const router = Router();
  *       401:
  *         description: Geçersiz API anahtarı
  */
-router.get('/getWorkAreas', authenticateJWT, async (req, res) => {
+router.get('/getWorkAreas', authenticateJWT, filterByWorkArea, async (req: AuthRequest, res) => {
   try {
     const { search, isActive, cityId, managerId, managerName } = req.query;
     
@@ -127,6 +102,18 @@ router.get('/getWorkAreas', authenticateJWT, async (req, res) => {
         )
       );
     }
+
+    // Hierarchical access control - kullanıcının yetkili olduğu work area'ları filtrele
+    if (req.workAreaFilter !== null && req.workAreaFilter !== undefined) {
+      // Kullanıcı sadece belirli work area'lara erişebilir
+      if (req.workAreaFilter.length > 0) {
+        whereConditions.push(inArray(workAreas.id, req.workAreaFilter));
+      } else {
+        // Kullanıcının hiçbir work area'ya erişimi yok
+        whereConditions.push(eq(workAreas.id, -1)); // Hiçbir sonuç döndürmez
+      }
+    }
+    // req.workAreaFilter === null ise CORPORATE level - hiçbir filtre ekleme
 
     if (whereConditions.length > 0) {
       query = query.where(and(...whereConditions)) as any;
@@ -200,7 +187,7 @@ router.get('/getWorkAreas', authenticateJWT, async (req, res) => {
  *                 default: true
  *                 description: Aktif mi?
  */
-router.post('/addWorkArea', authenticateJWT, async (req, res) => {
+router.post('/addWorkArea', authenticateJWT, async (req: AuthRequest, res) => {
   try {
     // Request body validasyonu
     const validationResult = insertWorkAreaSchema.safeParse(req.body);
@@ -313,9 +300,20 @@ router.post('/addWorkArea', authenticateJWT, async (req, res) => {
  *           type: integer
  *         description: Çalışma alanı ID
  */
-router.put('/updateWorkArea/:id', authenticateJWT, async (req, res) => {
+router.put('/updateWorkArea/:id', authenticateJWT, filterByWorkArea, async (req: AuthRequest, res) => {
   try {
     const workAreaId = parseInt(req.params.id);
+    
+    // Hierarchical access control - kullanıcının bu work area'yı güncelleme yetkisi var mı?
+    if (req.workAreaFilter !== null && req.workAreaFilter !== undefined) {
+      if (!req.workAreaFilter.includes(workAreaId)) {
+        return res.status(403).json({
+          success: false,
+          error: 'WORK_AREA_ACCESS_DENIED',
+          message: 'Bu çalışma alanını güncelleme yetkiniz bulunmamaktadır.'
+        });
+      }
+    }
     
     // Çalışma alanının var olduğunu kontrol et
     const existingWorkArea = await db
