@@ -63,6 +63,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Penalty management routes
   app.use("/api/penalty-types", await import("./penalty-routes.js").then(m => m.default));
   app.use("/api/penalties", await import("./penalties-routes.js").then(m => m.default));
+  
+  // Financial routes
+  app.use("/api/secure/financial", await import("./financial-routes.js").then(m => m.default));
 
   // Kullanıcı kimlik doğrulama - Basitleştirilmiş sistem
   app.post("/api/auth/login", async (req: SecurityRequest, res: Response) => {
