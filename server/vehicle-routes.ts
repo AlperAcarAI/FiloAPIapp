@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { db } from './db.js';
 import { eq, and, ilike, desc, asc } from 'drizzle-orm';
 import { 
-  assets, carModels, carBrands, carTypes, ownershipTypes, companies,
+  assets, carModels, carBrands, carTypes, ownershipTypes, companies, users,
   insertAssetSchema, updateAssetSchema,
   type InsertAsset, type UpdateAsset, type Asset
 } from '../shared/schema.js';
@@ -335,10 +335,21 @@ router.post('/vehicles', authenticateToken, async (req, res) => {
       });
     }
     
-    // Audit bilgilerini ekle (eğer middleware kullanıyorsanız)
+    // Audit bilgilerini ekle - created_by için personnel_id kullan
+    const userId = (req as any).user?.id;
+    let personnelId = null;
+    
+    if (userId) {
+      const [userRecord] = await db
+        .select({ personnelId: users.personnelId })
+        .from(users)
+        .where(eq(users.id, userId));
+      personnelId = userRecord?.personnelId;
+    }
+    
     const auditInfo = {
-      createdBy: (req as any).user?.id, // Auth middleware'den gelen user ID
-      updatedBy: (req as any).user?.id,
+      createdBy: personnelId, // Personnel ID kullan, yoksa null
+      updatedBy: personnelId,
       createdAt: new Date(),
       updatedAt: new Date()
     };
