@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from './db.js';
-import { eq, and, ilike, desc, asc } from 'drizzle-orm';
+import { eq, and, ilike, desc, asc, ne } from 'drizzle-orm';
 import { 
   assets, carModels, carBrands, carTypes, ownershipTypes, companies, users,
   insertAssetSchema, updateAssetSchema,
@@ -1059,6 +1059,213 @@ router.get('/ownership-types/:id', authenticateToken, async (req, res) => {
       success: false,
       error: 'OWNERSHIP_TYPE_DETAIL_ERROR',
       message: 'Sahiplik türü detayı getirilirken hata oluştu.'
+    });
+  }
+});
+
+// =============================================
+// ARAÇ GÜNCELLEME API'Sİ
+// =============================================
+
+/**
+ * @swagger
+ * /api/secure/vehicles/{id}:
+ *   put:
+ *     summary: Araç Güncelleme
+ *     description: Mevcut bir araç kaydını günceller
+ *     tags: [Araç İşlemleri]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Araç ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               modelId:
+ *                 type: integer
+ *                 description: Araç modeli ID
+ *               modelYear:
+ *                 type: integer
+ *                 description: Model yılı
+ *               plateNumber:
+ *                 type: string
+ *                 description: Plaka numarası
+ *               chassisNo:
+ *                 type: string
+ *                 description: Şasi numarası (isteğe bağlı)
+ *               engineNo:
+ *                 type: string
+ *                 description: Motor numarası (isteğe bağlı)
+ *               ownershipTypeId:
+ *                 type: integer
+ *                 description: Sahiplik türü ID
+ *               ownerCompanyId:
+ *                 type: integer
+ *                 description: Sahip şirket ID (isteğe bağlı)
+ *               registerNo:
+ *                 type: string
+ *                 description: Ruhsat numarası (isteğe bağlı)
+ *               registerDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Ruhsat tarihi (isteğe bağlı)
+ *               purchaseDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Satın alma tarihi (isteğe bağlı)
+ *               isActive:
+ *                 type: boolean
+ *                 description: Araç aktif mi?
+ *     responses:
+ *       200:
+ *         description: Araç başarıyla güncellendi
+ *       404:
+ *         description: Araç bulunamadı
+ *       409:
+ *         description: Plaka numarası zaten kayıtlı
+ */
+router.put('/vehicles/:id', authenticateToken, async (req, res) => {
+  try {
+    const vehicleId = parseInt(req.params.id);
+    
+    if (isNaN(vehicleId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_ID',
+        message: 'Geçersiz araç ID\'si.'
+      });
+    }
+    
+    // Request body validasyonu
+    const validationResult = updateAssetSchema.safeParse(req.body);
+    
+    if (!validationResult.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'VALIDATION_ERROR',
+        message: 'Geçersiz veri formatı.',
+        details: validationResult.error.errors.map(err => ({
+          field: err.path.join('.'),
+          message: err.message
+        }))
+      });
+    }
+    
+    const updateData = validationResult.data;
+    
+    // Mevcut aracı kontrol et
+    const [existingVehicle] = await db
+      .select()
+      .from(assets)
+      .where(eq(assets.id, vehicleId));
+      
+    if (!existingVehicle) {
+      return res.status(404).json({
+        success: false,
+        error: 'VEHICLE_NOT_FOUND',
+        message: 'Araç bulunamadı.'
+      });
+    }
+    
+    // Plaka numarası benzersizlik kontrolü - basitleştirildi
+    if (updateData.plateNumber && updateData.plateNumber !== existingVehicle.plateNumber) {
+      const duplicateVehicles = await db
+        .select({ id: assets.id })
+        .from(assets)
+        .where(eq(assets.plateNumber, updateData.plateNumber));
+        
+      if (duplicateVehicles.length > 0 && duplicateVehicles[0].id !== vehicleId) {
+        return res.status(409).json({
+          success: false,
+          error: 'DUPLICATE_PLATE_NUMBER',
+          message: 'Bu plaka numarası zaten kayıtlı.'
+        });
+      }
+    }
+    
+    // Audit bilgilerini ekle - updated_by için personnel_id kullan
+    const userId = (req as any).user?.id;
+    let personnelId = null;
+    
+    if (userId) {
+      const [userRecord] = await db
+        .select({ personnelId: users.personnelId })
+        .from(users)
+        .where(eq(users.id, userId));
+      personnelId = userRecord?.personnelId;
+    }
+    
+    const auditInfo = {
+      updatedBy: personnelId,
+      updatedAt: new Date()
+    };
+    
+    // Aracı güncelle
+    const [updatedVehicle] = await auditableUpdate(
+      db,
+      assets,
+      { ...updateData, ...auditInfo },
+      eq(assets.id, vehicleId),
+      existingVehicle,
+      auditInfo
+    );
+    
+    // Güncellenmiş aracın detaylı bilgilerini getir
+    const [vehicleDetail] = await db
+      .select({
+        id: assets.id,
+        modelId: assets.modelId,
+        modelYear: assets.modelYear,
+        plateNumber: assets.plateNumber,
+        chassisNo: assets.chassisNo,
+        engineNo: assets.engineNo,
+        ownershipTypeId: assets.ownershipTypeId,
+        ownerCompanyId: assets.ownerCompanyId,
+        registerNo: assets.registerNo,
+        registerDate: assets.registerDate,
+        purchaseDate: assets.purchaseDate,
+        isActive: assets.isActive,
+        createdAt: assets.createdAt,
+        updatedAt: assets.updatedAt,
+        createdBy: assets.createdBy,
+        updatedBy: assets.updatedBy,
+        // Join data
+        modelName: carModels.name,
+        brandName: carBrands.name,
+        typeName: carTypes.name,
+        ownershipTypeName: ownershipTypes.name,
+        ownerCompanyName: companies.name
+      })
+      .from(assets)
+      .leftJoin(carModels, eq(assets.modelId, carModels.id))
+      .leftJoin(carBrands, eq(carModels.brandId, carBrands.id))
+      .leftJoin(carTypes, eq(carModels.typeId, carTypes.id))
+      .leftJoin(ownershipTypes, eq(assets.ownershipTypeId, ownershipTypes.id))
+      .leftJoin(companies, eq(assets.ownerCompanyId, companies.id))
+      .where(eq(assets.id, vehicleId));
+    
+    res.json({
+      success: true,
+      message: 'Araç başarıyla güncellendi.',
+      data: {
+        vehicle: vehicleDetail
+      }
+    });
+  } catch (error) {
+    console.error('Araç güncelleme hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: 'VEHICLE_UPDATE_ERROR',
+      message: 'Araç güncellenirken hata oluştu.'
     });
   }
 });
