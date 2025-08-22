@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
 import { authenticateToken, type AuthRequest } from "./auth";
-import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset, cities, type City, companies, users, personnel } from "@shared/schema";
+import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset, cities, type City, companies, users, personnel, paymentMethods } from "@shared/schema";
 import { generateTokenPair, validateRefreshToken, revokeRefreshToken, revokeAllUserRefreshTokens } from "./auth";
 import { z } from "zod";
 import { db } from "./db";
@@ -517,6 +517,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         error: "CITIES_FETCH_ERROR",
         message: "Şehir listesi alınırken bir hata oluştu" 
+      });
+    }
+  });
+
+  // Payment Methods API - Simple endpoint
+  app.get("/api/payment-methods", authenticateToken, async (req, res) => {
+    try {
+      const { search, activeOnly = 'true', limit, offset, sortBy = 'name', sortOrder = 'asc' } = req.query;
+      
+      let query = db.select({
+        id: paymentMethods.id,
+        name: paymentMethods.name,
+        isActive: paymentMethods.isActive
+      }).from(paymentMethods);
+
+      // Filtreleme
+      const conditions = [];
+      if (activeOnly === 'true') {
+        conditions.push(eq(paymentMethods.isActive, true));
+      }
+      if (search) {
+        conditions.push(ilike(paymentMethods.name, `%${search}%`));
+      }
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+
+      // Sıralama
+      const orderColumn = sortBy === 'id' ? paymentMethods.id : paymentMethods.name;
+      const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
+      query = query.orderBy(orderDirection);
+
+      // Sayfalama
+      if (limit) {
+        query = query.limit(Number(limit));
+        if (offset) {
+          query = query.offset(Number(offset));
+        }
+      }
+
+      const methodsList = await query;
+      
+      res.json({
+        success: true,
+        message: "Ödeme yöntemleri başarıyla getirildi",
+        data: {
+          paymentMethods: methodsList,
+          totalCount: methodsList.length
+        }
+      });
+    } catch (error) {
+      console.error("Payment methods getirme hatası:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "PAYMENT_METHODS_FETCH_ERROR",
+        message: "Ödeme yöntemleri alınırken hata oluştu" 
       });
     }
   });
