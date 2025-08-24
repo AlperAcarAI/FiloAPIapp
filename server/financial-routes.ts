@@ -119,27 +119,33 @@ router.get("/current-accounts", authenticateToken, async (req: AuthRequest, res:
 // POST /api/secure/financial/current-accounts - Yeni finansal işlem
 router.post("/current-accounts", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const auditInfo = captureAuditInfo(req);
     const { description, payerCompanyId, payeeCompanyId, amountCents, transactionDate, paymentMethodId, paymentStatus, paymentReference, notes } = req.body;
 
-    const newAccount = await auditableInsert(
-      finCurrentAccounts,
-      {
+    // Validation
+    if (!description || !payerCompanyId || !payeeCompanyId || !amountCents || !transactionDate) {
+      return res.status(400).json({
+        success: false,
+        error: "VALIDATION_ERROR",
+        message: "Gerekli alanlar eksik: description, payerCompanyId, payeeCompanyId, amountCents, transactionDate"
+      });
+    }
+
+    const [newAccount] = await db.insert(finCurrentAccounts)
+      .values({
         description,
-        payerCompanyId,
-        payeeCompanyId,
-        amountCents,
-        transactionDate: new Date(transactionDate),
-        paymentMethodId,
+        payerCompanyId: Number(payerCompanyId),
+        payeeCompanyId: Number(payeeCompanyId),
+        amountCents: Number(amountCents),
+        transactionDate,
+        paymentMethodId: paymentMethodId ? Number(paymentMethodId) : undefined,
         paymentStatus: paymentStatus || 'beklemede',
         paymentReference,
         notes,
-        isDebit: amountCents < 0,
+        isDebit: Number(amountCents) < 0,
         isDone: false,
         isActive: true
-      },
-      auditInfo
-    );
+      })
+      .returning();
 
     res.status(201).json({
       success: true,
