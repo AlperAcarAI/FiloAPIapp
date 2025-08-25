@@ -14,8 +14,9 @@ import {
   paymentMethods
 } from "../shared/schema";
 import { authenticateToken } from "./auth";
-import { eq, and, desc, asc, like, ilike, sql, count, gte, lte } from "drizzle-orm";
+import { eq, and, desc, asc, like, ilike, sql, count, gte, lte, inArray } from "drizzle-orm";
 import { auditableInsert, auditableUpdate, auditableDelete, captureAuditInfo } from "./audit-middleware";
+import { authenticateJWT, requirePermission, type AuthRequest } from "./hierarchical-auth";
 import type { Request, Response } from "express";
 
 const router = Router();
@@ -271,7 +272,7 @@ router.delete("/:id", async (req: Request, res: Response) => {
 // ========================
 
 // GET /api/policies - List asset policies
-router.get("/policies", async (req: Request, res: Response) => {
+router.get("/policies", authenticateJWT, async (req: AuthRequest, res: Response) => {
   try {
     const { 
       assetId,
@@ -375,7 +376,7 @@ router.get("/policies", async (req: Request, res: Response) => {
 });
 
 // POST /api/policies - Create new asset policy
-router.post("/policies", async (req: Request, res: Response) => {
+router.post("/policies", authenticateJWT, async (req: AuthRequest, res: Response) => {
   try {
     const { 
       assetId, 
@@ -451,7 +452,7 @@ router.post("/policies", async (req: Request, res: Response) => {
 });
 
 // GET /api/policies/:id - Get policy details
-router.get("/policies/:id", async (req: Request, res: Response) => {
+router.get("/policies/:id", authenticateJWT, async (req: AuthRequest, res: Response) => {
   try {
     const policyId = parseInt(req.params.id);
 
@@ -544,7 +545,7 @@ router.get("/policies/:id", async (req: Request, res: Response) => {
 });
 
 // GET /api/policies/:id/detailed - Get detailed policy info with vehicle and payment details
-router.get("/policies/:id/detailed", async (req: Request, res: Response) => {
+router.get("/policies/:id/detailed", authenticateJWT, async (req: AuthRequest, res: Response) => {
   try {
     const policyId = parseInt(req.params.id);
 
@@ -577,6 +578,22 @@ router.get("/policies/:id/detailed", async (req: Request, res: Response) => {
       .from(assets)
       .where(eq(assets.id, policyBasic.assetId))
       .limit(1);
+
+    // Company-based authorization check
+    const userContext = req.userContext;
+    if (userContext && userContext.accessLevel !== 'CORPORATE') {
+      // Check if user has access to this asset's company
+      if (asset?.ownerCompanyId) {
+        // For non-CORPORATE users, check if they have access to the company
+        if (userContext.companyId && userContext.companyId !== asset.ownerCompanyId) {
+          return res.status(403).json({
+            success: false,
+            error: 'FORBIDDEN',
+            message: 'Bu poliçeyi görüntüleme yetkiniz yok'
+          });
+        }
+      }
+    }
 
     // Get policy type
     const [policyType] = await db
