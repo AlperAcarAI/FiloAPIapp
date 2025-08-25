@@ -261,11 +261,9 @@ router.get("/", async (req: AuthRequest, res) => {
       .innerJoin(personnel, eq(assetsPersonelAssignment.personnelId, personnel.id));
 
     // Apply conditions and ordering
-    let query = baseQuery;
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
-    query = query.orderBy(orderByClause);
+    const finalQuery = conditions.length > 0 
+      ? baseQuery.where(and(...conditions)).orderBy(orderByClause)
+      : baseQuery.orderBy(orderByClause);
 
     // Get total count with same conditions
     const countQuery = db
@@ -280,7 +278,7 @@ router.get("/", async (req: AuthRequest, res) => {
     );
 
     // Apply pagination
-    const results = await query.limit(limitNum).offset(offsetNum);
+    const results = await finalQuery.limit(limitNum).offset(offsetNum);
 
     res.json({
       success: true,
