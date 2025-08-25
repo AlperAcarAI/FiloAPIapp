@@ -8,7 +8,6 @@ import {
   type UpdateAssetsPersonelAssignment,
 } from "@shared/schema";
 import { authenticateToken, type AuthRequest } from "./auth";
-import { authenticateApiKey } from "./api-security";
 import { createAuditLog } from "./audit-middleware";
 import { and, eq, sql, desc, asc, ilike, or } from "drizzle-orm";
 
@@ -16,7 +15,6 @@ const router = Router();
 
 // Middleware uygula
 router.use(authenticateToken);
-router.use(authenticateApiKey);
 
 /**
  * @swagger
@@ -83,7 +81,6 @@ router.use(authenticateApiKey);
  *     tags: [Asset Assignments]
  *     security:
  *       - bearerAuth: []
- *       - apiKeyAuth: []
  *     parameters:
  *       - in: query
  *         name: search
@@ -311,7 +308,6 @@ router.get("/", async (req: AuthRequest, res) => {
  *     tags: [Asset Assignments]
  *     security:
  *       - bearerAuth: []
- *       - apiKeyAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -408,7 +404,6 @@ router.get("/:id", async (req: AuthRequest, res) => {
  *     tags: [Asset Assignments]
  *     security:
  *       - bearerAuth: []
- *       - apiKeyAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -551,7 +546,6 @@ router.post("/", async (req: AuthRequest, res) => {
  *     tags: [Asset Assignments]
  *     security:
  *       - bearerAuth: []
- *       - apiKeyAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -674,7 +668,6 @@ router.put("/:id", async (req: AuthRequest, res) => {
  *     tags: [Asset Assignments]
  *     security:
  *       - bearerAuth: []
- *       - apiKeyAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -774,7 +767,6 @@ router.delete("/:id", async (req: AuthRequest, res) => {
  *     tags: [Asset Assignments]
  *     security:
  *       - bearerAuth: []
- *       - apiKeyAuth: []
  *     parameters:
  *       - in: path
  *         name: id
