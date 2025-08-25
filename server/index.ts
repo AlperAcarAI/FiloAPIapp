@@ -59,6 +59,7 @@ app.use(morgan('dev')); // Konsola loglama
 app.use(morgan('combined', { stream: accessLogStream })); // Dosyaya loglama
 
 (async () => {
+  // ALWAYS register routes first, regardless of environment
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -86,9 +87,8 @@ app.use(morgan('combined', { stream: accessLogStream })); // Dosyaya loglama
     });
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
+  // Setup static serving AFTER API routes are registered
+  // This ensures API routes have priority over static file serving
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
