@@ -1,6 +1,18 @@
 import { Router } from "express";
 import { db } from "./db";
-import { policyTypes, assetsPolicies, companies, assets, damageTypes, assetsDamageData } from "../shared/schema";
+import { 
+  policyTypes, 
+  assetsPolicies, 
+  companies, 
+  assets, 
+  damageTypes, 
+  assetsDamageData,
+  carBrands,
+  carModels,
+  carTypes,
+  finCurrentAccounts,
+  paymentMethods
+} from "../shared/schema";
 import { authenticateToken } from "./auth";
 import { eq, and, desc, asc, like, ilike, sql, count, gte, lte } from "drizzle-orm";
 import { auditableInsert, auditableUpdate, auditableDelete, captureAuditInfo } from "./audit-middleware";
@@ -527,6 +539,221 @@ router.get("/policies/:id", async (req: Request, res: Response) => {
       success: false,
       error: 'POLICY_DETAIL_FETCH_ERROR',
       message: 'Poliçe detayı getirilirken hata oluştu.'
+    });
+  }
+});
+
+// GET /api/policies/:id/detailed - Get detailed policy info with vehicle and payment details
+router.get("/policies/:id/detailed", async (req: Request, res: Response) => {
+  try {
+    const policyId = parseInt(req.params.id);
+
+    if (!policyId || isNaN(policyId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_ID',
+        message: 'Geçersiz poliçe ID\'si.'
+      });
+    }
+
+    // Get basic policy details first
+    const [policyBasic] = await db
+      .select()
+      .from(assetsPolicies)
+      .where(eq(assetsPolicies.id, policyId))
+      .limit(1);
+    
+    if (!policyBasic) {
+      return res.status(404).json({
+        success: false,
+        error: 'POLICY_NOT_FOUND',
+        message: 'Poliçe bulunamadı.'
+      });
+    }
+
+    // Get asset details
+    const [asset] = await db
+      .select()
+      .from(assets)
+      .where(eq(assets.id, policyBasic.assetId))
+      .limit(1);
+
+    // Get policy type
+    const [policyType] = await db
+      .select()
+      .from(policyTypes)
+      .where(eq(policyTypes.id, policyBasic.policyTypeId))
+      .limit(1);
+
+    const policyDetails = {
+      ...policyBasic,
+      plateNumber: asset?.plateNumber,
+      vehicleYear: asset?.year,
+      modelId: asset?.modelId,
+      policyTypeName: policyType?.name
+    };
+
+    // Get vehicle model details
+    let vehicleDetails = null;
+    if (policyDetails.modelId) {
+      const vehicleQuery = await db
+        .select({
+          modelName: carModels.name,
+          brandId: carModels.brandId,
+          brandName: carBrands.name,
+          typeId: carModels.typeId,
+          typeName: carTypes.name,
+          capacity: carModels.capacity
+        })
+        .from(carModels)
+        .leftJoin(carBrands, eq(carModels.brandId, carBrands.id))
+        .leftJoin(carTypes, eq(carModels.typeId, carTypes.id))
+        .where(eq(carModels.id, policyDetails.modelId))
+        .limit(1);
+      
+      vehicleDetails = vehicleQuery[0];
+    }
+
+    // Get company details
+    const [insuranceCompany] = await db
+      .select({
+        name: companies.name,
+        phone: companies.phone,
+        address: companies.address
+      })
+      .from(companies)
+      .where(eq(companies.id, policyDetails.insuranceCompanyId))
+      .limit(1);
+
+    const [sellerCompany] = await db
+      .select({
+        name: companies.name,
+        phone: companies.phone
+      })
+      .from(companies)
+      .where(eq(companies.id, policyDetails.sellerCompanyId))
+      .limit(1);
+
+    // Get payment information from financial accounts
+    let paymentInfo = null;
+    try {
+      const paymentQuery = await db
+        .select({
+          id: finCurrentAccounts.id,
+          payerCompanyId: finCurrentAccounts.payerCompanyId,
+          paymentMethodId: finCurrentAccounts.paymentMethodId,
+          transactionDate: finCurrentAccounts.transactionDate,
+          paymentStatus: finCurrentAccounts.paymentStatus,
+          paymentReference: finCurrentAccounts.paymentReference,
+          notes: finCurrentAccounts.notes,
+          isDone: finCurrentAccounts.isDone,
+          payerCompanyName: companies.name,
+          paymentMethodName: paymentMethods.name
+        })
+        .from(finCurrentAccounts)
+        .leftJoin(companies, eq(finCurrentAccounts.payerCompanyId, companies.id))
+        .leftJoin(paymentMethods, eq(finCurrentAccounts.paymentMethodId, paymentMethods.id))
+        .where(and(
+          ilike(finCurrentAccounts.description, `%Poliçe%`),
+          ilike(finCurrentAccounts.description, `%${policyDetails.policyNumber}%`),
+          eq(finCurrentAccounts.isActive, true)
+        ))
+        .limit(1);
+      
+      paymentInfo = paymentQuery[0] || null;
+    } catch (err) {
+      console.error('Ödeme bilgisi alınamadı:', err);
+    }
+
+    // Calculate remaining days
+    let remainingDays = null;
+    let policyStatus = 'active';
+    
+    if (policyDetails.endDate) {
+      const endDate = new Date(policyDetails.endDate);
+      const today = new Date();
+      const diffTime = endDate.getTime() - today.getTime();
+      remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (remainingDays < 0) {
+        policyStatus = 'expired';
+      } else if (remainingDays <= 30) {
+        policyStatus = 'expiring_soon';
+      }
+    }
+
+    // Format response
+    const response = {
+      success: true,
+      message: 'Poliçe detayları başarıyla getirildi.',
+      data: {
+        // Araç Bilgileri
+        arac: {
+          plaka: policyDetails.plateNumber,
+          marka: vehicleDetails?.brandName || 'Belirtilmemiş',
+          model: vehicleDetails?.modelName || 'Belirtilmemiş',
+          tip: vehicleDetails?.typeName || 'Belirtilmemiş',
+          yil: policyDetails.vehicleYear || 'Belirtilmemiş',
+          kapasite: vehicleDetails?.capacity || 'Belirtilmemiş'
+        },
+        
+        // Poliçe Bilgileri
+        police: {
+          id: policyDetails.id,
+          policeNo: policyDetails.policyNumber,
+          tur: policyDetails.policyTypeName,
+          tutar: policyDetails.amountCents,
+          tutarTL: (policyDetails.amountCents / 100).toFixed(2) + ' TL'
+        },
+        
+        // Sigorta Şirketi
+        sigortaSirketi: {
+          id: policyDetails.insuranceCompanyId,
+          ad: insuranceCompany?.name || 'Belirtilmemiş',
+          telefon: insuranceCompany?.phone || 'Belirtilmemiş',
+          adres: insuranceCompany?.address || 'Belirtilmemiş'
+        },
+        
+        // Süre Bilgileri
+        sure: {
+          baslangic: policyDetails.startDate,
+          bitis: policyDetails.endDate || 'Belirtilmemiş',
+          kalanGun: remainingDays,
+          durum: policyStatus
+        },
+        
+        // Ödeme Bilgileri
+        odemeBilgileri: paymentInfo ? {
+          odeyenSirket: paymentInfo.payerCompanyName || 'Belirtilmemiş',
+          odeyenSirketId: paymentInfo.payerCompanyId,
+          yontem: paymentInfo.paymentMethodName || 'Belirtilmemiş',
+          tarih: paymentInfo.transactionDate || 'Belirtilmemiş',
+          durum: paymentInfo.isDone ? 'Ödendi' : (paymentInfo.paymentStatus || 'Belirtilmemiş'),
+          referans: paymentInfo.paymentReference || 'Belirtilmemiş',
+          notlar: paymentInfo.notes || ''
+        } : {
+          odeyenSirket: 'Belirtilmemiş',
+          yontem: 'Belirtilmemiş',
+          tarih: 'Belirtilmemiş',
+          durum: 'Belirtilmemiş'
+        },
+        
+        // Satıcı Firma
+        saticiFirma: {
+          id: policyDetails.sellerCompanyId,
+          ad: sellerCompany?.name || 'Belirtilmemiş',
+          telefon: sellerCompany?.phone || 'Belirtilmemiş'
+        }
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Detaylı poliçe bilgisi getirme hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: 'POLICY_DETAIL_FETCH_ERROR',
+      message: 'Detaylı poliçe bilgisi getirilirken hata oluştu.'
     });
   }
 });
