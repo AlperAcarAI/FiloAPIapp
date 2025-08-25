@@ -89,9 +89,28 @@ app.use(morgan('combined', { stream: accessLogStream })); // Dosyaya loglama
 
   // Setup static serving AFTER API routes are registered
   // This ensures API routes have priority over static file serving
-  if (app.get("env") === "development") {
+  
+  // Force production mode for Replit deployment
+  // Check if we're in Replit environment
+  const isReplit = process.env.REPL_ID || process.env.REPL_SLUG;
+  
+  // CRITICAL: Always use production mode in Replit to avoid Vite catch-all
+  // Vite's catch-all route breaks API endpoints
+  const useProductionMode = isReplit; // Always true in Replit
+  
+  console.log(`🔧 Environment Check:
+    - NODE_ENV: ${process.env.NODE_ENV || 'not set'}
+    - app.get("env"): ${app.get("env")}
+    - isReplit: ${isReplit ? 'true' : 'false'}
+    - useProductionMode: ${useProductionMode ? 'true' : 'false'}
+  `);
+  
+  // Never use Vite in Replit (it catches all routes with HTML)
+  if (!useProductionMode && app.get("env") === "development") {
+    console.log("⚠️ Setting up Vite development server...");
     await setupVite(app, server);
   } else {
+    console.log("✅ Using production static serving (API routes work properly)...");
     serveStatic(app);
   }
 
