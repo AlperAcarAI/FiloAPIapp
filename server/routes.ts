@@ -529,13 +529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { search, activeOnly = 'true', limit, offset, sortBy = 'name', sortOrder = 'asc' } = req.query;
       
-      let query = db.select({
-        id: paymentMethods.id,
-        name: paymentMethods.name,
-        isActive: paymentMethods.isActive
-      }).from(paymentMethods);
-
-      // Filtreleme
+      // Build conditions
       const conditions = [];
       if (activeOnly === 'true') {
         conditions.push(eq(paymentMethods.isActive, true));
@@ -544,24 +538,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conditions.push(ilike(paymentMethods.name, `%${search}%`));
       }
 
-      if (conditions.length > 0) {
-        query = query.where(and(...conditions));
-      }
-
-      // Sıralama
-      const orderColumn = sortBy === 'id' ? paymentMethods.id : paymentMethods.name;
-      const orderDirection = sortOrder === 'desc' ? desc(orderColumn) : asc(orderColumn);
-      query = query.orderBy(orderDirection);
-
-      // Sayfalama
-      if (limit) {
-        query = query.limit(Number(limit));
-        if (offset) {
-          query = query.offset(Number(offset));
-        }
-      }
-
-      const methodsList = await query;
+      // Simple query without complex chaining
+      const methodsList = await db
+        .select({
+          id: paymentMethods.id,
+          name: paymentMethods.name,
+          isActive: paymentMethods.isActive
+        })
+        .from(paymentMethods)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(
+          sortOrder === 'desc' 
+            ? desc(sortBy === 'id' ? paymentMethods.id : paymentMethods.name)
+            : asc(sortBy === 'id' ? paymentMethods.id : paymentMethods.name)
+        )
+        .limit(limit ? Number(limit) : 1000)
+        .offset(offset ? Number(offset) : 0);
       
       res.json({
         success: true,
