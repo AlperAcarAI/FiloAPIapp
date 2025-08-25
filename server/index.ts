@@ -69,6 +69,16 @@ app.use(morgan('combined', { stream: accessLogStream })); // Dosyaya loglama
     throw err;
   });
 
+  // Add API route protection middleware before static serving
+  app.use('/api/*', (req, res, next) => {
+    // If we reach here, it means the API route was not found
+    res.status(404).json({
+      success: false,
+      error: "API_NOT_FOUND",
+      message: `API endpoint ${req.originalUrl} not found`
+    });
+  });
+
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
