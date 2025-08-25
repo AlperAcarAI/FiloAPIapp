@@ -71,11 +71,18 @@ app.use(morgan('combined', { stream: accessLogStream })); // Dosyaya loglama
 
   // Add API route protection middleware before static serving
   app.use('/api/*', (req, res, next) => {
+    console.log(`🔍 API Protection triggered for: ${req.method} ${req.originalUrl}`);
+    console.log(`🔍 Environment: ${app.get("env")}`);
     // If we reach here, it means the API route was not found
     res.status(404).json({
       success: false,
-      error: "API_NOT_FOUND",
-      message: `API endpoint ${req.originalUrl} not found`
+      error: "API_NOT_FOUND", 
+      message: `API endpoint ${req.originalUrl} not found`,
+      debug: {
+        method: req.method,
+        path: req.originalUrl,
+        environment: app.get("env")
+      }
     });
   });
 
