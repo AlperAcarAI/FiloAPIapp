@@ -54,23 +54,7 @@ router.get("/current-accounts", authenticateToken, async (req: AuthRequest, res:
     const { page = 1, limit = 20, status, search } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
-    let query = db.select({
-      id: finCurrentAccounts.id,
-      description: finCurrentAccounts.description,
-      payerCompanyId: finCurrentAccounts.payerCompanyId,
-      payeeCompanyId: finCurrentAccounts.payeeCompanyId,
-      amountCents: finCurrentAccounts.amountCents,
-      transactionDate: finCurrentAccounts.transactionDate,
-      paymentStatus: finCurrentAccounts.paymentStatus,
-      paymentReference: finCurrentAccounts.paymentReference,
-      notes: finCurrentAccounts.notes,
-      isDone: finCurrentAccounts.isDone,
-      isActive: finCurrentAccounts.isActive,
-      createdAt: finCurrentAccounts.createdAt
-    })
-    .from(finCurrentAccounts);
-
-    // Filtreleme conditions
+    // Build conditions
     const conditions = [eq(finCurrentAccounts.isActive, true)];
     
     if (status) {
@@ -80,9 +64,24 @@ router.get("/current-accounts", authenticateToken, async (req: AuthRequest, res:
       conditions.push(ilike(finCurrentAccounts.description, `%${search}%`));
     }
 
-    query = query.where(and(...conditions));
-
-    const accounts = await query
+    // Simple query without complex chaining
+    const accounts = await db
+      .select({
+        id: finCurrentAccounts.id,
+        description: finCurrentAccounts.description,
+        payerCompanyId: finCurrentAccounts.payerCompanyId,
+        payeeCompanyId: finCurrentAccounts.payeeCompanyId,
+        amountCents: finCurrentAccounts.amountCents,
+        transactionDate: finCurrentAccounts.transactionDate,
+        paymentStatus: finCurrentAccounts.paymentStatus,
+        paymentReference: finCurrentAccounts.paymentReference,
+        notes: finCurrentAccounts.notes,
+        isDone: finCurrentAccounts.isDone,
+        isActive: finCurrentAccounts.isActive,
+        createdAt: finCurrentAccounts.createdAt
+      })
+      .from(finCurrentAccounts)
+      .where(and(...conditions))
       .orderBy(desc(finCurrentAccounts.createdAt))
       .limit(Number(limit))
       .offset(offset);
@@ -172,30 +171,27 @@ router.get("/accounts-details", authenticateToken, async (req: AuthRequest, res:
     const { page = 1, limit = 20, current_account_id } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
-    let query = db.select({
-      id: finAccountsDetails.id,
-      finCurAcId: finAccountsDetails.finCurAcId,
-      amount: finAccountsDetails.amount,
-      date: finAccountsDetails.date,
-      paymentTypeId: finAccountsDetails.paymentTypeId,
-      isDone: finAccountsDetails.isDone,
-      doneDate: finAccountsDetails.doneDate,
-      createdAt: finAccountsDetails.createdAt
-    })
-    .from(finAccountsDetails);
-
-    // Filtreleme conditions
+    // Build conditions
     const conditions = [];
     
     if (current_account_id) {
       conditions.push(eq(finAccountsDetails.finCurAcId, Number(current_account_id)));
     }
 
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
-
-    const details = await query
+    // Simple query without complex chaining
+    const details = await db
+      .select({
+        id: finAccountsDetails.id,
+        finCurAcId: finAccountsDetails.finCurAcId,
+        amount: finAccountsDetails.amount,
+        date: finAccountsDetails.date,
+        paymentTypeId: finAccountsDetails.paymentTypeId,
+        isDone: finAccountsDetails.isDone,
+        doneDate: finAccountsDetails.doneDate,
+        createdAt: finAccountsDetails.createdAt
+      })
+      .from(finAccountsDetails)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(finAccountsDetails.createdAt))
       .limit(Number(limit))
       .offset(offset);
