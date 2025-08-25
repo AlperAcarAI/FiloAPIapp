@@ -254,7 +254,7 @@ router.get("/", async (req: AuthRequest, res) => {
         isActive: assetsPersonelAssignment.isActive,
         plateNumber: assets.plateNumber,
         personnelName: sql<string>`CONCAT(${personnel.name}, ' ', ${personnel.surname})`,
-        personnelTcNo: personnel.tcNo,
+        personnelTcNo: sql<string>`${personnel.tcNo}::text`,
       })
       .from(assetsPersonelAssignment)
       .innerJoin(assets, eq(assetsPersonelAssignment.assetId, assets.id))
@@ -283,7 +283,7 @@ router.get("/", async (req: AuthRequest, res) => {
     res.json({
       success: true,
       data: results,
-      total: count,
+      total: Number(count), // BigInt'i Number'a çevir
       limit: limitNum,
       offset: offsetNum
     });
@@ -356,7 +356,7 @@ router.get("/:id", async (req: AuthRequest, res) => {
         isActive: assetsPersonelAssignment.isActive,
         plateNumber: assets.plateNumber,
         personnelName: sql<string>`CONCAT(${personnel.name}, ' ', ${personnel.surname})`,
-        personnelTcNo: personnel.tcNo,
+        personnelTcNo: sql<string>`${personnel.tcNo}::text`,
       })
       .from(assetsPersonelAssignment)
       .innerJoin(assets, eq(assetsPersonelAssignment.assetId, assets.id))
