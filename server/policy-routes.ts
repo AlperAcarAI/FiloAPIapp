@@ -451,6 +451,187 @@ router.post("/policies", authenticateJWT, async (req: AuthRequest, res: Response
   }
 });
 
+// GET /api/policies/detailed - Get all policies with detailed info
+router.get("/policies/detailed", authenticateJWT, async (req: AuthRequest, res: Response) => {
+  try {
+    const { 
+      limit = 20, 
+      offset = 0,
+      assetId,
+      policyTypeId,
+      insuranceCompanyId,
+      activeOnly = 'true',
+      search
+    } = req.query;
+
+    // Build where conditions
+    const whereConditions: any[] = [];
+    
+    if (activeOnly === 'true') {
+      whereConditions.push(eq(assetsPolicies.isActive, true));
+    }
+    
+    if (assetId) {
+      whereConditions.push(eq(assetsPolicies.assetId, Number(assetId)));
+    }
+    
+    if (policyTypeId) {
+      whereConditions.push(eq(assetsPolicies.policyTypeId, Number(policyTypeId)));
+    }
+    
+    if (insuranceCompanyId) {
+      whereConditions.push(eq(assetsPolicies.insuranceCompanyId, Number(insuranceCompanyId)));
+    }
+    
+    if (search) {
+      whereConditions.push(ilike(assetsPolicies.policyNumber, `%${search}%`));
+    }
+
+    // Get policies with basic info
+    const policies = await db
+      .select()
+      .from(assetsPolicies)
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .limit(Number(limit))
+      .offset(Number(offset));
+
+    // Get detailed info for each policy
+    const detailedPolicies = await Promise.all(policies.map(async (policy) => {
+      // Get asset details
+      const [asset] = await db
+        .select()
+        .from(assets)
+        .where(eq(assets.id, policy.assetId))
+        .limit(1);
+
+      // Get policy type
+      const [policyType] = await db
+        .select()
+        .from(policyTypes)
+        .where(eq(policyTypes.id, policy.policyTypeId))
+        .limit(1);
+
+      // Get vehicle model details
+      let vehicleDetails = null;
+      if (asset?.modelId) {
+        const vehicleQuery = await db
+          .select({
+            modelName: carModels.name,
+            brandName: carBrands.name,
+            typeName: carTypes.name,
+            capacity: carModels.capacity
+          })
+          .from(carModels)
+          .leftJoin(carBrands, eq(carModels.brandId, carBrands.id))
+          .leftJoin(carTypes, eq(carModels.typeId, carTypes.id))
+          .where(eq(carModels.id, asset.modelId))
+          .limit(1);
+        
+        vehicleDetails = vehicleQuery[0];
+      }
+
+      // Get company details
+      const [insuranceCompany] = await db
+        .select({
+          name: companies.name,
+          phone: companies.phone,
+          address: companies.address
+        })
+        .from(companies)
+        .where(eq(companies.id, policy.insuranceCompanyId))
+        .limit(1);
+
+      const [sellerCompany] = await db
+        .select({
+          name: companies.name,
+          phone: companies.phone
+        })
+        .from(companies)
+        .where(eq(companies.id, policy.sellerCompanyId))
+        .limit(1);
+
+      // Calculate remaining days
+      let remainingDays = null;
+      let policyStatus = 'active';
+      
+      if (policy.endDate) {
+        const endDate = new Date(policy.endDate);
+        const today = new Date();
+        const diffTime = endDate.getTime() - today.getTime();
+        remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (remainingDays < 0) {
+          policyStatus = 'expired';
+        } else if (remainingDays <= 30) {
+          policyStatus = 'expiring_soon';
+        }
+      }
+
+      return {
+        // Araç Bilgileri
+        arac: {
+          plaka: asset?.plateNumber || 'Belirtilmemiş',
+          marka: vehicleDetails?.brandName || 'Belirtilmemiş',
+          model: vehicleDetails?.modelName || 'Belirtilmemiş',
+          tip: vehicleDetails?.typeName || 'Belirtilmemiş',
+          yil: asset?.year || 'Belirtilmemiş',
+          kapasite: vehicleDetails?.capacity || 'Belirtilmemiş'
+        },
+        
+        // Poliçe Bilgileri
+        police: {
+          id: policy.id,
+          policeNo: policy.policyNumber,
+          tur: policyType?.name || 'Belirtilmemiş',
+          tutar: policy.amountCents,
+          tutarTL: (policy.amountCents / 100).toFixed(2) + ' TL'
+        },
+        
+        // Sigorta Şirketi
+        sigortaSirketi: {
+          id: policy.insuranceCompanyId,
+          ad: insuranceCompany?.name || 'Belirtilmemiş',
+          telefon: insuranceCompany?.phone || 'Belirtilmemiş',
+          adres: insuranceCompany?.address || 'Belirtilmemiş'
+        },
+        
+        // Süre Bilgileri
+        sure: {
+          baslangic: policy.startDate,
+          bitis: policy.endDate || 'Belirtilmemiş',
+          kalanGun: remainingDays,
+          durum: policyStatus
+        },
+        
+        // Satıcı Firma
+        saticiFirma: {
+          id: policy.sellerCompanyId,
+          ad: sellerCompany?.name || 'Belirtilmemiş',
+          telefon: sellerCompany?.phone || 'Belirtilmemiş'
+        }
+      };
+    }));
+
+    res.json({
+      success: true,
+      message: 'Detaylı poliçe listesi başarıyla getirildi.',
+      data: {
+        policies: detailedPolicies,
+        totalCount: detailedPolicies.length,
+        limit: Number(limit),
+        offset: Number(offset)
+      }
+    });
+  } catch (error) {
+    console.error('Detaylı poliçe listesi getirme hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: 'POLICIES_DETAIL_FETCH_ERROR',
+      message: 'Detaylı poliçe listesi getirilirken hata oluştu.'
+    });
+  }
+});
+
 // GET /api/policies/:id - Get policy details
 router.get("/policies/:id", authenticateJWT, async (req: AuthRequest, res: Response) => {
   try {
