@@ -70,11 +70,14 @@ app.use(morgan('combined', { stream: accessLogStream })); // Dosyaya loglama
     throw err;
   });
 
-  // Add API route protection middleware before static serving
+  // CRITICAL: Add API route protection BEFORE any catch-all routes
+  // This must come BEFORE serveStatic/setupVite to prevent HTML responses
   app.use('/api/*', (req, res, next) => {
     console.log(`🔍 API Protection triggered for: ${req.method} ${req.originalUrl}`);
     console.log(`🔍 Environment: ${app.get("env")}`);
-    // If we reach here, it means the API route was not found
+    console.log(`🔍 Headers: ${JSON.stringify(req.headers)}`);
+    
+    // Force JSON response for API routes that weren't handled
     res.status(404).json({
       success: false,
       error: "API_NOT_FOUND", 
@@ -82,7 +85,8 @@ app.use(morgan('combined', { stream: accessLogStream })); // Dosyaya loglama
       debug: {
         method: req.method,
         path: req.originalUrl,
-        environment: app.get("env")
+        environment: app.get("env"),
+        timestamp: new Date().toISOString()
       }
     });
   });
