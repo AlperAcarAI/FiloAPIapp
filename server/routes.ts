@@ -951,7 +951,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/secure/financial", financialRoutes.default);
 
   // Fuel Management Route'larını kaydet
-  app.use('/api/secure', fuelRoutes);
+  app.use('/api', fuelRoutes);
 
   // Bulk Import Route'larını kaydet
   app.use('/api/secure', bulkImportRoutes);

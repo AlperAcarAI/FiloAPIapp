@@ -3,12 +3,12 @@ import { z } from "zod";
 import { db } from "./db";
 import { fuelRecords, insertFuelRecordSchema, updateFuelRecordSchema, type InsertFuelRecord, type UpdateFuelRecord, type FuelRecord } from "@shared/schema";
 import { eq, desc, asc, sql, ilike, and, gte, lte } from "drizzle-orm";
-import { authenticateApiKey, authorizeEndpoint } from "./api-security.js";
+import { authenticateToken, type AuthRequest } from "./auth.js";
 
 const router = Router();
 
-// GET /api/secure/fuel-records - Yakıt kayıtları listesi (basit versiyon)
-router.get('/fuel-records', authenticateApiKey, authorizeEndpoint(['data:read']), async (req, res) => {
+// GET /api/fuel-records - Yakıt kayıtları listesi
+router.get('/fuel-records', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const {
       search,
@@ -75,7 +75,7 @@ router.get('/fuel-records', authenticateApiKey, authorizeEndpoint(['data:read'])
       .from(fuelRecords)
       .where(conditions.length > 0 ? and(...conditions) : undefined);
 
-    const totalCount = totalCountResult[0]?.count || 0;
+    const totalCount = Number(totalCountResult[0]?.count || 0);
 
     res.json({
       success: true,
@@ -110,7 +110,7 @@ router.get('/fuel-records', authenticateApiKey, authorizeEndpoint(['data:read'])
 });
 
 // GET /api/secure/fuel-records/:id - Yakıt kaydı detayı
-router.get('/fuel-records/:id', authenticateApiKey, authorizeEndpoint(['data:read']), async (req, res) => {
+router.get('/fuel-records/:id', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -151,7 +151,7 @@ router.get('/fuel-records/:id', authenticateApiKey, authorizeEndpoint(['data:rea
 });
 
 // POST /api/secure/fuel-records - Yeni yakıt kaydı oluştur
-router.post('/fuel-records', authenticateApiKey, authorizeEndpoint(['data:write']), async (req, res) => {
+router.post('/fuel-records', authenticateToken, async (req: AuthRequest, res) => {
   try {
     // Zod validation
     const validatedData = insertFuelRecordSchema.parse(req.body);
@@ -160,8 +160,7 @@ router.post('/fuel-records', authenticateApiKey, authorizeEndpoint(['data:write'
       .insert(fuelRecords)
       .values({
         ...validatedData,
-        createdBy: 1, // TODO: get from user session
-        updatedBy: 1,
+        // createdBy ve updatedBy otomatik olarak veritabanında ayarlanır
       })
       .returning();
 
@@ -191,7 +190,7 @@ router.post('/fuel-records', authenticateApiKey, authorizeEndpoint(['data:write'
 });
 
 // PUT /api/secure/fuel-records/:id - Yakıt kaydını güncelle
-router.put('/fuel-records/:id', authenticateApiKey, authorizeEndpoint(['data:write']), async (req, res) => {
+router.put('/fuel-records/:id', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -209,7 +208,7 @@ router.put('/fuel-records/:id', authenticateApiKey, authorizeEndpoint(['data:wri
       .update(fuelRecords)
       .set({
         ...validatedData,
-        updatedBy: 1, // TODO: get from user session
+        // updatedBy otomatik olarak ayarlanır
         updatedAt: new Date()
       })
       .where(eq(fuelRecords.id, id))
@@ -249,7 +248,7 @@ router.put('/fuel-records/:id', authenticateApiKey, authorizeEndpoint(['data:wri
 });
 
 // DELETE /api/secure/fuel-records/:id - Yakıt kaydını sil (soft delete)
-router.delete('/fuel-records/:id', authenticateApiKey, authorizeEndpoint(['data:delete']), async (req, res) => {
+router.delete('/fuel-records/:id', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -264,7 +263,7 @@ router.delete('/fuel-records/:id', authenticateApiKey, authorizeEndpoint(['data:
       .update(fuelRecords)
       .set({
         isActive: false,
-        updatedBy: 1, // TODO: get from user session
+        // updatedBy otomatik olarak ayarlanır
         updatedAt: new Date()
       })
       .where(eq(fuelRecords.id, id))
