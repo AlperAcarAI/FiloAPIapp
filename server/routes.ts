@@ -56,6 +56,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const policyRoutes = await import("./policy-routes.js").then(m => m.default);
   app.use("/api/policy-types", policyRoutes);
   app.use("/api/policies", policyRoutes);
+  // Maintenance management routes
+  app.use("/api", await import("./maintenance-routes.js").then(m => m.default));
   
   // Assets policies routes
   app.use("/api/assets-policies", await import("./assets-policies-routes.js").then(m => m.default));

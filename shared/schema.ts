@@ -815,8 +815,20 @@ export const assetsMaintenance = pgTable("assets_maintenance", {
   dueByDate: date("due_by_date"),
   kmReading: integer("km_reading"),
   amountCents: integer("amount_cents").notNull(),
+  description: text("description"),
+  serviceProvider: varchar("service_provider", { length: 100 }),
+  warrantyUntil: date("warranty_until"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => personnel.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => personnel.id),
 }, (table) => ({
+  assetDateIdx: index("idx_assets_maintenance_asset_date").on(table.assetId, table.maintenanceDate),
+  dueByDateIdx: index("idx_assets_maintenance_due_by_date").on(table.dueByDate),
+  typeIdx: index("idx_assets_maintenance_type").on(table.maintenanceTypeId),
   amountCheck: check("amount_cents_check", sql`amount_cents >= 0`),
+  kmCheck: check("km_reading_check", sql`km_reading >= 0`),
 }));
 
 // Yakıt Yönetimi Tablosu - Fuel Records
@@ -874,6 +886,55 @@ export const updateFuelRecordSchema = createInsertSchema(fuelRecords).omit({
 export type InsertFuelRecord = z.infer<typeof insertFuelRecordSchema>;
 export type UpdateFuelRecord = z.infer<typeof updateFuelRecordSchema>;
 export type FuelRecord = typeof fuelRecords.$inferSelect;
+
+// Maintenance Types Zod schemas
+export const insertMaintenanceTypeSchema = createInsertSchema(maintenanceTypes).omit({
+  id: true,
+});
+
+export const updateMaintenanceTypeSchema = createInsertSchema(maintenanceTypes).omit({
+  id: true,
+}).extend({
+  name: z.string().min(1, "Bakım türü adı gereklidir").optional(),
+  isActive: z.boolean().optional(),
+});
+
+export type MaintenanceTypeSelect = typeof maintenanceTypes.$inferSelect;
+export type MaintenanceTypeInsert = z.infer<typeof insertMaintenanceTypeSchema>;
+export type MaintenanceTypeUpdate = z.infer<typeof updateMaintenanceTypeSchema>;
+
+// Assets Maintenance Zod schemas
+export const insertAssetsMaintenanceSchema = createInsertSchema(assetsMaintenance).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+}).extend({
+  maintenanceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır"),
+  dueByDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır").optional(),
+  warrantyUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır").optional(),
+  kmReading: z.number().int().min(0, "Kilometre 0'dan küçük olamaz").optional(),
+  amountCents: z.number().int().min(0, "Tutar 0'dan küçük olamaz"),
+});
+
+export const updateAssetsMaintenanceSchema = createInsertSchema(assetsMaintenance).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+}).extend({
+  maintenanceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır").optional(),
+  dueByDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır").optional(),
+  warrantyUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır").optional(),
+  kmReading: z.number().int().min(0, "Kilometre 0'dan küçük olamaz").optional(),
+  amountCents: z.number().int().min(0, "Tutar 0'dan küçük olamaz").optional(),
+});
+
+export type AssetsMaintenanceSelect = typeof assetsMaintenance.$inferSelect;
+export type AssetsMaintenanceInsert = z.infer<typeof insertAssetsMaintenanceSchema>;
+export type AssetsMaintenanceUpdate = z.infer<typeof updateAssetsMaintenanceSchema>;
 
 export const rentalAgreements = pgTable("rental_agreements", {
   id: serial("id").primaryKey(),
@@ -1399,12 +1460,6 @@ export const insertPolicyTypeSchema = createInsertSchema(policyTypes).omit({
 
 export type InsertPolicyType = z.infer<typeof insertPolicyTypeSchema>;
 
-// Maintenance Type Schemas
-export const insertMaintenanceTypeSchema = createInsertSchema(maintenanceTypes).omit({
-  id: true,
-});
-
-export type InsertMaintenanceType = z.infer<typeof insertMaintenanceTypeSchema>;
 
 // API Management Schemas and Types
 export const insertApiClientSchema = createInsertSchema(apiClients).omit({
