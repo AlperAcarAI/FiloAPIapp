@@ -70,6 +70,7 @@ router.get('/vehicles', authenticateToken, async (req, res) => {
         registerNo: assets.registerNo,
         registerDate: assets.registerDate,
         purchaseDate: assets.purchaseDate,
+        uttsNo: assets.uttsNo,
         isActive: assets.isActive,
         createdAt: assets.createdAt,
         updatedAt: assets.updatedAt,
@@ -172,6 +173,7 @@ router.get('/vehicles/:id', authenticateToken, async (req, res) => {
         registerNo: assets.registerNo,
         registerDate: assets.registerDate,
         purchaseDate: assets.purchaseDate,
+        uttsNo: assets.uttsNo,
         isActive: assets.isActive,
         createdAt: assets.createdAt,
         updatedAt: assets.updatedAt,
@@ -272,6 +274,9 @@ router.get('/vehicles/:id', authenticateToken, async (req, res) => {
  *                 type: string
  *                 format: date
  *                 description: Satın alma tarihi (isteğe bağlı)
+ *               uttsNo:
+ *                 type: string
+ *                 description: UTTS (Ulaştırma Test Sistemi) numarası (isteğe bağlı)
  *               isActive:
  *                 type: boolean
  *                 default: true
@@ -376,6 +381,7 @@ router.post('/vehicles', authenticateToken, async (req, res) => {
         registerNo: assets.registerNo,
         registerDate: assets.registerDate,
         purchaseDate: assets.purchaseDate,
+        uttsNo: assets.uttsNo,
         isActive: assets.isActive,
         createdAt: assets.createdAt,
         updatedAt: assets.updatedAt,
@@ -1233,6 +1239,7 @@ router.put('/vehicles/:id', authenticateToken, async (req, res) => {
         registerNo: assets.registerNo,
         registerDate: assets.registerDate,
         purchaseDate: assets.purchaseDate,
+        uttsNo: assets.uttsNo,
         isActive: assets.isActive,
         createdAt: assets.createdAt,
         updatedAt: assets.updatedAt,

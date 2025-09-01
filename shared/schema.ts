@@ -656,6 +656,7 @@ export const assets = pgTable("assets", {
   registerNo: varchar("register_no", { length: 50 }),
   registerDate: date("register_date"),
   purchaseDate: date("purchase_date"),
+  uttsNo: varchar("utts_no", { length: 50 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   createdBy: integer("created_by").references(() => personnel.id),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

@@ -587,6 +587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         plateNumber: assets.plateNumber,
         modelYear: assets.modelYear,
         chassisNo: assets.chassisNo,
+        uttsNo: assets.uttsNo,
         isActive: assets.isActive,
         createdAt: assets.createdAt
       }).from(assets);
