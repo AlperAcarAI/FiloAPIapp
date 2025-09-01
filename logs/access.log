@@ -62,3 +62,6 @@
 127.0.0.1 - - [01/Sep/2025:09:24:54 +0000] "POST /api/maintenance-types HTTP/1.1" 201 137 "-" "curl/8.14.1"
 127.0.0.1 - - [01/Sep/2025:09:24:56 +0000] "PUT /api/maintenance-types/11 HTTP/1.1" 200 145 "-" "curl/8.14.1"
 127.0.0.1 - - [01/Sep/2025:09:24:58 +0000] "DELETE /api/maintenance-types/11 HTTP/1.1" 200 141 "-" "curl/8.14.1"
+172.31.85.194 - - [01/Sep/2025:11:40:22 +0000] "GET / HTTP/1.1" 304 - "https://3d9fb108-b9e8-43bd-9835-61585a0eb37f-00-f39pm8i9ohyv.kirk.replit.dev/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15"
+172.31.85.194 - - [01/Sep/2025:11:40:23 +0000] "GET /assets/index-DjatxACA.css HTTP/1.1" 304 - "https://3d9fb108-b9e8-43bd-9835-61585a0eb37f-00-f39pm8i9ohyv.kirk.replit.dev/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15"
+172.31.85.194 - - [01/Sep/2025:11:40:23 +0000] "GET /assets/index-L_uBWx05.js HTTP/1.1" 304 - "https://3d9fb108-b9e8-43bd-9835-61585a0eb37f-00-f39pm8i9ohyv.kirk.replit.dev/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15"
