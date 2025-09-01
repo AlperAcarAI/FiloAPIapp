@@ -471,6 +471,11 @@ router.post("/maintenance-records", authenticateToken, async (req: AuthRequest, 
   try {
     const validatedData = insertAssetsMaintenanceSchema.parse(req.body);
     
+    // Boş string'leri null'a dönüştür
+    if (validatedData.dueByDate === "") validatedData.dueByDate = undefined;
+    if (validatedData.warrantyUntil === "") validatedData.warrantyUntil = undefined;
+    
+    
     const [newMaintenanceRecord] = await db
       .insert(assetsMaintenance)
       .values({
@@ -525,6 +530,10 @@ router.put("/maintenance-records/:id", authenticateToken, async (req: AuthReques
   try {
     const { id } = req.params;
     const validatedData = updateAssetsMaintenanceSchema.parse(req.body);
+    
+    // Boş string'leri null'a dönüştür
+    if (validatedData.dueByDate === "") validatedData.dueByDate = undefined;
+    if (validatedData.warrantyUntil === "") validatedData.warrantyUntil = undefined;
     
     const [updatedMaintenanceRecord] = await db
       .update(assetsMaintenance)

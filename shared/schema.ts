@@ -912,8 +912,8 @@ export const insertAssetsMaintenanceSchema = createInsertSchema(assetsMaintenanc
   updatedBy: true,
 }).extend({
   maintenanceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır"),
-  dueByDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır").optional(),
-  warrantyUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır").optional(),
+  dueByDate: z.string().optional(),
+  warrantyUntil: z.string().optional(),
   kmReading: z.number().int().min(0, "Kilometre 0'dan küçük olamaz").optional(),
   amountCents: z.number().int().min(0, "Tutar 0'dan küçük olamaz"),
 });
@@ -925,12 +925,17 @@ export const updateAssetsMaintenanceSchema = createInsertSchema(assetsMaintenanc
   createdBy: true,
   updatedBy: true,
 }).extend({
-  maintenanceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır").optional(),
-  dueByDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır").optional(),
-  warrantyUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır").optional(),
+  assetId: z.number().int().optional(),
+  maintenanceTypeId: z.number().int().optional(),
+  maintenanceDate: z.string().optional().refine((val) => !val || /^\d{4}-\d{2}-\d{2}$/.test(val), "Tarih YYYY-MM-DD formatında olmalıdır"),
+  dueByDate: z.string().optional(),
+  warrantyUntil: z.string().optional(),
   kmReading: z.number().int().min(0, "Kilometre 0'dan küçük olamaz").optional(),
   amountCents: z.number().int().min(0, "Tutar 0'dan küçük olamaz").optional(),
-});
+  description: z.string().optional(),
+  serviceProvider: z.string().optional(),
+  isActive: z.boolean().optional(),
+}).partial();
 
 export type AssetsMaintenanceSelect = typeof assetsMaintenance.$inferSelect;
 export type AssetsMaintenanceInsert = z.infer<typeof insertAssetsMaintenanceSchema>;
