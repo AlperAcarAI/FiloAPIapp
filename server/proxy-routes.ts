@@ -41,8 +41,13 @@ router.all('/*', authenticateJWT, async (req: any, res) => {
     
     // Map proxy paths to actual API endpoints
     let targetPath = originalPath;
-    // Keep /secure/ prefix for secure endpoints - they need the secure path
-    if (originalPath.startsWith('/secure/')) {
+    
+    // Special mappings for specific endpoints
+    if (originalPath.startsWith('/secure/penalties')) {
+      // Map /secure/penalties to /penalties (remove secure prefix)
+      targetPath = originalPath.replace('/secure/penalties', '/penalties');
+      console.log(`Mapped secure penalties path: ${originalPath} -> ${targetPath}`);
+    } else if (originalPath.startsWith('/secure/')) {
       console.log(`Keeping secure prefix for: ${originalPath}`);
       targetPath = originalPath; // Keep the full /secure/ prefix
     }
