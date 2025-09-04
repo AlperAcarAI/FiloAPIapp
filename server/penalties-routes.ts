@@ -424,10 +424,6 @@ router.delete("/:id", async (req: Request, res: Response) => {
  *                 type: string
  *                 enum: [paid, unpaid, partial]
  *                 description: Ödeme durumu
- *               paymentDate:
- *                 type: string
- *                 format: date
- *                 description: Ödeme tarihi (isteğe bağlı)
  *               notes:
  *                 type: string
  *                 description: Ödeme notları (isteğe bağlı)
@@ -485,16 +481,12 @@ router.put("/:id/payment", async (req: Request, res: Response) => {
       updatedAt: new Date()
     };
 
-    // Add payment date if provided
-    if (paymentDate) {
-      updateData.paymentDate = paymentDate;
-    }
-
     await auditableUpdate(
       db,
       penalties,
-      eq(penalties.id, penaltyId),
       updateData,
+      eq(penalties.id, penaltyId),
+      existingPenalty[0],
       auditInfo
     );
 
