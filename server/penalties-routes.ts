@@ -391,4 +391,155 @@ router.delete("/:id", async (req: Request, res: Response) => {
   }
 });
 
+// ========================
+// PENALTY PAYMENT API
+// ========================
+
+/**
+ * @swagger
+ * /api/penalties/{id}/payment:
+ *   put:
+ *     summary: Ceza ödeme işlemi
+ *     description: Belirli bir cezanın ödeme durumunu günceller
+ *     tags: [Ceza İşlemleri]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Ceza ID'si
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [paid, unpaid, partial]
+ *                 description: Ödeme durumu
+ *               paymentDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Ödeme tarihi (isteğe bağlı)
+ *               notes:
+ *                 type: string
+ *                 description: Ödeme notları (isteğe bağlı)
+ *     responses:
+ *       200:
+ *         description: Ödeme durumu başarıyla güncellendi
+ *       404:
+ *         description: Ceza bulunamadı
+ *       400:
+ *         description: Geçersiz veri formatı
+ */
+router.put("/:id/payment", async (req: Request, res: Response) => {
+  try {
+    const penaltyId = parseInt(req.params.id);
+    const { status, paymentDate, notes } = req.body;
+
+    if (isNaN(penaltyId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_ID',
+        message: 'Geçersiz ceza ID\'si.'
+      });
+    }
+
+    // Validate status
+    const validStatuses = ['paid', 'unpaid', 'partial'];
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_STATUS',
+        message: 'Geçersiz ödeme durumu. Geçerli değerler: paid, unpaid, partial'
+      });
+    }
+
+    // Check if penalty exists
+    const existingPenalty = await db
+      .select()
+      .from(penalties)
+      .where(and(eq(penalties.id, penaltyId), eq(penalties.isActive, true)))
+      .limit(1);
+
+    if (existingPenalty.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'PENALTY_NOT_FOUND',
+        message: 'Ceza bulunamadı.'
+      });
+    }
+
+    const auditInfo = captureAuditInfo(req);
+    
+    // Update penalty status
+    const updateData: any = {
+      status,
+      updatedAt: new Date()
+    };
+
+    // Add payment date if provided
+    if (paymentDate) {
+      updateData.paymentDate = paymentDate;
+    }
+
+    await auditableUpdate(
+      db,
+      penalties,
+      eq(penalties.id, penaltyId),
+      updateData,
+      auditInfo
+    );
+
+    // Get updated penalty with relations
+    const [updatedPenalty] = await db
+      .select({
+        id: penalties.id,
+        assetId: penalties.assetId,
+        driverId: penalties.driverId,
+        penaltyTypeId: penalties.penaltyTypeId,
+        amountCents: penalties.amountCents,
+        discountedAmountCents: penalties.discountedAmountCents,
+        penaltyDate: penalties.penaltyDate,
+        lastDate: penalties.lastDate,
+        status: penalties.status,
+        isActive: penalties.isActive,
+        createdAt: penalties.createdAt,
+        updatedAt: penalties.updatedAt,
+        // Join data
+        plateNumber: assets.plateNumber,
+        driverName: personnel.name,
+        driverSurname: personnel.surname,
+        penaltyTypeName: penaltyTypes.name
+      })
+      .from(penalties)
+      .leftJoin(assets, eq(penalties.assetId, assets.id))
+      .leftJoin(personnel, eq(penalties.driverId, personnel.id))
+      .leftJoin(penaltyTypes, eq(penalties.penaltyTypeId, penaltyTypes.id))
+      .where(eq(penalties.id, penaltyId));
+
+    res.json({
+      success: true,
+      message: 'Ceza ödeme durumu başarıyla güncellendi.',
+      data: {
+        penalty: updatedPenalty
+      }
+    });
+  } catch (error) {
+    console.error('Ceza ödeme güncelleme hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: 'PENALTY_PAYMENT_UPDATE_ERROR',
+      message: 'Ceza ödeme durumu güncellenirken hata oluştu.'
+    });
+  }
+});
+
 export default router;
