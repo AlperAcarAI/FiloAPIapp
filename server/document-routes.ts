@@ -4,7 +4,6 @@ import { documents, docSubTypes, docMainTypes, users, personnel, companies, work
 import { insertDocumentSchema, updateDocumentSchema } from "@shared/schema";
 import { eq, and, or, like, desc, asc, sql } from "drizzle-orm";
 import { authenticateToken } from "./auth";
-import { hasPermission } from "./permission-management-routes";
 import { authenticateJWT } from "./hierarchical-auth";
 import multer from "multer";
 import path from "path";
@@ -106,7 +105,7 @@ documentRoutes.get("/test", (req: any, res: any) => {
 });
 
 // Dosya indirme endpoint'i
-documentRoutes.get("/download/:id", authenticateJWT, hasPermission(["document:read"]), async (req: any, res) => {
+documentRoutes.get("/download/:id", authenticateJWT, async (req: any, res) => {
   try {
     const { id } = req.params;
     
@@ -199,7 +198,7 @@ documentRoutes.get("/main-doc-types", async (req: any, res) => {
 export default documentRoutes;
 
 // Tüm dökümanları listele (filtreleme destekli)
-documentRoutes.get("/", authenticateJWT, hasPermission(["document:read"]), async (req: any, res) => {
+documentRoutes.get("/", authenticateJWT, async (req: any, res) => {
   try {
     const { 
       entityType, 
@@ -302,7 +301,7 @@ documentRoutes.get("/", authenticateJWT, hasPermission(["document:read"]), async
 });
 
 // Belirli bir dökümanı getir
-documentRoutes.get("/:id", authenticateJWT, hasPermission(["document:read"]), async (req: any, res) => {
+documentRoutes.get("/:id", authenticateJWT, async (req: any, res) => {
   try {
     const { id } = req.params;
     
@@ -347,7 +346,7 @@ documentRoutes.get("/:id", authenticateJWT, hasPermission(["document:read"]), as
 });
 
 // Yeni döküman ekle
-documentRoutes.post("/", authenticateJWT, hasPermission(["document:write"]), async (req: any, res) => {
+documentRoutes.post("/", authenticateJWT, async (req: any, res) => {
   try {
     const validatedData = insertDocumentSchema.parse(req.body);
     const auditInfo = captureAuditInfo(req);
@@ -430,7 +429,7 @@ documentRoutes.post("/", authenticateJWT, hasPermission(["document:write"]), asy
 });
 
 // Multipart form file upload endpoint - MUST be before PUT /:id route
-documentRoutes.post("/upload", authenticateJWT, hasPermission(["document:write"]), documentUpload.single('file'), async (req: any, res) => {
+documentRoutes.post("/upload", authenticateJWT, documentUpload.single('file'), async (req: any, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ 
@@ -578,7 +577,7 @@ documentRoutes.post("/upload", authenticateJWT, hasPermission(["document:write"]
 });
 
 // Döküman güncelle
-documentRoutes.put("/:id", authenticateJWT, hasPermission(["document:write"]), async (req: any, res) => {
+documentRoutes.put("/:id", authenticateJWT, async (req: any, res) => {
   try {
     const { id } = req.params;
     const validatedData = updateDocumentSchema.parse(req.body);
@@ -626,7 +625,7 @@ documentRoutes.put("/:id", authenticateJWT, hasPermission(["document:write"]), a
 });
 
 // Döküman sil (soft delete)
-documentRoutes.delete("/:id", authenticateJWT, hasPermission(["document:delete"]), async (req: any, res) => {
+documentRoutes.delete("/:id", authenticateJWT, async (req: any, res) => {
   try {
     const { id } = req.params;
     const auditInfo = captureAuditInfo(req);
@@ -665,7 +664,7 @@ documentRoutes.delete("/:id", authenticateJWT, hasPermission(["document:delete"]
 });
 
 // Entity'ye göre dökümanları listele
-documentRoutes.get("/entity/:entityType/:entityId", authenticateJWT, hasPermission(["document:read"]), async (req: any, res) => {
+documentRoutes.get("/entity/:entityType/:entityId", authenticateJWT, async (req: any, res) => {
   try {
     const { entityType, entityId } = req.params;
     
@@ -707,7 +706,7 @@ documentRoutes.get("/entity/:entityType/:entityId", authenticateJWT, hasPermissi
 });
 
 // Döküman tiplerini listele
-documentRoutes.get("/types", authenticateJWT, hasPermission(["document:read"]), async (req: any, res) => {
+documentRoutes.get("/types", authenticateJWT, async (req: any, res) => {
   try {
     const { isActive = "true" } = req.query;
     
