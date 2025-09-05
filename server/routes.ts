@@ -66,6 +66,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/penalty-types", await import("./penalty-routes.js").then(m => m.default));
   app.use("/api/penalties", await import("./penalties-routes.js").then(m => m.default));
   
+  // Dashboard routes
+  app.use("/api/dashboard", await import("./dashboard-routes.js").then(m => m.default));
+  
   // Asset Assignment routes
   app.use("/api/asset-assignments", await import("./asset-assignment-routes.js").then(m => m.assetAssignmentRoutes));
   
