@@ -53,3 +53,6 @@
 127.0.0.1 - - [07/Sep/2025:06:52:30 +0000] "GET /.git/config HTTP/1.1" 200 625 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0"
 127.0.0.1 - - [07/Sep/2025:07:11:58 +0000] "GET / HTTP/1.1" 200 625 "-" "Mozilla/5.0 (compatible; CensysInspect/1.1; +https://about.censys.io/)"
 127.0.0.1 - - [07/Sep/2025:07:40:42 +0000] "GET /RDWeb HTTP/1.1" 200 625 "https://www.google.com" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+172.31.64.66 - - [07/Sep/2025:15:10:56 +0000] "GET / HTTP/1.1" 304 - "https://3d9fb108-b9e8-43bd-9835-61585a0eb37f-00-f39pm8i9ohyv.kirk.replit.dev/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15"
+172.31.64.66 - - [07/Sep/2025:15:10:57 +0000] "GET /assets/index-DjatxACA.css HTTP/1.1" 304 - "https://3d9fb108-b9e8-43bd-9835-61585a0eb37f-00-f39pm8i9ohyv.kirk.replit.dev/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15"
+172.31.64.66 - - [07/Sep/2025:15:10:57 +0000] "GET /assets/index-L_uBWx05.js HTTP/1.1" 304 - "https://3d9fb108-b9e8-43bd-9835-61585a0eb37f-00-f39pm8i9ohyv.kirk.replit.dev/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15"
