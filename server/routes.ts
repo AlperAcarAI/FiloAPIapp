@@ -72,6 +72,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Asset Assignment routes
   app.use("/api/asset-assignments", await import("./asset-assignment-routes.js").then(m => m.assetAssignmentRoutes));
   
+  // Stuff Management routes
+  app.use("/api/stuff", await import("./stuff-routes.js").then(m => m.default));
+  
   // Financial routes - removed duplicate mount (see line 949)
 
   // Kullanıcı kimlik doğrulama - Basitleştirilmiş sistem

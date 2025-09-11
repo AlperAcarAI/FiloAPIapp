@@ -106,6 +106,26 @@ export const maintenanceTypes = pgTable("maintenance_types", {
   isActive: boolean("is_active").notNull().default(true),
 });
 
+// Stuff Management Tables
+export const stuff = pgTable("stuff", {
+  id: serial("id").primaryKey(),
+  stuffCode: varchar("stuff_code", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 100 }).notNull(),
+  value: varchar("value", { length: 255 }),
+  type: varchar("type", { length: 50 }),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const personnelStuffMatcher = pgTable("personnel_stuff_matcher", {
+  id: serial("id").primaryKey(),
+  personnelId: integer("personnel_id").notNull().references(() => personnel.id),
+  stuffId: integer("stuff_id").notNull().references(() => stuff.id),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  isActive: boolean("is_active").notNull().default(true),
+  notes: text("notes"),
+});
+
 export const carBrands = pgTable("car_brands", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 50 }).notNull().unique(),
@@ -1465,6 +1485,31 @@ export const insertPolicyTypeSchema = createInsertSchema(policyTypes).omit({
 });
 
 export type InsertPolicyType = z.infer<typeof insertPolicyTypeSchema>;
+
+// Stuff Schemas and Types
+export const insertStuffSchema = createInsertSchema(stuff).omit({
+  id: true,
+});
+
+export const updateStuffSchema = createInsertSchema(stuff).omit({
+  id: true,
+}).partial();
+
+export const insertPersonnelStuffMatcherSchema = createInsertSchema(personnelStuffMatcher).omit({
+  id: true,
+});
+
+export const updatePersonnelStuffMatcherSchema = createInsertSchema(personnelStuffMatcher).omit({
+  id: true,
+}).partial();
+
+export type Stuff = typeof stuff.$inferSelect;
+export type InsertStuff = z.infer<typeof insertStuffSchema>;
+export type UpdateStuff = z.infer<typeof updateStuffSchema>;
+
+export type PersonnelStuffMatcher = typeof personnelStuffMatcher.$inferSelect;
+export type InsertPersonnelStuffMatcher = z.infer<typeof insertPersonnelStuffMatcherSchema>;
+export type UpdatePersonnelStuffMatcher = z.infer<typeof updatePersonnelStuffMatcherSchema>;
 
 
 // API Management Schemas and Types
