@@ -371,12 +371,14 @@ router.post("/assignments", async (req: Request, res: Response) => {
       });
     }
 
-    // Check for existing active assignment for the same stuff
+    // Check for existing active assignment for the same personnel and same stuff
+    // Note: Multiple people can have the same stuff assigned, but prevent duplicate assignments to same person
     const existingAssignment = await db
       .select()
       .from(personnelStuffMatcher)
       .where(
         and(
+          eq(personnelStuffMatcher.personnelId, personnelId),
           eq(personnelStuffMatcher.stuffId, stuffId),
           eq(personnelStuffMatcher.isActive, true),
           sql`${personnelStuffMatcher.endDate} IS NULL OR ${personnelStuffMatcher.endDate} >= CURRENT_DATE`
@@ -387,8 +389,8 @@ router.post("/assignments", async (req: Request, res: Response) => {
     if (existingAssignment.length > 0) {
       return res.status(400).json({
         success: false,
-        error: "STUFF_ALREADY_ASSIGNED",
-        message: "Bu eşya zaten başka bir personele atanmış."
+        error: "DUPLICATE_ASSIGNMENT",
+        message: "Bu personele bu eşya zaten atanmış."
       });
     }
 
