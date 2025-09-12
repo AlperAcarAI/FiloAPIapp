@@ -1,0 +1,2 @@
+127.0.0.1 - - [12/Sep/2025:12:27:42 +0000] "GET / HTTP/1.1" 200 625 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.224 Safari/537.36"
+127.0.0.1 - - [12/Sep/2025:12:31:18 +0000] "GET /webui/ HTTP/1.1" 200 625 "-" "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/109.0"
