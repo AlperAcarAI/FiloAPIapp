@@ -555,4 +555,193 @@ router.delete("/:id", async (req: Request, res: Response) => {
   }
 });
 
+// PUT /api/stuff/assignments/:id - Update assignment
+router.put("/assignments/:id", async (req: Request, res: Response) => {
+  try {
+    const assignmentId = parseInt(req.params.id);
+    const { personnelId, stuffId, startDate, endDate, notes } = req.body;
+
+    if (!assignmentId || isNaN(assignmentId)) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_ID",
+        message: "Geçersiz atama ID'si."
+      });
+    }
+
+    // Check if assignment exists
+    const [existingAssignment] = await db
+      .select()
+      .from(personnelStuffMatcher)
+      .where(eq(personnelStuffMatcher.id, assignmentId))
+      .limit(1);
+
+    if (!existingAssignment) {
+      return res.status(404).json({
+        success: false,
+        error: "ASSIGNMENT_NOT_FOUND",
+        message: "Atama bulunamadı."
+      });
+    }
+
+    const auditInfo = captureAuditInfo(req);
+    
+    const [updatedAssignment] = await auditableUpdate(
+      db,
+      personnelStuffMatcher,
+      {
+        personnelId: personnelId || existingAssignment.personnelId,
+        stuffId: stuffId || existingAssignment.stuffId,
+        startDate: startDate || existingAssignment.startDate,
+        endDate: endDate !== undefined ? endDate : existingAssignment.endDate,
+        notes: notes !== undefined ? notes : existingAssignment.notes
+      },
+      eq(personnelStuffMatcher.id, assignmentId),
+      existingAssignment,
+      auditInfo
+    );
+
+    res.json({
+      success: true,
+      message: "Personel eşya ataması başarıyla güncellendi.",
+      data: updatedAssignment
+    });
+  } catch (error) {
+    console.error("Personel eşya ataması güncelleme hatası:", error);
+    res.status(500).json({
+      success: false,
+      error: "ASSIGNMENT_UPDATE_ERROR",
+      message: "Personel eşya ataması güncellenirken hata oluştu."
+    });
+  }
+});
+
+// PUT /api/stuff/assignments/:id/complete - Complete assignment (zimmet kaldırma)
+router.put("/assignments/:id/complete", async (req: Request, res: Response) => {
+  try {
+    const assignmentId = parseInt(req.params.id);
+    const { endDate, notes } = req.body;
+
+    if (!assignmentId || isNaN(assignmentId)) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_ID",
+        message: "Geçersiz atama ID'si."
+      });
+    }
+
+    // Validation: endDate is required for zimmet kaldırma
+    if (!endDate) {
+      return res.status(400).json({
+        success: false,
+        error: "VALIDATION_ERROR",
+        message: "Zimmet kaldırma için bitiş tarihi gereklidir."
+      });
+    }
+
+    // Check if assignment exists
+    const [existingAssignment] = await db
+      .select()
+      .from(personnelStuffMatcher)
+      .where(eq(personnelStuffMatcher.id, assignmentId))
+      .limit(1);
+
+    if (!existingAssignment) {
+      return res.status(404).json({
+        success: false,
+        error: "ASSIGNMENT_NOT_FOUND",
+        message: "Atama bulunamadı."
+      });
+    }
+
+    if (existingAssignment.endDate) {
+      return res.status(400).json({
+        success: false,
+        error: "ASSIGNMENT_ALREADY_COMPLETED",
+        message: "Bu zimmet zaten kaldırılmış."
+      });
+    }
+
+    const auditInfo = captureAuditInfo(req);
+    
+    const [completedAssignment] = await auditableUpdate(
+      db,
+      personnelStuffMatcher,
+      {
+        endDate,
+        notes: notes !== undefined ? notes : existingAssignment.notes
+      },
+      eq(personnelStuffMatcher.id, assignmentId),
+      existingAssignment,
+      auditInfo
+    );
+
+    res.json({
+      success: true,
+      message: "Zimmet başarıyla kaldırıldı.",
+      data: completedAssignment
+    });
+  } catch (error) {
+    console.error("Zimmet kaldırma hatası:", error);
+    res.status(500).json({
+      success: false,
+      error: "COMPLETE_ASSIGNMENT_ERROR",
+      message: "Zimmet kaldırılırken hata oluştu."
+    });
+  }
+});
+
+// DELETE /api/stuff/assignments/:id - Soft delete assignment
+router.delete("/assignments/:id", async (req: Request, res: Response) => {
+  try {
+    const assignmentId = parseInt(req.params.id);
+
+    if (!assignmentId || isNaN(assignmentId)) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_ID",
+        message: "Geçersiz atama ID'si."
+      });
+    }
+
+    // Check if assignment exists
+    const [existingAssignment] = await db
+      .select()
+      .from(personnelStuffMatcher)
+      .where(eq(personnelStuffMatcher.id, assignmentId))
+      .limit(1);
+
+    if (!existingAssignment) {
+      return res.status(404).json({
+        success: false,
+        error: "ASSIGNMENT_NOT_FOUND",
+        message: "Atama bulunamadı."
+      });
+    }
+
+    const auditInfo = captureAuditInfo(req);
+    
+    await auditableUpdate(
+      db,
+      personnelStuffMatcher,
+      { isActive: false },
+      eq(personnelStuffMatcher.id, assignmentId),
+      existingAssignment,
+      auditInfo
+    );
+
+    res.json({
+      success: true,
+      message: "Personel eşya ataması başarıyla silindi."
+    });
+  } catch (error) {
+    console.error("Personel eşya ataması silme hatası:", error);
+    res.status(500).json({
+      success: false,
+      error: "ASSIGNMENT_DELETE_ERROR",
+      message: "Personel eşya ataması silinirken hata oluştu."
+    });
+  }
+});
+
 export default router;
