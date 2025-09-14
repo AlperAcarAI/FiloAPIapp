@@ -4,7 +4,6 @@ import { tripRentals, assets, companies, personnel } from "@shared/schema";
 import { insertTripRentalSchema, updateTripRentalSchema } from "@shared/schema";
 import { eq, and, or, like, desc, asc, sql, between, gte, lte } from "drizzle-orm";
 import { authenticateToken, type AuthRequest } from "./auth";
-import { hasPermission } from "./permission-management-routes";
 import { captureAuditInfo, auditableInsert, auditableUpdate, auditableDelete } from "./audit-middleware";
 import { z } from "zod";
 
@@ -13,7 +12,7 @@ const tripRentalRoutes = Router();
 export default tripRentalRoutes;
 
 // Tüm sefer kiralamalarını listele (filtreleme destekli)
-tripRentalRoutes.get("/", authenticateToken, hasPermission(["fleet:read"]), async (req, res) => {
+tripRentalRoutes.get("/", authenticateToken, async (req, res) => {
   try {
     const { 
       assetId,
@@ -130,7 +129,7 @@ tripRentalRoutes.get("/", authenticateToken, hasPermission(["fleet:read"]), asyn
 });
 
 // Belirli bir seferi getir
-tripRentalRoutes.get("/:id", authenticateToken, hasPermission(["fleet:read"]), async (req, res) => {
+tripRentalRoutes.get("/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -181,7 +180,7 @@ tripRentalRoutes.get("/:id", authenticateToken, hasPermission(["fleet:read"]), a
 });
 
 // Yeni sefer ekle
-tripRentalRoutes.post("/", authenticateToken, hasPermission(["fleet:write"]), async (req, res) => {
+tripRentalRoutes.post("/", authenticateToken, async (req, res) => {
   try {
     const validatedData = insertTripRentalSchema.parse(req.body);
     const auditInfo = captureAuditInfo(req);
@@ -246,7 +245,7 @@ tripRentalRoutes.post("/", authenticateToken, hasPermission(["fleet:write"]), as
 });
 
 // Sefer güncelle
-tripRentalRoutes.put("/:id", authenticateToken, hasPermission(["fleet:write"]), async (req, res) => {
+tripRentalRoutes.put("/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const validatedData = updateTripRentalSchema.parse(req.body);
@@ -297,7 +296,7 @@ tripRentalRoutes.put("/:id", authenticateToken, hasPermission(["fleet:write"]), 
 });
 
 // Sefer iptal et
-tripRentalRoutes.delete("/:id", authenticateToken, hasPermission(["fleet:delete"]), async (req, res) => {
+tripRentalRoutes.delete("/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const auditInfo = captureAuditInfo(req);
@@ -347,7 +346,7 @@ tripRentalRoutes.delete("/:id", authenticateToken, hasPermission(["fleet:delete"
 });
 
 // Günlük sefer özeti
-tripRentalRoutes.get("/summary/daily", authenticateToken, hasPermission(["fleet:read"]), async (req, res) => {
+tripRentalRoutes.get("/summary/daily", authenticateToken, async (req, res) => {
   try {
     const { date = new Date().toISOString().split('T')[0] } = req.query;
     
