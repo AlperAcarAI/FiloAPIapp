@@ -244,4 +244,179 @@ router.post("/accounts-details", authenticateToken, async (req: AuthRequest, res
   }
 });
 
+// PUT /api/secure/financial/current-accounts/:id - Ana finansal işlemi güncelle
+router.put("/current-accounts/:id", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const accountId = parseInt(req.params.id);
+    const updateData = req.body;
+
+    if (!accountId || isNaN(accountId)) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_ID",
+        message: "Geçersiz hesap ID'si"
+      });
+    }
+
+    // Check if account exists
+    const existingAccount = await db
+      .select()
+      .from(finCurrentAccounts)
+      .where(eq(finCurrentAccounts.id, accountId))
+      .limit(1);
+
+    if (existingAccount.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "ACCOUNT_NOT_FOUND",
+        message: "Hesap kaydı bulunamadı"
+      });
+    }
+
+    // Prepare update data with validation
+    const allowedFields = [
+      'description', 'payerCompanyId', 'payeeCompanyId', 'amountCents',
+      'transactionDate', 'paymentMethodId', 'paymentStatus', 'paymentReference', 'notes', 'isDone'
+    ];
+
+    const filteredData: any = {};
+    for (const field of allowedFields) {
+      if (updateData[field] !== undefined) {
+        if (field === 'amountCents' && updateData[field] !== null) {
+          filteredData[field] = Number(updateData[field]);
+          filteredData.isDebit = Number(updateData[field]) < 0;
+        } else if (field === 'payerCompanyId' || field === 'paymentMethodId') {
+          filteredData[field] = updateData[field] ? Number(updateData[field]) : null;
+        } else if (field === 'payeeCompanyId') {
+          filteredData[field] = updateData[field] ? Number(updateData[field]) : null;
+        } else if (field === 'isDone') {
+          filteredData[field] = Boolean(updateData[field]);
+        } else {
+          filteredData[field] = updateData[field];
+        }
+      }
+    }
+
+    const auditInfo = captureAuditInfo(req);
+
+    await auditableUpdate(
+      db,
+      finCurrentAccounts,
+      filteredData,
+      eq(finCurrentAccounts.id, accountId),
+      undefined,
+      auditInfo
+    );
+
+    // Get updated record
+    const updatedAccount = await db
+      .select()
+      .from(finCurrentAccounts)
+      .where(eq(finCurrentAccounts.id, accountId))
+      .limit(1);
+
+    res.json({
+      success: true,
+      message: "Finansal işlem başarıyla güncellendi",
+      data: updatedAccount[0]
+    });
+  } catch (error) {
+    console.error("Current account update error:", error);
+    res.status(500).json({
+      success: false,
+      error: "UPDATE_ERROR",
+      message: "Finansal işlem güncellenemedi"
+    });
+  }
+});
+
+// PUT /api/secure/financial/accounts-details/:id - Detay kaydı güncelle
+router.put("/accounts-details/:id", authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const detailId = parseInt(req.params.id);
+    const updateData = req.body;
+
+    if (!detailId || isNaN(detailId)) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_ID",
+        message: "Geçersiz detay ID'si"
+      });
+    }
+
+    // Check if detail exists
+    const existingDetail = await db
+      .select()
+      .from(finAccountsDetails)
+      .where(eq(finAccountsDetails.id, detailId))
+      .limit(1);
+
+    if (existingDetail.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "DETAIL_NOT_FOUND",
+        message: "Detay kaydı bulunamadı"
+      });
+    }
+
+    // Prepare update data with validation
+    const allowedFields = ['finCurAcId', 'amount', 'date', 'paymentTypeId', 'isDone', 'doneDate'];
+
+    const filteredData: any = {};
+    for (const field of allowedFields) {
+      if (updateData[field] !== undefined) {
+        if (field === 'finCurAcId' && updateData[field] !== null) {
+          filteredData[field] = Number(updateData[field]);
+        } else if (field === 'amount' && updateData[field] !== null) {
+          filteredData[field] = Number(updateData[field]);
+        } else if (field === 'paymentTypeId' && updateData[field] !== null) {
+          filteredData[field] = Number(updateData[field]);
+        } else if (field === 'isDone') {
+          filteredData[field] = Boolean(updateData[field]);
+          if (updateData[field] === true && !filteredData.doneDate) {
+            filteredData.doneDate = new Date();
+          } else if (updateData[field] === false) {
+            filteredData.doneDate = null;
+          }
+        } else if (field === 'date' && updateData[field]) {
+          filteredData[field] = new Date(updateData[field]);
+        } else {
+          filteredData[field] = updateData[field];
+        }
+      }
+    }
+
+    const auditInfo = captureAuditInfo(req);
+
+    await auditableUpdate(
+      db,
+      finAccountsDetails,
+      filteredData,
+      eq(finAccountsDetails.id, detailId),
+      undefined,
+      auditInfo
+    );
+
+    // Get updated record
+    const updatedDetail = await db
+      .select()
+      .from(finAccountsDetails)
+      .where(eq(finAccountsDetails.id, detailId))
+      .limit(1);
+
+    res.json({
+      success: true,
+      message: "Detay kayıt başarıyla güncellendi",
+      data: updatedDetail[0]
+    });
+  } catch (error) {
+    console.error("Account detail update error:", error);
+    res.status(500).json({
+      success: false,
+      error: "UPDATE_ERROR",
+      message: "Detay kayıt güncellenemedi"
+    });
+  }
+});
+
 export default router;

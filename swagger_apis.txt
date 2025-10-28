@@ -57,7 +57,9 @@
 /api/secure/deletePolicyType/{id}
 /api/secure/deleteWorkArea/{id}
 /api/secure/financial/accounts-details
+/api/secure/financial/accounts-details/{id}
 /api/secure/financial/current-accounts
+/api/secure/financial/current-accounts/{id}
 /api/secure/financial/payment-types
 /api/secure/fuel-records
 /api/secure/fuel-records/{id}

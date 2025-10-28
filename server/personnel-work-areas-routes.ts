@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { db } from './db.js';
 import { eq, and, desc, asc, inArray, sql } from 'drizzle-orm';
-import { 
+import {
   personnelWorkAreas, personnel, workAreas, personnelPositions, projects, companies,
-  insertPersonnelWorkAreaSchema, type PersonnelWorkArea
+  insertPersonnelWorkAreaSchema, type PersonnelWorkArea, assetsPersonelAssignment,
+  stuff, personnelStuffMatcher, assets, carModels, carBrands, cities, documents, docSubTypes
 } from '../shared/schema.js';
 import { 
   authenticateJWT, 
@@ -315,6 +316,8 @@ router.put('/personnel-work-areas/:id/terminate', async (req: AuthRequest, res) 
         id: personnelWorkAreas.id,
         personnelId: personnelWorkAreas.personnelId,
         workAreaId: personnelWorkAreas.workAreaId,
+        positionId: personnelWorkAreas.positionId,
+        projectId: personnelWorkAreas.projectId,
         startDate: personnelWorkAreas.startDate,
         endDate: personnelWorkAreas.endDate,
         isActive: personnelWorkAreas.isActive,
@@ -359,6 +362,143 @@ router.put('/personnel-work-areas/:id/terminate', async (req: AuthRequest, res) 
         data: {
           startDate: existingAssignment.startDate,
           providedEndDate: endDate
+        }
+      });
+    }
+
+    // ================
+    // SAFETY CHECKS FOR TERMINATION
+    // ================
+    const blockingReasons = [];
+    const personnelId = existingAssignment.personnelId;
+
+    // 1. Check assigned assets (vehicles, equipment, etc.)
+    const assignedAssets = await db
+      .select({
+        id: assetsPersonelAssignment.id,
+        assetId: assetsPersonelAssignment.assetId,
+        plateNumber: assets.plateNumber,
+        modelName: carModels.name,
+        brandName: carBrands.name,
+        stuffId: personnelStuffMatcher.stuffId,
+        stuffName: stuff.name,
+        stuffValue: stuff.value
+      })
+      .from(assetsPersonelAssignment)
+      .leftJoin(assets, eq(assetsPersonelAssignment.assetId, assets.id))
+      .leftJoin(carModels, eq(assets.modelId, carModels.id))
+      .leftJoin(carBrands, eq(carModels.brandId, carBrands.id))
+      .where(and(
+        eq(assetsPersonelAssignment.personnelId, personnelId),
+        eq(assetsPersonelAssignment.isActive, true),
+        eq(assetsPersonelAssignment.endDate, sql`null`)
+      ));
+
+    const assignedStuff = await db
+      .select({
+        id: personnelStuffMatcher.id,
+        stuffId: personnelStuffMatcher.stuffId,
+        stuffName: stuff.name,
+        stuffValue: stuff.value
+      })
+      .from(personnelStuffMatcher)
+      .leftJoin(stuff, eq(personnelStuffMatcher.stuffId, stuff.id))
+      .where(and(
+        eq(personnelStuffMatcher.personnelId, personnelId),
+        eq(personnelStuffMatcher.isActive, true),
+        eq(personnelStuffMatcher.endDate, sql`null`)
+      ));
+
+    const allAssignedItems = [];
+
+    if (assignedAssets.length > 0) {
+      assignedAssets.forEach(asset => {
+        if (asset.plateNumber) {
+          allAssignedItems.push(`${asset.brandName} ${asset.modelName} (Plaka: ${asset.plateNumber})`);
+        }
+      });
+    }
+
+    if (assignedStuff.length > 0) {
+      assignedStuff.forEach(stuff => {
+        allAssignedItems.push(`${stuff.stuffName}${stuff.stuffValue ? ` (${stuff.stuffValue})` : ''}`);
+      });
+    }
+
+    if (allAssignedItems.length > 0) {
+      blockingReasons.push({
+        type: 'assigned_assets',
+        description: 'Personelin iade edilmemiş malzemeleri var',
+        details: allAssignedItems
+      });
+    }
+
+    // 2. Check if personnel is manager of work area
+    const managedWorkAreas = await db
+      .select({
+        id: workAreas.id,
+        name: workAreas.name,
+        cityName: cities.name
+      })
+      .from(workAreas)
+      .leftJoin(cities, eq(workAreas.cityId, cities.id))
+      .where(and(
+        eq(workAreas.managerId, personnelId),
+        eq(workAreas.isActive, true)
+      ));
+
+    if (managedWorkAreas.length > 0) {
+      const managerDetails = managedWorkAreas.map(wa => `${wa.name}${wa.cityName ? ` (${wa.cityName})` : ''}`);
+      blockingReasons.push({
+        type: 'work_area_manager',
+        description: 'Şantiye/iş alanı yöneticisi - yetki devri gerekli',
+        details: managerDetails
+      });
+    }
+
+    // 3. Check for required documents (basic check: any active personnel documents exist)
+    const personnelDocuments = await db
+      .select({
+        id: documents.id,
+        docTypeId: documents.docTypeId,
+        title: documents.title,
+        docTypeName: docSubTypes.name
+      })
+      .from(documents)
+      .leftJoin(docSubTypes, eq(documents.docTypeId, docSubTypes.id))
+      .where(and(
+        eq(documents.entityType, 'personnel'),
+        eq(documents.entityId, personnelId),
+        eq(documents.isActive, true)
+      ));
+
+    // For basic check, assume some documents are required
+    // In a real system, this would check for specific mandatory document types
+    const requiredDocTypes = ['Kimlik', 'SGK', 'İmza Beyannamesi', 'İş Sözleşmesi'];
+    const existingDocTypes = personnelDocuments.map(doc => doc.docTypeName || doc.title);
+    const missingDocs = requiredDocTypes.filter(requiredType =>
+      !existingDocTypes.some(existingType =>
+        existingType.toLowerCase().includes(requiredType.toLowerCase())
+      )
+    );
+
+    if (missingDocs.length > 0) {
+      blockingReasons.push({
+        type: 'missing_documents',
+        description: 'Zorunlu personel evrakları eksik',
+        details: missingDocs
+      });
+    }
+
+    // If there are blocking reasons, prevent termination
+    if (blockingReasons.length > 0) {
+      return res.status(409).json({
+        success: false,
+        error: 'TERMINATION_BLOCKED',
+        message: 'Çıkış işlemi gerçekleştirilemedi - güvenlik kontrolleri başarısız',
+        data: {
+          terminationBlocked: true,
+          blockingReasons: blockingReasons
         }
       });
     }
@@ -647,7 +787,8 @@ router.post('/personnel-work-areas/:id/transfer', async (req: AuthRequest, res) 
     console.error('Personel transfer hatası:', error);
 
     // Handle specific business logic errors
-    if (error.message === 'ASSIGNMENT_NOT_FOUND') {
+    const err = error as Error;
+    if (err.message === 'ASSIGNMENT_NOT_FOUND') {
       return res.status(404).json({
         success: false,
         error: 'ASSIGNMENT_NOT_FOUND',
@@ -655,7 +796,7 @@ router.post('/personnel-work-areas/:id/transfer', async (req: AuthRequest, res) 
       });
     }
 
-    if (error.message === 'ASSIGNMENT_ALREADY_TERMINATED') {
+    if (err.message === 'ASSIGNMENT_ALREADY_TERMINATED') {
       return res.status(409).json({
         success: false,
         error: 'ASSIGNMENT_ALREADY_TERMINATED',
@@ -663,7 +804,7 @@ router.post('/personnel-work-areas/:id/transfer', async (req: AuthRequest, res) 
       });
     }
 
-    if (error.message === 'INVALID_TRANSFER_DATE') {
+    if (err.message === 'INVALID_TRANSFER_DATE') {
       return res.status(400).json({
         success: false,
         error: 'INVALID_TRANSFER_DATE',
@@ -671,7 +812,7 @@ router.post('/personnel-work-areas/:id/transfer', async (req: AuthRequest, res) 
       });
     }
 
-    if (error.message === 'NEW_WORK_AREA_NOT_FOUND') {
+    if (err.message === 'NEW_WORK_AREA_NOT_FOUND') {
       return res.status(404).json({
         success: false,
         error: 'NEW_WORK_AREA_NOT_FOUND',
@@ -679,7 +820,7 @@ router.post('/personnel-work-areas/:id/transfer', async (req: AuthRequest, res) 
       });
     }
 
-    if (error.message === 'NEW_POSITION_NOT_FOUND') {
+    if (err.message === 'NEW_POSITION_NOT_FOUND') {
       return res.status(404).json({
         success: false,
         error: 'NEW_POSITION_NOT_FOUND',
@@ -687,7 +828,7 @@ router.post('/personnel-work-areas/:id/transfer', async (req: AuthRequest, res) 
       });
     }
 
-    if (error.message === 'NEW_PROJECT_NOT_FOUND') {
+    if (err.message === 'NEW_PROJECT_NOT_FOUND') {
       return res.status(404).json({
         success: false,
         error: 'NEW_PROJECT_NOT_FOUND',
@@ -695,7 +836,7 @@ router.post('/personnel-work-areas/:id/transfer', async (req: AuthRequest, res) 
       });
     }
 
-    if (error.message === 'DUPLICATE_ASSIGNMENT_IN_NEW_AREA') {
+    if (err.message === 'DUPLICATE_ASSIGNMENT_IN_NEW_AREA') {
       return res.status(409).json({
         success: false,
         error: 'DUPLICATE_ASSIGNMENT_IN_NEW_AREA',
