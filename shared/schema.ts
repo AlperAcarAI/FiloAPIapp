@@ -1686,3 +1686,155 @@ export const documentUploadSchema = z.object({
 }).refine(data => data.assetId || data.personnelId, {
   message: "Either assetId or personnelId must be provided"
 });
+
+// ========================
+// Outage Process Management Tables
+// ========================
+
+export const foOutageProcess = pgTable("fo_outage_process", {
+  id: serial("id").primaryKey(),
+  firmId: integer("firm_id").notNull().references(() => companies.id),
+  processorFirmId: integer("processor_firm_id").notNull().references(() => companies.id),
+  causeOfOutage: text("cause_of_outage"),
+  rootBuildName: varchar("root_build_name", { length: 255 }),
+  rootBuildCode: varchar("root_build_code", { length: 100 }),
+  outputStartPoint: varchar("output_start_point", { length: 255 }),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  startClock: varchar("start_clock", { length: 8 }), // TIME as HH:MM:SS
+  endClock: varchar("end_clock", { length: 8 }), // TIME as HH:MM:SS
+  areaOfOutage: text("area_of_outage"),
+  supervisorId: integer("supervisor_id").references(() => personnel.id),
+  processorSupervisor: varchar("processor_supervisor", { length: 255 }),
+  workerChefId: integer("worker_chef_id").references(() => personnel.id),
+  projectId: integer("project_id").references(() => projects.id),
+  pyp: text("pyp"),
+  status: varchar("status", { length: 20 }).notNull().default("planned"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+  isActive: boolean("is_active").notNull().default(true),
+}, (table) => ({
+  firmIdx: index("idx_fo_outage_process_firm").on(table.firmId),
+  processorFirmIdx: index("idx_fo_outage_process_processor_firm").on(table.processorFirmId),
+  projectIdx: index("idx_fo_outage_process_project").on(table.projectId),
+  datesIdx: index("idx_fo_outage_process_dates").on(table.startDate, table.endDate),
+  activeIdx: index("idx_fo_outage_process_active").on(table.isActive),
+}));
+
+export const foOutageProcessPersonnels = pgTable("fo_outage_process_personnels", {
+  id: serial("id").primaryKey(),
+  outageProcessId: integer("outage_process_id").notNull().references(() => foOutageProcess.id, { onDelete: "cascade" }),
+  personnelId: integer("personnel_id").notNull().references(() => personnel.id),
+}, (table) => ({
+  uniqueOutagePersonnel: unique("unique_outage_personnel").on(table.outageProcessId, table.personnelId),
+  outageProcessIdx: index("idx_fo_outage_personnels_process").on(table.outageProcessId),
+  personnelIdx: index("idx_fo_outage_personnels_personnel").on(table.personnelId),
+}));
+
+export const foOutageProcessAssets = pgTable("fo_outage_process_assets", {
+  id: serial("id").primaryKey(),
+  outageProcessId: integer("outage_process_id").notNull().references(() => foOutageProcess.id, { onDelete: "cascade" }),
+  assetId: integer("asset_id").notNull().references(() => assets.id),
+}, (table) => ({
+  uniqueOutageAsset: unique("unique_outage_asset").on(table.outageProcessId, table.assetId),
+  outageProcessIdx: index("idx_fo_outage_assets_process").on(table.outageProcessId),
+  assetIdx: index("idx_fo_outage_assets_asset").on(table.assetId),
+}));
+
+// Outage Process Relations
+export const foOutageProcessRelations = relations(foOutageProcess, ({ one, many }) => ({
+  firm: one(companies, {
+    fields: [foOutageProcess.firmId],
+    references: [companies.id],
+    relationName: "outageProcessFirm",
+  }),
+  processorFirm: one(companies, {
+    fields: [foOutageProcess.processorFirmId],
+    references: [companies.id],
+    relationName: "outageProcessorFirm",
+  }),
+  supervisor: one(personnel, {
+    fields: [foOutageProcess.supervisorId],
+    references: [personnel.id],
+    relationName: "outageSupervisor",
+  }),
+  workerChef: one(personnel, {
+    fields: [foOutageProcess.workerChefId],
+    references: [personnel.id],
+    relationName: "outageWorkerChef",
+  }),
+  project: one(projects, {
+    fields: [foOutageProcess.projectId],
+    references: [projects.id],
+  }),
+  createdByUser: one(users, {
+    fields: [foOutageProcess.createdBy],
+    references: [users.id],
+    relationName: "outageProcessCreator",
+  }),
+  updatedByUser: one(users, {
+    fields: [foOutageProcess.updatedBy],
+    references: [users.id],
+    relationName: "outageProcessUpdater",
+  }),
+  personnels: many(foOutageProcessPersonnels),
+  assets: many(foOutageProcessAssets),
+}));
+
+export const foOutageProcessPersonnelsRelations = relations(foOutageProcessPersonnels, ({ one }) => ({
+  outageProcess: one(foOutageProcess, {
+    fields: [foOutageProcessPersonnels.outageProcessId],
+    references: [foOutageProcess.id],
+  }),
+  personnel: one(personnel, {
+    fields: [foOutageProcessPersonnels.personnelId],
+    references: [personnel.id],
+  }),
+}));
+
+export const foOutageProcessAssetsRelations = relations(foOutageProcessAssets, ({ one }) => ({
+  outageProcess: one(foOutageProcess, {
+    fields: [foOutageProcessAssets.outageProcessId],
+    references: [foOutageProcess.id],
+  }),
+  asset: one(assets, {
+    fields: [foOutageProcessAssets.assetId],
+    references: [assets.id],
+  }),
+}));
+
+// Outage Process Zod Schemas
+export const insertFoOutageProcessSchema = createInsertSchema(foOutageProcess).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır"),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır").optional(),
+  startClock: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/, "Saat HH:MM:SS formatında olmalıdır").optional(),
+  endClock: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/, "Saat HH:MM:SS formatında olmalıdır").optional(),
+  status: z.enum(['planned', 'ongoing', 'completed', 'cancelled']).default('planned'),
+});
+
+export const updateFoOutageProcessSchema = insertFoOutageProcessSchema.partial();
+
+export const insertFoOutageProcessPersonnelSchema = createInsertSchema(foOutageProcessPersonnels).omit({
+  id: true,
+});
+
+export const insertFoOutageProcessAssetSchema = createInsertSchema(foOutageProcessAssets).omit({
+  id: true,
+});
+
+// Outage Process Types
+export type FoOutageProcess = typeof foOutageProcess.$inferSelect;
+export type InsertFoOutageProcess = z.infer<typeof insertFoOutageProcessSchema>;
+export type UpdateFoOutageProcess = z.infer<typeof updateFoOutageProcessSchema>;
+
+export type FoOutageProcessPersonnel = typeof foOutageProcessPersonnels.$inferSelect;
+export type InsertFoOutageProcessPersonnel = z.infer<typeof insertFoOutageProcessPersonnelSchema>;
+
+export type FoOutageProcessAsset = typeof foOutageProcessAssets.$inferSelect;
+export type InsertFoOutageProcessAsset = z.infer<typeof insertFoOutageProcessAssetSchema>;

@@ -980,6 +980,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const proxyRoutes = await import("./proxy-routes.js");
   app.use("/api/proxy", proxyRoutes.default);
 
+  // Outage Process Management Route'larını kaydet
+  const outageProcessRoutes = await import("./outage-process-routes.js");
+  app.use("/api/secure", outageProcessRoutes.default);
+
   const httpServer = createServer(app);
   return httpServer;
 }
