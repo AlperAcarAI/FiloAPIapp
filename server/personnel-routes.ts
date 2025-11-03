@@ -3,6 +3,7 @@ import { db } from './db.js';
 import { eq, and, ilike, desc, asc, like, or, ne, inArray, sql } from 'drizzle-orm';
 import { 
   personnel, countries, cities, personnelPositions, workAreas, personnelWorkAreas, projects,
+  assetsPersonelAssignment, assets, stuff, personnelStuffMatcher,
   insertPersonnelSchema, type InsertPersonnel, type Personnel
 } from '../shared/schema.js';
 import { 
@@ -890,6 +891,91 @@ router.delete('/personnel/:id', async (req: AuthRequest, res) => {
         success: false,
         error: 'PERSONNEL_ALREADY_DELETED',
         message: 'Bu personel zaten silinmiş durumda.'
+      });
+    }
+
+    // Check for active vehicle assignments
+    const activeVehicleAssignments = await db
+      .select({
+        id: assetsPersonelAssignment.id,
+        assetId: assetsPersonelAssignment.assetId,
+        plateNumber: assets.plateNumber,
+        startDate: assetsPersonelAssignment.startDate
+      })
+      .from(assetsPersonelAssignment)
+      .innerJoin(assets, eq(assetsPersonelAssignment.assetId, assets.id))
+      .where(and(
+        eq(assetsPersonelAssignment.personnelId, personnelId),
+        eq(assetsPersonelAssignment.isActive, true),
+        or(
+          sql`${assetsPersonelAssignment.endDate} IS NULL`,
+          sql`${assetsPersonelAssignment.endDate} >= CURRENT_DATE`
+        )
+      ));
+
+    // Check for active stuff/equipment assignments
+    const activeStuffAssignments = await db
+      .select({
+        id: personnelStuffMatcher.id,
+        stuffId: personnelStuffMatcher.stuffId,
+        stuffCode: stuff.stuffCode,
+        stuffName: stuff.name,
+        startDate: personnelStuffMatcher.startDate
+      })
+      .from(personnelStuffMatcher)
+      .innerJoin(stuff, eq(personnelStuffMatcher.stuffId, stuff.id))
+      .where(and(
+        eq(personnelStuffMatcher.personnelId, personnelId),
+        eq(personnelStuffMatcher.isActive, true),
+        or(
+          sql`${personnelStuffMatcher.endDate} IS NULL`,
+          sql`${personnelStuffMatcher.endDate} >= CURRENT_DATE`
+        )
+      ));
+
+    // If there are active assignments, return error with details
+    if (activeVehicleAssignments.length > 0 || activeStuffAssignments.length > 0) {
+      // Calculate assignment durations
+      const calculateDuration = (startDate: string) => {
+        const start = new Date(startDate);
+        const today = new Date();
+        const diffTime = Math.abs(today.getTime() - start.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return `${diffDays} gün`;
+      };
+
+      const vehiclesWithDuration = activeVehicleAssignments.map(v => ({
+        id: v.id,
+        plateNumber: v.plateNumber,
+        startDate: v.startDate,
+        assignmentDuration: calculateDuration(v.startDate)
+      }));
+
+      const stuffWithDuration = activeStuffAssignments.map(s => ({
+        id: s.id,
+        stuffCode: s.stuffCode,
+        stuffName: s.stuffName,
+        startDate: s.startDate,
+        assignmentDuration: calculateDuration(s.startDate)
+      }));
+
+      return res.status(400).json({
+        success: false,
+        error: 'ACTIVE_ASSIGNMENTS_EXIST',
+        message: 'Bu personelin aktif zimmet kayıtları bulunmaktadır. Personel çıkışı yapılabilmesi için öncelikle tüm zimmetlerin iade edilmesi gerekmektedir.',
+        data: {
+          personnelId: existingPersonnel.id,
+          personnelName: `${existingPersonnel.name} ${existingPersonnel.surname}`,
+          activeAssignments: {
+            vehicles: vehiclesWithDuration,
+            stuff: stuffWithDuration
+          },
+          summary: {
+            totalVehicles: activeVehicleAssignments.length,
+            totalStuff: activeStuffAssignments.length,
+            canProceed: false
+          }
+        }
       });
     }
 
