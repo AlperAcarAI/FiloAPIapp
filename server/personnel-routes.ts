@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from './db.js';
 import { eq, and, ilike, desc, asc, like, or, ne, inArray, sql } from 'drizzle-orm';
+import { z } from 'zod';
 import { 
   personnel, countries, cities, personnelPositions, workAreas, personnelWorkAreas, projects,
   assetsPersonelAssignment, assets, stuff, personnelStuffMatcher,
@@ -11,6 +12,11 @@ import {
   filterByWorkArea,
   type AuthRequest 
 } from './hierarchical-auth.js';
+import { 
+  auditableInsert,
+  auditableUpdate,
+  auditableDelete
+} from './audit-middleware.js';
 
 // Custom validation schema that accepts tcNo as string and converts to bigint
 const personnelCreateSchema = z.object({
@@ -26,16 +32,13 @@ const personnelCreateSchema = z.object({
   birthplaceId: z.number().int().positive().optional().nullable(),
   address: z.string().max(255).optional().nullable(),
   phoneNo: z.string().max(50).optional().nullable(),
-  iban: z.string().max(34).optional().nullable(), // IBAN field validation
+  iban: z.string().max(34).optional().nullable(),
   status: z.string().max(20).optional().nullable(),
-  isActive: z.boolean().optional().default(true)
+  isActive: z.boolean().optional().default(true),
+  companyId: z.number().int().positive().optional().nullable()
 });
-import { z } from 'zod';
-import { 
-  auditableInsert,
-  auditableUpdate,
-  auditableDelete
-} from './audit-middleware.js';
+
+type PersonnelCreateData = z.infer<typeof personnelCreateSchema>;
 
 const router = Router();
 
@@ -78,8 +81,32 @@ router.get('/personnel', async (req: AuthRequest, res) => {
   try {
     const { search, active, workAreaId } = req.query;
     
-    // Base query with joins - include work area information
-    let query = db
+    // Build where conditions first
+    const whereConditions = [];
+    
+    // Work area filtering based on user's permissions
+    if (req.workAreaFilter && req.workAreaFilter.length > 0) {
+      whereConditions.push(inArray(personnelWorkAreas.workAreaId, req.workAreaFilter));
+    }
+    
+    if (search) {
+      whereConditions.push(
+        or(
+          ilike(personnel.name, `%${search}%`),
+          ilike(personnel.surname, `%${search}%`),
+          sql`CAST(${personnel.tcNo} AS TEXT) ILIKE ${`%${search}%`}` // Cast bigint to text for search
+        )
+      );
+    }
+    
+    if (active === 'true') {
+      whereConditions.push(eq(personnel.isActive, true));
+    } else if (active === 'false') {
+      whereConditions.push(eq(personnel.isActive, false));
+    }
+
+    // Build complete query with all conditions
+    const baseQuery = db
       .select({
         id: personnel.id,
         tcNo: personnel.tcNo,
@@ -115,33 +142,10 @@ router.get('/personnel', async (req: AuthRequest, res) => {
       .leftJoin(personnelPositions, eq(personnelWorkAreas.positionId, personnelPositions.id))
       .leftJoin(projects, eq(personnelWorkAreas.projectId, projects.id));
 
-    // Filters
-    const whereConditions = [];
-    
-    // Work area filtering based on user's permissions
-    if (req.workAreaFilter && req.workAreaFilter.length > 0) {
-      whereConditions.push(inArray(personnelWorkAreas.workAreaId, req.workAreaFilter));
-    }
-    
-    if (search) {
-      whereConditions.push(
-        or(
-          ilike(personnel.name, `%${search}%`),
-          ilike(personnel.surname, `%${search}%`),
-          sql`CAST(${personnel.tcNo} AS TEXT) ILIKE ${`%${search}%`}` // Cast bigint to text for search
-        )
-      );
-    }
-    
-    if (active === 'true') {
-      whereConditions.push(eq(personnel.isActive, true));
-    } else if (active === 'false') {
-      whereConditions.push(eq(personnel.isActive, false));
-    }
-
-    if (whereConditions.length > 0) {
-      query = query.where(and(...whereConditions));
-    }
+    // Apply where conditions if any exist
+    const query = whereConditions.length > 0 
+      ? baseQuery.where(and(...whereConditions))
+      : baseQuery;
 
     // Execute query with ordering
     const personnelList = await query.orderBy(desc(personnel.id));
@@ -334,23 +338,8 @@ router.get('/personnel/:id', async (req: AuthRequest, res) => {
  */
 router.post('/personnel', authenticateJWT, async (req, res) => {
   try {
-    // Preprocess request body to handle tcNo conversion
-    const requestBody = { ...req.body };
-    if (requestBody.tcNo && typeof requestBody.tcNo === 'string') {
-      try {
-        requestBody.tcNo = BigInt(requestBody.tcNo);
-      } catch (e) {
-        return res.status(400).json({
-          success: false,
-          error: 'VALIDATION_ERROR',
-          message: 'Geçersiz TC Kimlik Numarası formatı.'
-        });
-      }
-    }
-    
-    // Request body validasyonu - use original insertPersonnelSchema but omit ID
-    const validationSchema = insertPersonnelSchema.omit({ id: true });
-    const validationResult = validationSchema.safeParse(requestBody);
+    // Use custom validation schema
+    const validationResult = personnelCreateSchema.safeParse(req.body);
     
     if (!validationResult.success) {
       return res.status(400).json({
@@ -364,7 +353,7 @@ router.post('/personnel', authenticateJWT, async (req, res) => {
       });
     }
     
-    const personnelData = validationResult.data;
+    const personnelData: PersonnelCreateData = validationResult.data;
     
     // TC Kimlik Numarası benzersizlik kontrolü (eğer TC No girilmişse)
     if (personnelData.tcNo) {
@@ -556,23 +545,9 @@ router.put('/personnel/:id', authenticateJWT, async (req, res) => {
       });
     }
     
-    // Preprocess request body for update
-    const requestBody = { ...req.body };
-    if (requestBody.tcNo && typeof requestBody.tcNo === 'string') {
-      try {
-        requestBody.tcNo = BigInt(requestBody.tcNo);
-      } catch (e) {
-        return res.status(400).json({
-          success: false,
-          error: 'VALIDATION_ERROR',
-          message: 'Geçersiz TC Kimlik Numarası formatı.'
-        });
-      }
-    }
-    
-    // Request body validasyonu (update schema)
-    const updateSchema = insertPersonnelSchema.omit({ id: true }).partial();
-    const validationResult = updateSchema.safeParse(requestBody);
+    // Use custom validation schema for update
+    const personnelUpdateSchema = personnelCreateSchema.partial();
+    const validationResult = personnelUpdateSchema.safeParse(req.body);
     
     if (!validationResult.success) {
       return res.status(400).json({
@@ -586,7 +561,7 @@ router.put('/personnel/:id', authenticateJWT, async (req, res) => {
       });
     }
     
-    const updateData = validationResult.data;
+    const updateData: Partial<PersonnelCreateData> = validationResult.data;
     
     // TC Kimlik Numarası benzersizlik kontrolü (eğer TC No güncelleniyorsa)
     if (updateData.tcNo) {
