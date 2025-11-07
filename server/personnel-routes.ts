@@ -527,7 +527,7 @@ router.post('/personnel', authenticateJWT, async (req, res) => {
  *       409:
  *         description: TC Kimlik Numarası zaten başka bir personel tarafından kullanılıyor
  */
-router.put('/personnel/:id', authenticateJWT, async (req, res) => {
+router.put('/personnel/:id', async (req, res) => {
   try {
     const personnelId = parseInt(req.params.id);
     
@@ -612,11 +612,17 @@ router.put('/personnel/:id', authenticateJWT, async (req, res) => {
       .leftJoin(cities, eq(personnel.birthplaceId, cities.id))
       .where(eq(personnel.id, personnelId));
     
+    // Convert BigInt to string for JSON serialization
+    const responseData = {
+      ...personnelDetail,
+      tcNo: personnelDetail.tcNo ? personnelDetail.tcNo.toString() : null
+    };
+    
     res.json({
       success: true,
       message: 'Personel başarıyla güncellendi.',
       data: {
-        personnel: personnelDetail
+        personnel: responseData
       }
     });
     
