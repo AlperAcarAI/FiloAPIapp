@@ -74,8 +74,21 @@ router.get('/personnel-work-history/:personnelId', async (req: AuthRequest, res)
       });
     }
 
-    // Build work history query
-    let query = db
+    // Apply filters
+    const whereConditions = [eq(personnelWorkAreas.personnelId, personnelId)];
+    
+    // Work area filtering based on user's permissions
+    if (req.workAreaFilter && req.workAreaFilter.length > 0) {
+      whereConditions.push(inArray(personnelWorkAreas.workAreaId, req.workAreaFilter));
+    }
+    
+    // Include/exclude active assignments
+    if (includeActive === 'false') {
+      whereConditions.push(eq(personnelWorkAreas.isActive, false));
+    }
+
+    // Build and execute work history query
+    const workHistory = await db
       .select({
         // Assignment details
         assignmentId: personnelWorkAreas.id,
@@ -105,7 +118,7 @@ router.get('/personnel-work-history/:personnelId', async (req: AuthRequest, res)
         projectStartDate: projects.startDate,
         projectEndDate: projects.endDate,
         projectTotalPrice: projects.projectTotalPrice,
-        projectCompleteRate: projects.completetRate,
+        projectCompleteRate: projects.completionRate,
         
         // Company details
         poCompanyId: projects.poCompanyId,
@@ -125,27 +138,8 @@ router.get('/personnel-work-history/:personnelId', async (req: AuthRequest, res)
       .leftJoin(workAreas, eq(personnelWorkAreas.workAreaId, workAreas.id))
       .leftJoin(cities, eq(workAreas.cityId, cities.id))
       .leftJoin(personnelPositions, eq(personnelWorkAreas.positionId, personnelPositions.id))
-      .leftJoin(projects, eq(personnelWorkAreas.projectId, projects.id));
-
-    // Apply filters
-    const whereConditions = [eq(personnelWorkAreas.personnelId, personnelId)];
-    
-    // Work area filtering based on user's permissions
-    if (req.workAreaFilter && req.workAreaFilter.length > 0) {
-      whereConditions.push(inArray(personnelWorkAreas.workAreaId, req.workAreaFilter));
-    }
-    
-    // Include/exclude active assignments
-    if (includeActive === 'false') {
-      whereConditions.push(eq(personnelWorkAreas.isActive, false));
-    }
-
-    if (whereConditions.length > 0) {
-      query = query.where(and(...whereConditions)) as any;
-    }
-
-    // Execute query with ordering and limit
-    const workHistory = await query
+      .leftJoin(projects, eq(personnelWorkAreas.projectId, projects.id))
+      .where(and(...whereConditions))
       .orderBy(desc(personnelWorkAreas.startDate), desc(personnelWorkAreas.createdAt))
       .limit(parseInt(limit as string));
 
