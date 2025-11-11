@@ -22,10 +22,7 @@ export function log(message: string, source = "express") {
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
-    hmr: { 
-      server,
-      port: 5001 
-    },
+    hmr: { server },
     allowedHosts: true as const,
   };
 
@@ -43,15 +40,7 @@ export async function setupVite(app: Express, server: Server) {
     appType: "custom",
   });
 
-  // CRITICAL: Only use Vite middlewares for non-API routes
-  app.use((req, res, next) => {
-    // Skip Vite for API routes - they should already be handled
-    if (req.originalUrl.startsWith('/api/')) {
-      return next();
-    }
-    vite.middlewares(req, res, next);
-  });
-  
+  app.use(vite.middlewares);
   app.use("*", async (req, res, next) => {
     // Skip API routes - they're already handled by registerRoutes
     if (req.originalUrl.startsWith('/api/')) {

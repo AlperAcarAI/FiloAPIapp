@@ -30,9 +30,8 @@ app.use((req, res, next) => {
   const origin = req.headers.origin;
   const allowedOrigins = [
     'https://filokiapi.architectaiagency.com',
-    'http://localhost:5001',
-    'http://localhost:3000',
     'http://localhost:5000',
+    'http://localhost:3000',
     'https://b0c96118-25cf-4b36-bd73-c26e525daf3c-00-b95p9o9piblg.spock.replit.dev'
   ];
   
@@ -120,11 +119,15 @@ app.use(morgan('combined', { stream: accessLogStream })); // Dosyaya loglama
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5001 if not specified.
+  // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5001', 10);
-  server.listen(port, "0.0.0.0", () => {
+  const port = parseInt(process.env.PORT || '5000', 10);
+  server.listen({
+    port,
+    host: "0.0.0.0",
+    reusePort: true,
+  }, () => {
     log(`serving on port ${port}`);
   });
 })();
