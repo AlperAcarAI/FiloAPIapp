@@ -6,6 +6,8 @@ import { authenticateToken, type AuthRequest } from "./auth";
 
 const router = Router();
 
+console.log("✅ Personnel Access Routes module loaded");
+
 // ========================
 // ACCESS TYPES ENDPOINTS
 // ========================

@@ -1021,7 +1021,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/secure", outageProcessRoutes.default);
 
   // Personnel Access Management Route'larını kaydet
-  app.use("/api/secure", await import("./personnel-access-routes.js").then(m => m.default));
+  console.log("🔧 Loading Personnel Access Routes...");
+  const personnelAccessRoutesModule = await import("./personnel-access-routes.js");
+  console.log("🔧 Personnel Access Routes loaded:", !!personnelAccessRoutesModule.default);
+  app.use("/api/secure", personnelAccessRoutesModule.default);
+  console.log("✅ Personnel Access Routes registered at /api/secure");
 
   const httpServer = createServer(app);
   return httpServer;
