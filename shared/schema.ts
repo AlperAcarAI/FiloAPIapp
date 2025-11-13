@@ -157,6 +157,54 @@ export const personnelPositions = pgTable("personnel_positions", {
   isActive: boolean("is_active").notNull().default(true),
 });
 
+// ========================
+// Personnel Access Control Tables
+// ========================
+
+// Access Types - Erişim yetki tipleri
+export const accessTypes = pgTable("access_types", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Personnel Access - Personel erişim yetkileri
+export const personnelAccess = pgTable("personnel_access", {
+  id: serial("id").primaryKey(),
+  personnelId: integer("personnel_id").notNull().references(() => personnel.id, { onDelete: "cascade" }),
+  workareaId: integer("workarea_id").references(() => workAreas.id), // NULL = tüm şantiyeler
+  typeId: integer("type_id").notNull().references(() => accessTypes.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+}, (table) => ({
+  uniquePersonnelWorkareaType: unique("unique_personnel_workarea_type").on(table.personnelId, table.workareaId, table.typeId),
+  personnelIdx: index("idx_personnel_access_personnel").on(table.personnelId),
+  workareaIdx: index("idx_personnel_access_workarea").on(table.workareaId),
+  typeIdx: index("idx_personnel_access_type").on(table.typeId),
+}));
+
+// Personnel Access Zod Schemas
+export const insertAccessTypeSchema = createInsertSchema(accessTypes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPersonnelAccessSchema = createInsertSchema(personnelAccess).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const updatePersonnelAccessSchema = insertPersonnelAccessSchema.partial();
+
+export type AccessType = typeof accessTypes.$inferSelect;
+export type InsertAccessType = z.infer<typeof insertAccessTypeSchema>;
+
+export type PersonnelAccess = typeof personnelAccess.$inferSelect;
+export type InsertPersonnelAccess = z.infer<typeof insertPersonnelAccessSchema>;
+export type UpdatePersonnelAccess = z.infer<typeof updatePersonnelAccessSchema>;
+
 export const docMainTypes = pgTable("doc_main_types", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 50 }).notNull().unique(),
@@ -1183,6 +1231,32 @@ export const personnelRelations = relations(personnel, ({ one, many }) => ({
   updatedAssets: many(assets, { relationName: "assetUpdater" }),
   assetDocuments: many(assetDocuments),
   personnelDocuments: many(personnelDocuments),
+  personnelAccess: many(personnelAccess),
+}));
+
+// Access Types Relations
+export const accessTypesRelations = relations(accessTypes, ({ many }) => ({
+  personnelAccess: many(personnelAccess),
+}));
+
+// Personnel Access Relations
+export const personnelAccessRelations = relations(personnelAccess, ({ one }) => ({
+  personnel: one(personnel, {
+    fields: [personnelAccess.personnelId],
+    references: [personnel.id],
+  }),
+  workArea: one(workAreas, {
+    fields: [personnelAccess.workareaId],
+    references: [workAreas.id],
+  }),
+  accessType: one(accessTypes, {
+    fields: [personnelAccess.typeId],
+    references: [accessTypes.id],
+  }),
+  createdByUser: one(users, {
+    fields: [personnelAccess.createdBy],
+    references: [users.id],
+  }),
 }));
 
 // Documents Relations

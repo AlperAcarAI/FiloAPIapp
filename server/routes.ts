@@ -128,6 +128,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         deviceFingerprint: req.security?.deviceFingerprint,
       });
       
+      // Get user permissions if personnelId exists
+      let permissions: any[] = [];
+      if (authenticatedUser.personnelId) {
+        const { personnelAccess, accessTypes, workAreas } = await import('@shared/schema');
+        
+        const userPermissions = await db
+          .select({
+            id: personnelAccess.id,
+            workareaId: personnelAccess.workareaId,
+            workareaName: workAreas.name,
+            typeId: personnelAccess.typeId,
+            typeName: accessTypes.name,
+          })
+          .from(personnelAccess)
+          .leftJoin(workAreas, eq(personnelAccess.workareaId, workAreas.id))
+          .innerJoin(accessTypes, eq(personnelAccess.typeId, accessTypes.id))
+          .where(eq(personnelAccess.personnelId, authenticatedUser.personnelId));
+        
+        // Group permissions by workarea
+        const permissionMap = new Map<number | null, { workareaId: number | null; workareaName: string | null; accessCodes: number[] }>();
+        
+        for (const perm of userPermissions) {
+          if (!permissionMap.has(perm.workareaId)) {
+            permissionMap.set(perm.workareaId, {
+              workareaId: perm.workareaId,
+              workareaName: perm.workareaName,
+              accessCodes: []
+            });
+          }
+          permissionMap.get(perm.workareaId)!.accessCodes.push(perm.typeId);
+        }
+        
+        permissions = Array.from(permissionMap.values());
+      }
+      
       // Token çifti oluştur (access + refresh)
       const tokens = await generateTokenPair(
         { id: authenticatedUser.id, email: authenticatedUser.email },
@@ -144,7 +179,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           refreshToken: tokens.refreshToken,
           expiresIn: tokens.expiresIn,
           refreshExpiresIn: tokens.refreshExpiresIn,
-          tokenType: "Bearer"
+          tokenType: "Bearer",
+          permissions: permissions
         }
       });
     } catch (error) {
@@ -983,6 +1019,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Outage Process Management Route'larını kaydet
   const outageProcessRoutes = await import("./outage-process-routes.js");
   app.use("/api/secure", outageProcessRoutes.default);
+
+  // Personnel Access Management Route'larını kaydet
+  const personnelAccessRoutes = await import("./personnel-access-routes.js");
+  app.use("/api/secure", personnelAccessRoutes.default);
 
   const httpServer = createServer(app);
   return httpServer;
