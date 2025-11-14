@@ -31,6 +31,7 @@ app.use((req, res, next) => {
   const allowedOrigins = [
     'https://filokiapi.architectaiagency.com',
     'http://localhost:5000',
+    'http://localhost:5001',
     'http://localhost:3000',
     'https://b0c96118-25cf-4b36-bd73-c26e525daf3c-00-b95p9o9piblg.spock.replit.dev'
   ];
@@ -98,9 +99,9 @@ app.use(morgan('combined', { stream: accessLogStream })); // Dosyaya loglama
   // Check if we're in Replit environment
   const isReplit = process.env.REPL_ID || process.env.REPL_SLUG;
   
-  // CRITICAL: Always use production mode in Replit to avoid Vite catch-all
-  // Vite's catch-all route breaks API endpoints
-  const useProductionMode = isReplit; // Always true in Replit
+  // CRITICAL: Always use production mode to avoid Vite catch-all
+  // Vite's catch-all route breaks API endpoints even in localhost
+  const useProductionMode = true; // Always use production mode (Vite disabled)
   
   console.log(`🔧 Environment Check:
     - NODE_ENV: ${process.env.NODE_ENV || 'not set'}
