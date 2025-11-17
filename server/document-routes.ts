@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "./db";
 import { documents, docSubTypes, docMainTypes, users, personnel, companies, workAreas, assets } from "@shared/schema";
-import { insertDocumentSchema, updateDocumentSchema } from "@shared/schema";
+import { insertDocumentSchema, updateDocumentSchema, insertDocMainTypeSchema, updateDocMainTypeSchema, insertDocSubTypeSchema, updateDocSubTypeSchema } from "@shared/schema";
 import { eq, and, or, like, desc, asc, sql } from "drizzle-orm";
 import { authenticateToken } from "./auth";
 import { authenticateJWT } from "./hierarchical-auth";
@@ -195,7 +195,221 @@ documentRoutes.get("/main-doc-types", async (req: any, res) => {
   }
 });
 
-export default documentRoutes;
+// Ana döküman tipi ekle - WITH AUTH
+documentRoutes.post("/main-doc-types", authenticateJWT, async (req: any, res) => {
+  try {
+    const validatedData = insertDocMainTypeSchema.parse(req.body);
+    const auditInfo = captureAuditInfo(req);
+    
+    // Duplicate check
+    const [existing] = await db.select()
+      .from(docMainTypes)
+      .where(eq(docMainTypes.name, validatedData.name));
+    
+    if (existing) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Bu isimde bir ana döküman tipi zaten mevcut" 
+      });
+    }
+    
+    const [newMainType] = await auditableInsert(
+      db,
+      docMainTypes,
+      validatedData,
+      auditInfo
+    );
+
+    res.status(201).json({ 
+      success: true, 
+      data: newMainType,
+      message: "Ana döküman tipi başarıyla eklendi"
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Geçersiz veri", 
+        details: error.errors 
+      });
+    }
+    console.error("Ana döküman tipi ekleme hatası:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: "Ana döküman tipi eklenirken hata oluştu" 
+    });
+  }
+});
+
+// Ana döküman tipi güncelle - WITH AUTH
+documentRoutes.put("/main-doc-types/:id", authenticateJWT, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const validatedData = updateDocMainTypeSchema.parse(req.body);
+    const auditInfo = captureAuditInfo(req);
+    
+    const [existingMainType] = await db.select()
+      .from(docMainTypes)
+      .where(eq(docMainTypes.id, parseInt(id)));
+    
+    if (!existingMainType) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Ana döküman tipi bulunamadı" 
+      });
+    }
+    
+    // Eğer isim değiştiriliyorsa duplicate check
+    if (validatedData.name && validatedData.name !== existingMainType.name) {
+      const [duplicate] = await db.select()
+        .from(docMainTypes)
+        .where(eq(docMainTypes.name, validatedData.name));
+      
+      if (duplicate) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Bu isimde bir ana döküman tipi zaten mevcut" 
+        });
+      }
+    }
+    
+    const [updatedMainType] = await auditableUpdate(
+      db,
+      docMainTypes,
+      validatedData,
+      eq(docMainTypes.id, parseInt(id)),
+      existingMainType,
+      auditInfo
+    );
+
+    res.json({ 
+      success: true, 
+      data: updatedMainType,
+      message: "Ana döküman tipi başarıyla güncellendi"
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Geçersiz veri", 
+        details: error.errors 
+      });
+    }
+    console.error("Ana döküman tipi güncelleme hatası:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: "Ana döküman tipi güncellenirken hata oluştu" 
+    });
+  }
+});
+
+// Alt döküman tipi ekle - WITH AUTH
+documentRoutes.post("/doc-sub-types", authenticateJWT, async (req: any, res) => {
+  try {
+    const validatedData = insertDocSubTypeSchema.parse(req.body);
+    const auditInfo = captureAuditInfo(req);
+    
+    // Ana tip var mı kontrol et
+    const [mainTypeExists] = await db.select()
+      .from(docMainTypes)
+      .where(eq(docMainTypes.id, validatedData.mainTypeId));
+    
+    if (!mainTypeExists) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Ana döküman tipi bulunamadı" 
+      });
+    }
+    
+    const [newSubType] = await auditableInsert(
+      db,
+      docSubTypes,
+      validatedData,
+      auditInfo
+    );
+
+    res.status(201).json({ 
+      success: true, 
+      data: newSubType,
+      message: "Alt döküman tipi başarıyla eklendi"
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Geçersiz veri", 
+        details: error.errors 
+      });
+    }
+    console.error("Alt döküman tipi ekleme hatası:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: "Alt döküman tipi eklenirken hata oluştu" 
+    });
+  }
+});
+
+// Alt döküman tipi güncelle - WITH AUTH
+documentRoutes.put("/doc-sub-types/:id", authenticateJWT, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const validatedData = updateDocSubTypeSchema.parse(req.body);
+    const auditInfo = captureAuditInfo(req);
+    
+    const [existingSubType] = await db.select()
+      .from(docSubTypes)
+      .where(eq(docSubTypes.id, parseInt(id)));
+    
+    if (!existingSubType) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Alt döküman tipi bulunamadı" 
+      });
+    }
+    
+    // Eğer mainTypeId değiştiriliyorsa, yeni ana tip var mı kontrol et
+    if (validatedData.mainTypeId && validatedData.mainTypeId !== existingSubType.mainTypeId) {
+      const [mainTypeExists] = await db.select()
+        .from(docMainTypes)
+        .where(eq(docMainTypes.id, validatedData.mainTypeId));
+      
+      if (!mainTypeExists) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Ana döküman tipi bulunamadı" 
+        });
+      }
+    }
+    
+    const [updatedSubType] = await auditableUpdate(
+      db,
+      docSubTypes,
+      validatedData,
+      eq(docSubTypes.id, parseInt(id)),
+      existingSubType,
+      auditInfo
+    );
+
+    res.json({ 
+      success: true, 
+      data: updatedSubType,
+      message: "Alt döküman tipi başarıyla güncellendi"
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Geçersiz veri", 
+        details: error.errors 
+      });
+    }
+    console.error("Alt döküman tipi güncelleme hatası:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: "Alt döküman tipi güncellenirken hata oluştu" 
+    });
+  }
+});
 
 // Tüm dökümanları listele (filtreleme destekli)
 documentRoutes.get("/", authenticateJWT, async (req: any, res) => {
@@ -778,3 +992,5 @@ documentRoutes.get("/types/:mainTypeId", async (req: any, res) => {
     });
   }
 });
+
+export default documentRoutes;

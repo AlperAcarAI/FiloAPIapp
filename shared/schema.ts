@@ -218,6 +218,28 @@ export const docSubTypes = pgTable("doc_sub_types", {
   isActive: boolean("is_active").notNull().default(true),
 });
 
+// Doc Main Types Zod Schemas
+export const insertDocMainTypeSchema = createInsertSchema(docMainTypes).omit({
+  id: true,
+});
+
+export const updateDocMainTypeSchema = insertDocMainTypeSchema.partial();
+
+export type DocMainType = typeof docMainTypes.$inferSelect;
+export type InsertDocMainType = z.infer<typeof insertDocMainTypeSchema>;
+export type UpdateDocMainType = z.infer<typeof updateDocMainTypeSchema>;
+
+// Doc Sub Types Zod Schemas
+export const insertDocSubTypeSchema = createInsertSchema(docSubTypes).omit({
+  id: true,
+});
+
+export const updateDocSubTypeSchema = insertDocSubTypeSchema.partial();
+
+export type DocSubType = typeof docSubTypes.$inferSelect;
+export type InsertDocSubType = z.infer<typeof insertDocSubTypeSchema>;
+export type UpdateDocSubType = z.infer<typeof updateDocSubTypeSchema>;
+
 // Projects Table - Proje Yönetimi
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
