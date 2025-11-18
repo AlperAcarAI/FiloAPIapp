@@ -32,8 +32,30 @@ const authenticateJWT = (req: any, res: any, next: any) => {
   }
 };
 
+// Conditional Authentication - Skip auth for specific NO AUTH endpoints
+const conditionalAuth = (req: any, res: any, next: any) => {
+  const path = req.path;
+  
+  // NO AUTH endpoints - Bypass authentication
+  const noAuthEndpoints = [
+    /^\/documents\/main-doc-types$/,           // GET /documents/main-doc-types
+    /^\/documents\/types\/\d+$/,               // GET /documents/types/:id (numeric ID)
+  ];
+  
+  // Check if current path matches any NO AUTH endpoint
+  const isNoAuthEndpoint = noAuthEndpoints.some(pattern => pattern.test(path));
+  
+  if (isNoAuthEndpoint && req.method === 'GET') {
+    console.log(`⚠️ NO AUTH endpoint detected: ${req.method} ${path} - Bypassing authentication`);
+    return next(); // Skip authentication
+  }
+  
+  // For all other endpoints, require authentication
+  return authenticateJWT(req, res, next);
+};
+
 // Proxy middleware to forward requests to external API  
-router.all('/*', authenticateJWT, async (req: any, res) => {
+router.all('/*', conditionalAuth, async (req: any, res) => {
   try {
     // req.path should now be the remainder after /api/proxy/ is stripped  
     const originalPath = req.path;
@@ -75,16 +97,15 @@ router.all('/*', authenticateJWT, async (req: any, res) => {
       'User-Agent': 'FiloAPI-Proxy/1.0'
     };
     
-    // Forward JWT authorization header (required)
+    // Forward JWT authorization header (optional for NO AUTH endpoints)
     if (req.headers.authorization) {
       headers['Authorization'] = req.headers.authorization;
-    } else {
-      return res.status(401).json({
-        success: false,
-        message: "Authorization header gerekli",
-        error: "Missing JWT token"
-      });
+    } else if (req.user && req.user.id) {
+      // If user is authenticated but authorization header is missing, add it from req.user
+      // This shouldn't happen, but we keep it as a fallback
+      console.log('Warning: User authenticated but no Authorization header');
     }
+    // For NO AUTH endpoints, no authorization header is needed
     
     // Prepare fetch options
     const fetchOptions: RequestInit = {
