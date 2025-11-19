@@ -9,6 +9,7 @@ import {
   companies,
   personnel,
   projects,
+  projectPyps,
   assets,
   users,
   insertFoOutageProcessSchema,
@@ -106,7 +107,9 @@ router.get('/outage-processes', async (req: AuthRequest, res) => {
         processorSupervisor: foOutageProcess.processorSupervisor,
         workerChefId: foOutageProcess.workerChefId,
         projectId: foOutageProcess.projectId,
-        pyp: foOutageProcess.pyp,
+        pypId: foOutageProcess.pypId,
+        pypCode: projectPyps.code,
+        pypName: projectPyps.name,
         status: foOutageProcess.status,
         isActive: foOutageProcess.isActive,
         createdAt: foOutageProcess.createdAt,
@@ -117,6 +120,7 @@ router.get('/outage-processes', async (req: AuthRequest, res) => {
         supervisorName: sql`CONCAT(supervisor.name, ' ', supervisor.surname)`.as('supervisorName'),
         workerChefName: sql`CONCAT(worker_chef.name, ' ', worker_chef.surname)`.as('workerChefName'),
         projectCode: projects.code,
+        projectName: projects.code,
         createdByEmail: sql`creator.email`.as('createdByEmail'),
         updatedByEmail: sql`updater.email`.as('updatedByEmail')
       })
@@ -126,6 +130,7 @@ router.get('/outage-processes', async (req: AuthRequest, res) => {
       .leftJoin(sql`personnel supervisor`, eq(foOutageProcess.supervisorId, sql`supervisor.id`))
       .leftJoin(sql`personnel worker_chef`, eq(foOutageProcess.workerChefId, sql`worker_chef.id`))
       .leftJoin(projects, eq(foOutageProcess.projectId, projects.id))
+      .leftJoin(projectPyps, eq(foOutageProcess.pypId, projectPyps.id))
       .leftJoin(sql`users creator`, eq(foOutageProcess.createdBy, sql`creator.id`))
       .leftJoin(sql`users updater`, eq(foOutageProcess.updatedBy, sql`updater.id`));
 
@@ -239,7 +244,9 @@ router.get('/outage-processes/:id', async (req: AuthRequest, res) => {
         processorSupervisor: foOutageProcess.processorSupervisor,
         workerChefId: foOutageProcess.workerChefId,
         projectId: foOutageProcess.projectId,
-        pyp: foOutageProcess.pyp,
+        pypId: foOutageProcess.pypId,
+        pypCode: projectPyps.code,
+        pypName: projectPyps.name,
         status: foOutageProcess.status,
         isActive: foOutageProcess.isActive,
         createdAt: foOutageProcess.createdAt,
@@ -261,6 +268,7 @@ router.get('/outage-processes/:id', async (req: AuthRequest, res) => {
       .leftJoin(sql`personnel supervisor`, eq(foOutageProcess.supervisorId, sql`supervisor.id`))
       .leftJoin(sql`personnel worker_chef`, eq(foOutageProcess.workerChefId, sql`worker_chef.id`))
       .leftJoin(projects, eq(foOutageProcess.projectId, projects.id))
+      .leftJoin(projectPyps, eq(foOutageProcess.pypId, projectPyps.id))
       .leftJoin(sql`users creator`, eq(foOutageProcess.createdBy, sql`creator.id`))
       .leftJoin(sql`users updater`, eq(foOutageProcess.updatedBy, sql`updater.id`))
       .where(eq(foOutageProcess.id, processId));
@@ -440,6 +448,56 @@ router.post('/outage-processes', authenticateJWT, async (req: AuthRequest, res) 
         message: `Belirtilen işlemci firma ID'si (${validatedData.processorFirmId}) bulunamadı.`
       });
     }
+
+    if (validatedData.projectId) {
+      const projectExists = await db
+        .select({ id: projects.id })
+        .from(projects)
+        .where(eq(projects.id, validatedData.projectId));
+
+      if (projectExists.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_PROJECT_ID',
+          message: `Belirtilen proje ID'si (${validatedData.projectId}) bulunamadı.`
+        });
+      }
+    }
+
+    if (validatedData.pypId) {
+      const pypExists = await db
+        .select({ id: projectPyps.id, projectId: projectPyps.projectId })
+        .from(projectPyps)
+        .where(eq(projectPyps.id, validatedData.pypId));
+
+      if (pypExists.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_PYP_ID',
+          message: `Belirtilen PYP ID'si (${validatedData.pypId}) bulunamadı.`
+        });
+      }
+
+      if (validatedData.projectId) {
+        const pypMatchesProject = await db
+          .select({ id: projectPyps.id })
+          .from(projectPyps)
+          .where(
+            and(
+              eq(projectPyps.id, validatedData.pypId),
+              eq(projectPyps.projectId, validatedData.projectId)
+            )
+          );
+
+        if (pypMatchesProject.length === 0) {
+          return res.status(400).json({
+            success: false,
+            error: 'PYP_PROJECT_MISMATCH',
+            message: 'Seçilen PYP belirtilen proje ile ilişkili değil.'
+          });
+        }
+      }
+    }
     
     // Create new outage process
     const [newProcess] = await db
@@ -568,10 +626,61 @@ router.put('/outage-processes/:id', authenticateJWT, async (req: AuthRequest, re
     }
     
     // Update process
+    const updatePayload = {...req.body };
+
+    if (updatePayload.projectId) {
+      const projectExists = await db
+        .select({ id: projects.id })
+        .from(projects)
+        .where(eq(projects.id, updatePayload.projectId));
+
+      if (projectExists.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_PROJECT_ID',
+          message: `Belirtilen proje ID'si (${updatePayload.projectId}) bulunamadı.`
+        });
+      }
+    }
+
+    if (updatePayload.pypId) {
+      const pypExists = await db
+        .select({ id: projectPyps.id, projectId: projectPyps.projectId })
+        .from(projectPyps)
+        .where(eq(projectPyps.id, updatePayload.pypId));
+
+      if (pypExists.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_PYP_ID',
+          message: `Belirtilen PYP ID'si (${updatePayload.pypId}) bulunamadı.`
+        });
+      }
+
+      if (updatePayload.projectId) {
+        if (pypExists[0].projectId !== updatePayload.projectId) {
+          return res.status(400).json({
+            success: false,
+            error: 'PYP_PROJECT_MISMATCH',
+            message: 'Seçilen PYP belirtilen proje ile ilişkili değil.'
+          });
+        }
+      } else {
+        const existingProject = existingProcess[0]?.projectId;
+        if (existingProject && pypExists[0].projectId !== existingProject) {
+          return res.status(400).json({
+            success: false,
+            error: 'PYP_PROJECT_MISMATCH',
+            message: 'Seçilen PYP mevcut kayıt projesi ile ilişkili değil.'
+          });
+        }
+      }
+    }
+
     const [updatedProcess] = await db
       .update(foOutageProcess)
       .set({
-        ...req.body,
+        ...updatePayload,
         updatedBy: req.userContext?.userId,
         updatedAt: new Date(),
       })

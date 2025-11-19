@@ -249,21 +249,12 @@ export const authenticateJWT = async (
     const accessLevel = userData.accessLevel || 'WORKSITE';
     const hierarchyLevel = userData.hierarchyLevel || 1;
     
-    // Access scope kontrolü - Corporate için unlimited_access kontrolü
+    // Access scope kontrolü - Corporate için sınırsız erişim
     let allowedWorkAreaIds: number[] | null = null;
     
     if (accessLevel === 'CORPORATE') {
-      // Corporate için unlimited_access flag'i kontrol et
-      try {
-        const scope = userData.accessScope as any;
-        if (scope && scope.unlimited_access === true) {
-          allowedWorkAreaIds = null; // Tüm erişim
-        } else {
-          allowedWorkAreaIds = []; // Hiç erişim yok
-        }
-      } catch (error) {
-        allowedWorkAreaIds = []; // Default: erişim yok
-      }
+      // Corporate seviye: Her zaman tüm work area'lara erişim
+      allowedWorkAreaIds = null; // Tüm erişim - filtre yok
     } else {
       // Diğer seviyeler için hesapla
       allowedWorkAreaIds = calculateAllowedWorkAreas({

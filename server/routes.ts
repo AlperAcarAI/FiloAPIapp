@@ -1020,6 +1020,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const outageProcessRoutes = await import("./outage-process-routes.js");
   app.use("/api/secure", outageProcessRoutes.default);
 
+  // PYP Management Route'larını kaydet
+  const projectPypRoutes = await import("./project-pyp-routes.js");
+  app.use("/api/secure", projectPypRoutes.default);
+
   // Personnel Access Management Route'larını kaydet
   console.log("🔧 Loading Personnel Access Routes...");
   const personnelAccessRoutesModule = await import("./personnel-access-routes.js");

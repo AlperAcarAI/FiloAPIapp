@@ -1787,6 +1787,41 @@ export const documentUploadSchema = z.object({
 // Outage Process Management Tables
 // ========================
 
+export const projectPyps = pgTable("project_pyps", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  code: varchar("code", { length: 100 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  address: text("address"),
+  status: varchar("status", { length: 20 }).notNull().default("planned"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+  isActive: boolean("is_active").notNull().default(true),
+}, (table) => ({
+  projectIdx: index("idx_project_pyps_project").on(table.projectId),
+  statusIdx: index("idx_project_pyps_status").on(table.status),
+  uniqueProjectCode: unique("uniq_project_pyps_code").on(table.projectId, table.code),
+}));
+
+export const insertProjectPypSchema = createInsertSchema(projectPyps).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const updateProjectPypSchema = insertProjectPypSchema.partial();
+export type InsertProjectPyp = z.infer<typeof insertProjectPypSchema>;
+export type UpdateProjectPyp = z.infer<typeof updateProjectPypSchema>;
+export type ProjectPyp = typeof projectPyps.$inferSelect;
+
+export const projectPypsRelations = relations(projectPyps, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectPyps.projectId],
+    references: [projects.id],
+  }),
+}));
+
 export const foOutageProcess = pgTable("fo_outage_process", {
   id: serial("id").primaryKey(),
   firmId: integer("firm_id").notNull().references(() => companies.id),
@@ -1804,7 +1839,7 @@ export const foOutageProcess = pgTable("fo_outage_process", {
   processorSupervisor: varchar("processor_supervisor", { length: 255 }),
   workerChefId: integer("worker_chef_id").references(() => personnel.id),
   projectId: integer("project_id").references(() => projects.id),
-  pyp: text("pyp"),
+  pypId: integer("pyp_id").references(() => projectPyps.id),
   status: varchar("status", { length: 20 }).notNull().default("planned"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   createdBy: integer("created_by").references(() => users.id),
@@ -1815,6 +1850,7 @@ export const foOutageProcess = pgTable("fo_outage_process", {
   firmIdx: index("idx_fo_outage_process_firm").on(table.firmId),
   processorFirmIdx: index("idx_fo_outage_process_processor_firm").on(table.processorFirmId),
   projectIdx: index("idx_fo_outage_process_project").on(table.projectId),
+  pypIdx: index("idx_fo_outage_process_pyp").on(table.pypId),
   datesIdx: index("idx_fo_outage_process_dates").on(table.startDate, table.endDate),
   activeIdx: index("idx_fo_outage_process_active").on(table.isActive),
 }));
