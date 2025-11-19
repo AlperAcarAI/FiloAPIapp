@@ -7,32 +7,7 @@ import {
   type InsertPersonnelPosition, type UpdatePersonnelPosition, type PersonnelPosition
 } from '../shared/schema.js';
 import { z } from 'zod';
-
-// JWT Token Authentication middleware
-const authenticateJWT = (req: any, res: any, next: any) => {
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({
-      success: false,
-      message: 'Erişim token bulunamadı. Lütfen giriş yapın.'
-    });
-  }
-  
-  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-  
-  // For now, accept any valid looking token format
-  // In production, you would verify the JWT token here
-  if (token && token.length > 10) {
-    req.user = { id: 1 }; // Mock user for now
-    next();
-  } else {
-    return res.status(401).json({
-      success: false,
-      message: 'Geçersiz token formatı.'
-    });
-  }
-};
+import { authenticateJWT, type AuthRequest } from './hierarchical-auth.js';
 
 const router = Router();
 
@@ -107,7 +82,7 @@ router.get('/getPersonnelPositions', authenticateJWT, async (req, res) => {
     }
 
     if (whereConditions.length > 0) {
-      query = query.where(and(...whereConditions));
+      query = query.where(and(...whereConditions)) as any;
     }
 
     // Execute query with ordering and pagination
