@@ -42,12 +42,20 @@ export async function setupVite(app: Express, server: Server) {
 
   app.use(vite.middlewares);
   app.use("*", async (req, res, next) => {
-    // Skip API routes - they're already handled by registerRoutes
-    if (req.originalUrl.startsWith('/api/')) {
-      return next();
-    }
-    
     const url = req.originalUrl;
+    
+    // CRITICAL: Skip ALL API routes - they're handled by registerRoutes
+    // This must check BEFORE any HTML is served
+    if (url.startsWith('/api/')) {
+      console.log(`🚫 Vite catch-all: Skipping API route ${url}`);
+      // Don't call next() - this means no route handled it
+      // The API protection middleware will handle it with proper 404
+      return res.status(404).json({
+        success: false,
+        error: "API_NOT_FOUND",
+        message: `API endpoint ${url} not found in Vite middleware`
+      });
+    }
 
     try {
       const clientTemplate = path.resolve(

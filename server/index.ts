@@ -95,28 +95,21 @@ app.use(morgan('combined', { stream: accessLogStream })); // Dosyaya loglama
   // Setup static serving AFTER API routes are registered
   // This ensures API routes have priority over static file serving
   
-  // CRITICAL FIX: Always use production mode to prevent Vite catch-all
-  // Vite's catch-all route breaks API endpoints by returning HTML instead of JSON
-  console.log(`🔧 Environment Check:
-    - NODE_ENV: ${process.env.NODE_ENV || 'not set'}
-    - app.get("env"): ${app.get("env")}
-    - VITE STATUS: DISABLED (prevents API route conflicts)
-  `);
-  
-  // Always use static serving - never Vite (API protection)
-  console.log("✅ Using production static serving (API routes work properly)...");
-  serveStatic(app);
+  // Setup Vite in development, static serving in production
+  if (app.get("env") === "development") {
+    console.log("🔧 Development mode: Setting up Vite with HMR...");
+    await setupVite(app, server);
+  } else {
+    console.log("🔧 Production mode: Serving static files...");
+    serveStatic(app);
+  }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
+  server.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
   });
 })();

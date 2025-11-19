@@ -11,6 +11,9 @@ import { authenticateJWT, type AuthRequest } from './hierarchical-auth.js';
 
 const router = Router();
 
+// Debug log - Route yüklendiğinde göster
+console.log('📍 Position Routes module loaded');
+
 /**
  * @swagger
  * /api/secure/getPersonnelPositions:
@@ -144,7 +147,7 @@ router.get('/getPersonnelPositions', authenticateJWT, async (req, res) => {
  *                 default: true
  *                 description: Aktif mi?
  */
-router.post('/addPersonnelPosition', authenticateJWT, async (req, res) => {
+router.post('/addPersonnelPosition', authenticateJWT, async (req: AuthRequest, res) => {
   try {
     // Request body validasyonu
     const validationResult = insertPersonnelPositionSchema.safeParse(req.body);

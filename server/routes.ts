@@ -46,6 +46,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Document Management Routes - Before auth middleware
   app.use('/api/documents', documentRoutes);
 
+  // Position Management Route'larını kaydet - EN ÜSTTE (HTML dönme sorununu önlemek için)
+  console.log('📍 Registering Position Routes at /api/secure');
+  app.use('/api/secure', positionRoutes);
+  console.log('✅ Position Routes registered');
+
   // API Analytics middleware - Geçici olarak devre dışı
 
   // API route'larını kaydet
@@ -979,9 +984,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Work Area Management Route'larını kaydet
   app.use('/api/secure', workAreaRoutes);
-  
-  // Position Management Route'larını kaydet
-  app.use('/api/secure', positionRoutes);
 
   // Project Management Route'larını kaydet
   app.use('/api/secure', await import('./projects-routes.js').then(m => m.default));
