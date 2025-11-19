@@ -1424,6 +1424,10 @@ export const updateOwnershipTypeSchema = insertOwnershipTypeSchema.partial();
 // Personnel Positions Schemas  
 export const insertPersonnelPositionSchema = createInsertSchema(personnelPositions).omit({
   id: true,
+}).extend({
+  name: z.string().min(1, "Pozisyon adı gereklidir").max(50, "Pozisyon adı maksimum 50 karakter olabilir"),
+  description: z.string().max(255, "Açıklama maksimum 255 karakter olabilir").optional(),
+  isActive: z.boolean().optional(),
 });
 
 export const updatePersonnelPositionSchema = insertPersonnelPositionSchema.partial();
