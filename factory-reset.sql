@@ -187,61 +187,47 @@ SET email = EXCLUDED.email,
     position_level = EXCLUDED.position_level;
 
 -- =====================================================
--- SEQUENCE'LERİ RESET ET
+-- SEQUENCE'LERİ RESET ET (Güvenli Versiyon)
 -- =====================================================
+-- Sadece var olan sequence'leri resetler, yoksa atlar
 
-ALTER SEQUENCE companies_id_seq RESTART WITH 2;
-ALTER SEQUENCE users_id_seq RESTART WITH 2;
-ALTER SEQUENCE personnel_id_seq RESTART WITH 1;
-ALTER SEQUENCE assets_id_seq RESTART WITH 1;
-ALTER SEQUENCE work_areas_id_seq RESTART WITH 1;
-ALTER SEQUENCE projects_id_seq RESTART WITH 1;
-ALTER SEQUENCE personnel_positions_id_seq RESTART WITH 1;
-ALTER SEQUENCE roles_id_seq RESTART WITH 1;
-ALTER SEQUENCE permissions_id_seq RESTART WITH 1;
-ALTER SEQUENCE api_clients_id_seq RESTART WITH 1;
-ALTER SEQUENCE api_keys_id_seq RESTART WITH 1;
-ALTER SEQUENCE api_tokens_id_seq RESTART WITH 1;
-ALTER SEQUENCE api_endpoints_id_seq RESTART WITH 1;
-ALTER SEQUENCE api_request_logs_id_seq RESTART WITH 1;
-ALTER SEQUENCE api_rate_limit_id_seq RESTART WITH 1;
-ALTER SEQUENCE api_usage_logs_id_seq RESTART WITH 1;
-ALTER SEQUENCE api_usage_stats_id_seq RESTART WITH 1;
-ALTER SEQUENCE audit_logs_id_seq RESTART WITH 1;
-ALTER SEQUENCE access_levels_id_seq RESTART WITH 1;
-ALTER SEQUENCE user_access_rights_id_seq RESTART WITH 1;
-ALTER SEQUENCE refresh_tokens_id_seq RESTART WITH 1;
-ALTER SEQUENCE login_attempts_id_seq RESTART WITH 1;
-ALTER SEQUENCE user_security_settings_id_seq RESTART WITH 1;
-ALTER SEQUENCE user_devices_id_seq RESTART WITH 1;
-ALTER SEQUENCE security_events_id_seq RESTART WITH 1;
-ALTER SEQUENCE rate_limit_buckets_id_seq RESTART WITH 1;
-ALTER SEQUENCE password_history_id_seq RESTART WITH 1;
-ALTER SEQUENCE payment_methods_id_seq RESTART WITH 1;
-ALTER SEQUENCE stuff_id_seq RESTART WITH 1;
-ALTER SEQUENCE personnel_stuff_matcher_id_seq RESTART WITH 1;
-ALTER SEQUENCE access_types_id_seq RESTART WITH 1;
-ALTER SEQUENCE personnel_access_id_seq RESTART WITH 1;
-ALTER SEQUENCE personnel_work_areas_id_seq RESTART WITH 1;
-ALTER SEQUENCE personnel_company_matches_id_seq RESTART WITH 1;
-ALTER SEQUENCE company_type_matches_id_seq RESTART WITH 1;
-ALTER SEQUENCE asset_documents_id_seq RESTART WITH 1;
-ALTER SEQUENCE personnel_documents_id_seq RESTART WITH 1;
-ALTER SEQUENCE documents_id_seq RESTART WITH 1;
-ALTER SEQUENCE assets_policies_id_seq RESTART WITH 1;
-ALTER SEQUENCE assets_damage_data_id_seq RESTART WITH 1;
-ALTER SEQUENCE assets_maintenance_id_seq RESTART WITH 1;
-ALTER SEQUENCE fuel_records_id_seq RESTART WITH 1;
-ALTER SEQUENCE rental_agreements_id_seq RESTART WITH 1;
-ALTER SEQUENCE rental_assets_id_seq RESTART WITH 1;
-ALTER SEQUENCE trip_rentals_id_seq RESTART WITH 1;
-ALTER SEQUENCE penalties_id_seq RESTART WITH 1;
-ALTER SEQUENCE fin_current_accounts_id_seq RESTART WITH 1;
-ALTER SEQUENCE fin_accounts_details_id_seq RESTART WITH 1;
-ALTER SEQUENCE fo_outage_process_id_seq RESTART WITH 1;
-ALTER SEQUENCE fo_outage_process_personnels_id_seq RESTART WITH 1;
-ALTER SEQUENCE fo_outage_process_assets_id_seq RESTART WITH 1;
-ALTER SEQUENCE assets_personel_assignment_id_seq RESTART WITH 1;
+DO $$
+DECLARE
+    seq_record RECORD;
+BEGIN
+    -- Tüm sequence'leri bul ve resetle
+    FOR seq_record IN 
+        SELECT sequencename 
+        FROM pg_sequences 
+        WHERE schemaname = 'public'
+        AND sequencename LIKE '%_id_seq'
+        AND sequencename NOT IN (
+            -- Korunacak referans tablolarının sequence'leri
+            'car_brands_id_seq',
+            'car_models_id_seq', 
+            'car_types_id_seq',
+            'cities_id_seq',
+            'company_types_id_seq',
+            'countries_id_seq',
+            'damage_types_id_seq',
+            'doc_main_types_id_seq',
+            'doc_sub_types_id_seq',
+            'maintenance_types_id_seq',
+            'ownership_types_id_seq',
+            'payment_types_id_seq',
+            'penalty_types_id_seq',
+            'policy_types_id_seq'
+        )
+    LOOP
+        -- companies ve users için 2'den başlat, diğerleri 1'den
+        IF seq_record.sequencename IN ('companies_id_seq', 'users_id_seq') THEN
+            EXECUTE format('ALTER SEQUENCE %I RESTART WITH 2', seq_record.sequencename);
+        ELSE
+            EXECUTE format('ALTER SEQUENCE %I RESTART WITH 1', seq_record.sequencename);
+        END IF;
+        RAISE NOTICE 'Reset: %', seq_record.sequencename;
+    END LOOP;
+END $$;
 
 -- Foreign Key constraint'lerini tekrar aktif et
 SET session_replication_role = 'origin';
