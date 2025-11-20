@@ -8,7 +8,6 @@ import {
   foOutageProcessAssets,
   companies,
   personnel,
-  projects,
   projectPyps,
   assets,
   users,
@@ -106,7 +105,6 @@ router.get('/outage-processes', async (req: AuthRequest, res) => {
         supervisorId: foOutageProcess.supervisorId,
         processorSupervisor: foOutageProcess.processorSupervisor,
         workerChefId: foOutageProcess.workerChefId,
-        projectId: foOutageProcess.projectId,
         pypId: foOutageProcess.pypId,
         pypCode: projectPyps.code,
         pypName: projectPyps.name,
@@ -119,8 +117,6 @@ router.get('/outage-processes', async (req: AuthRequest, res) => {
         processorFirmName: sql`processor_firm.name`.as('processorFirmName'),
         supervisorName: sql`CONCAT(supervisor.name, ' ', supervisor.surname)`.as('supervisorName'),
         workerChefName: sql`CONCAT(worker_chef.name, ' ', worker_chef.surname)`.as('workerChefName'),
-        projectCode: projects.code,
-        projectName: projects.code,
         createdByEmail: sql`creator.email`.as('createdByEmail'),
         updatedByEmail: sql`updater.email`.as('updatedByEmail')
       })
@@ -129,7 +125,6 @@ router.get('/outage-processes', async (req: AuthRequest, res) => {
       .leftJoin(sql`companies processor_firm`, eq(foOutageProcess.processorFirmId, sql`processor_firm.id`))
       .leftJoin(sql`personnel supervisor`, eq(foOutageProcess.supervisorId, sql`supervisor.id`))
       .leftJoin(sql`personnel worker_chef`, eq(foOutageProcess.workerChefId, sql`worker_chef.id`))
-      .leftJoin(projects, eq(foOutageProcess.projectId, projects.id))
       .leftJoin(projectPyps, eq(foOutageProcess.pypId, projectPyps.id))
       .leftJoin(sql`users creator`, eq(foOutageProcess.createdBy, sql`creator.id`))
       .leftJoin(sql`users updater`, eq(foOutageProcess.updatedBy, sql`updater.id`));
@@ -243,7 +238,6 @@ router.get('/outage-processes/:id', async (req: AuthRequest, res) => {
         supervisorId: foOutageProcess.supervisorId,
         processorSupervisor: foOutageProcess.processorSupervisor,
         workerChefId: foOutageProcess.workerChefId,
-        projectId: foOutageProcess.projectId,
         pypId: foOutageProcess.pypId,
         pypCode: projectPyps.code,
         pypName: projectPyps.name,
@@ -258,7 +252,6 @@ router.get('/outage-processes/:id', async (req: AuthRequest, res) => {
         processorFirmName: sql`processor_firm.name`.as('processorFirmName'),
         supervisorName: sql`CONCAT(supervisor.name, ' ', supervisor.surname)`.as('supervisorName'),
         workerChefName: sql`CONCAT(worker_chef.name, ' ', worker_chef.surname)`.as('workerChefName'),
-        projectCode: projects.code,
         createdByEmail: sql`creator.email`.as('createdByEmail'),
         updatedByEmail: sql`updater.email`.as('updatedByEmail')
       })
@@ -267,7 +260,6 @@ router.get('/outage-processes/:id', async (req: AuthRequest, res) => {
       .leftJoin(sql`companies processor_firm`, eq(foOutageProcess.processorFirmId, sql`processor_firm.id`))
       .leftJoin(sql`personnel supervisor`, eq(foOutageProcess.supervisorId, sql`supervisor.id`))
       .leftJoin(sql`personnel worker_chef`, eq(foOutageProcess.workerChefId, sql`worker_chef.id`))
-      .leftJoin(projects, eq(foOutageProcess.projectId, projects.id))
       .leftJoin(projectPyps, eq(foOutageProcess.pypId, projectPyps.id))
       .leftJoin(sql`users creator`, eq(foOutageProcess.createdBy, sql`creator.id`))
       .leftJoin(sql`users updater`, eq(foOutageProcess.updatedBy, sql`updater.id`))

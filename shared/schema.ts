@@ -1901,9 +1901,9 @@ export const foOutageProcessRelations = relations(foOutageProcess, ({ one, many 
     references: [personnel.id],
     relationName: "outageWorkerChef",
   }),
-  project: one(projects, {
-    fields: [foOutageProcess.projectId],
-    references: [projects.id],
+  pyp: one(projectPyps, {
+    fields: [foOutageProcess.pypId],
+    references: [projectPyps.id],
   }),
   createdByUser: one(users, {
     fields: [foOutageProcess.createdBy],
