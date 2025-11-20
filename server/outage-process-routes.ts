@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from './db.js';
 import { eq, and, ilike, desc, or, inArray, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 import { 
   foOutageProcess,
@@ -20,6 +21,14 @@ import {
   authenticateJWT, 
   type AuthRequest 
 } from './hierarchical-auth.js';
+
+// Create aliases for tables that are joined multiple times
+const firm = alias(companies, 'firm');
+const processorFirm = alias(companies, 'processor_firm');
+const supervisor = alias(personnel, 'supervisor');
+const workerChef = alias(personnel, 'worker_chef');
+const creator = alias(users, 'creator');
+const updater = alias(users, 'updater');
 
 const router = Router();
 
@@ -113,21 +122,21 @@ router.get('/outage-processes', async (req: AuthRequest, res) => {
         createdAt: foOutageProcess.createdAt,
         updatedAt: foOutageProcess.updatedAt,
         // Join data
-        firmName: sql`firm.name`.as('firmName'),
-        processorFirmName: sql`processor_firm.name`.as('processorFirmName'),
-        supervisorName: sql`CONCAT(supervisor.name, ' ', supervisor.surname)`.as('supervisorName'),
-        workerChefName: sql`CONCAT(worker_chef.name, ' ', worker_chef.surname)`.as('workerChefName'),
-        createdByEmail: sql`creator.email`.as('createdByEmail'),
-        updatedByEmail: sql`updater.email`.as('updatedByEmail')
+        firmName: firm.name,
+        processorFirmName: processorFirm.name,
+        supervisorName: sql<string>`CONCAT(${supervisor.name}, ' ', ${supervisor.surname})`,
+        workerChefName: sql<string>`CONCAT(${workerChef.name}, ' ', ${workerChef.surname})`,
+        createdByEmail: creator.email,
+        updatedByEmail: updater.email
       })
       .from(foOutageProcess)
-      .leftJoin(sql`companies firm`, eq(foOutageProcess.firmId, sql`firm.id`))
-      .leftJoin(sql`companies processor_firm`, eq(foOutageProcess.processorFirmId, sql`processor_firm.id`))
-      .leftJoin(sql`personnel supervisor`, eq(foOutageProcess.supervisorId, sql`supervisor.id`))
-      .leftJoin(sql`personnel worker_chef`, eq(foOutageProcess.workerChefId, sql`worker_chef.id`))
+      .leftJoin(firm, eq(foOutageProcess.firmId, firm.id))
+      .leftJoin(processorFirm, eq(foOutageProcess.processorFirmId, processorFirm.id))
+      .leftJoin(supervisor, eq(foOutageProcess.supervisorId, supervisor.id))
+      .leftJoin(workerChef, eq(foOutageProcess.workerChefId, workerChef.id))
       .leftJoin(projectPyps, eq(foOutageProcess.pypId, projectPyps.id))
-      .leftJoin(sql`users creator`, eq(foOutageProcess.createdBy, sql`creator.id`))
-      .leftJoin(sql`users updater`, eq(foOutageProcess.updatedBy, sql`updater.id`));
+      .leftJoin(creator, eq(foOutageProcess.createdBy, creator.id))
+      .leftJoin(updater, eq(foOutageProcess.updatedBy, updater.id));
 
     // Filters
     const whereConditions = [];
@@ -248,21 +257,21 @@ router.get('/outage-processes/:id', async (req: AuthRequest, res) => {
         createdBy: foOutageProcess.createdBy,
         updatedBy: foOutageProcess.updatedBy,
         // Join data
-        firmName: sql`firm.name`.as('firmName'),
-        processorFirmName: sql`processor_firm.name`.as('processorFirmName'),
-        supervisorName: sql`CONCAT(supervisor.name, ' ', supervisor.surname)`.as('supervisorName'),
-        workerChefName: sql`CONCAT(worker_chef.name, ' ', worker_chef.surname)`.as('workerChefName'),
-        createdByEmail: sql`creator.email`.as('createdByEmail'),
-        updatedByEmail: sql`updater.email`.as('updatedByEmail')
+        firmName: firm.name,
+        processorFirmName: processorFirm.name,
+        supervisorName: sql<string>`CONCAT(${supervisor.name}, ' ', ${supervisor.surname})`,
+        workerChefName: sql<string>`CONCAT(${workerChef.name}, ' ', ${workerChef.surname})`,
+        createdByEmail: creator.email,
+        updatedByEmail: updater.email
       })
       .from(foOutageProcess)
-      .leftJoin(sql`companies firm`, eq(foOutageProcess.firmId, sql`firm.id`))
-      .leftJoin(sql`companies processor_firm`, eq(foOutageProcess.processorFirmId, sql`processor_firm.id`))
-      .leftJoin(sql`personnel supervisor`, eq(foOutageProcess.supervisorId, sql`supervisor.id`))
-      .leftJoin(sql`personnel worker_chef`, eq(foOutageProcess.workerChefId, sql`worker_chef.id`))
+      .leftJoin(firm, eq(foOutageProcess.firmId, firm.id))
+      .leftJoin(processorFirm, eq(foOutageProcess.processorFirmId, processorFirm.id))
+      .leftJoin(supervisor, eq(foOutageProcess.supervisorId, supervisor.id))
+      .leftJoin(workerChef, eq(foOutageProcess.workerChefId, workerChef.id))
       .leftJoin(projectPyps, eq(foOutageProcess.pypId, projectPyps.id))
-      .leftJoin(sql`users creator`, eq(foOutageProcess.createdBy, sql`creator.id`))
-      .leftJoin(sql`users updater`, eq(foOutageProcess.updatedBy, sql`updater.id`))
+      .leftJoin(creator, eq(foOutageProcess.createdBy, creator.id))
+      .leftJoin(updater, eq(foOutageProcess.updatedBy, updater.id))
       .where(eq(foOutageProcess.id, processId));
 
     if (!processDetail) {
@@ -498,12 +507,12 @@ router.post('/outage-processes', authenticateJWT, async (req: AuthRequest, res) 
         endDate: foOutageProcess.endDate,
         status: foOutageProcess.status,
         createdAt: foOutageProcess.createdAt,
-        firmName: sql`firm.name`.as('firmName'),
-        processorFirmName: sql`processor_firm.name`.as('processorFirmName'),
+        firmName: firm.name,
+        processorFirmName: processorFirm.name,
       })
       .from(foOutageProcess)
-      .leftJoin(sql`companies firm`, eq(foOutageProcess.firmId, sql`firm.id`))
-      .leftJoin(sql`companies processor_firm`, eq(foOutageProcess.processorFirmId, sql`processor_firm.id`))
+      .leftJoin(firm, eq(foOutageProcess.firmId, firm.id))
+      .leftJoin(processorFirm, eq(foOutageProcess.processorFirmId, processorFirm.id))
       .where(eq(foOutageProcess.id, newProcess.id));
       
     res.status(201).json({
