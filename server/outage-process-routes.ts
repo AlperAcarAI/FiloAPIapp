@@ -86,7 +86,7 @@ router.use(authenticateJWT);
  */
 router.get('/outage-processes', async (req: AuthRequest, res) => {
   try {
-    const { search, status, firmId, processorFirmId, projectId, active, limit = '50', offset = '0' } = req.query;
+    const { search, status, firmId, processorFirmId, pypId, active, limit = '50', offset = '0' } = req.query;
     
     // Base query with joins
     let query = db
@@ -159,8 +159,8 @@ router.get('/outage-processes', async (req: AuthRequest, res) => {
       whereConditions.push(eq(foOutageProcess.processorFirmId, parseInt(processorFirmId as string)));
     }
     
-    if (projectId) {
-      whereConditions.push(eq(foOutageProcess.projectId, parseInt(projectId as string)));
+    if (pypId) {
+      whereConditions.push(eq(foOutageProcess.pypId, parseInt(pypId as string)));
     }
     
     if (active === 'true') {
@@ -449,24 +449,9 @@ router.post('/outage-processes', authenticateJWT, async (req: AuthRequest, res) 
       });
     }
 
-    if (validatedData.projectId) {
-      const projectExists = await db
-        .select({ id: projects.id })
-        .from(projects)
-        .where(eq(projects.id, validatedData.projectId));
-
-      if (projectExists.length === 0) {
-        return res.status(400).json({
-          success: false,
-          error: 'INVALID_PROJECT_ID',
-          message: `Belirtilen proje ID'si (${validatedData.projectId}) bulunamadı.`
-        });
-      }
-    }
-
     if (validatedData.pypId) {
       const pypExists = await db
-        .select({ id: projectPyps.id, projectId: projectPyps.projectId })
+        .select({ id: projectPyps.id })
         .from(projectPyps)
         .where(eq(projectPyps.id, validatedData.pypId));
 
@@ -476,26 +461,6 @@ router.post('/outage-processes', authenticateJWT, async (req: AuthRequest, res) 
           error: 'INVALID_PYP_ID',
           message: `Belirtilen PYP ID'si (${validatedData.pypId}) bulunamadı.`
         });
-      }
-
-      if (validatedData.projectId) {
-        const pypMatchesProject = await db
-          .select({ id: projectPyps.id })
-          .from(projectPyps)
-          .where(
-            and(
-              eq(projectPyps.id, validatedData.pypId),
-              eq(projectPyps.projectId, validatedData.projectId)
-            )
-          );
-
-        if (pypMatchesProject.length === 0) {
-          return res.status(400).json({
-            success: false,
-            error: 'PYP_PROJECT_MISMATCH',
-            message: 'Seçilen PYP belirtilen proje ile ilişkili değil.'
-          });
-        }
       }
     }
     
@@ -628,24 +593,9 @@ router.put('/outage-processes/:id', authenticateJWT, async (req: AuthRequest, re
     // Update process
     const updatePayload = {...req.body };
 
-    if (updatePayload.projectId) {
-      const projectExists = await db
-        .select({ id: projects.id })
-        .from(projects)
-        .where(eq(projects.id, updatePayload.projectId));
-
-      if (projectExists.length === 0) {
-        return res.status(400).json({
-          success: false,
-          error: 'INVALID_PROJECT_ID',
-          message: `Belirtilen proje ID'si (${updatePayload.projectId}) bulunamadı.`
-        });
-      }
-    }
-
     if (updatePayload.pypId) {
       const pypExists = await db
-        .select({ id: projectPyps.id, projectId: projectPyps.projectId })
+        .select({ id: projectPyps.id })
         .from(projectPyps)
         .where(eq(projectPyps.id, updatePayload.pypId));
 
@@ -655,25 +605,6 @@ router.put('/outage-processes/:id', authenticateJWT, async (req: AuthRequest, re
           error: 'INVALID_PYP_ID',
           message: `Belirtilen PYP ID'si (${updatePayload.pypId}) bulunamadı.`
         });
-      }
-
-      if (updatePayload.projectId) {
-        if (pypExists[0].projectId !== updatePayload.projectId) {
-          return res.status(400).json({
-            success: false,
-            error: 'PYP_PROJECT_MISMATCH',
-            message: 'Seçilen PYP belirtilen proje ile ilişkili değil.'
-          });
-        }
-      } else {
-        const existingProject = existingProcess[0]?.projectId;
-        if (existingProject && pypExists[0].projectId !== existingProject) {
-          return res.status(400).json({
-            success: false,
-            error: 'PYP_PROJECT_MISMATCH',
-            message: 'Seçilen PYP mevcut kayıt projesi ile ilişkili değil.'
-          });
-        }
       }
     }
 
