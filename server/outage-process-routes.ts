@@ -288,7 +288,7 @@ router.get('/outage-processes/:id', async (req: AuthRequest, res) => {
         id: personnel.id,
         name: personnel.name,
         surname: personnel.surname,
-        tcNo: personnel.tcNo,
+        tcNo: sql<string>`CAST(${personnel.tcNo} AS TEXT)`,
       })
       .from(foOutageProcessPersonnels)
       .innerJoin(personnel, eq(foOutageProcessPersonnels.personnelId, personnel.id))
