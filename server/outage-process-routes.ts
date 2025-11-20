@@ -316,10 +316,13 @@ router.get('/outage-processes/:id', async (req: AuthRequest, res) => {
     });
   } catch (error) {
     console.error('Kesinti işlemi detayı getirme hatası:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('Error message:', error instanceof Error ? error.message : String(error));
     res.status(500).json({
       success: false,
       error: 'OUTAGE_PROCESS_DETAIL_ERROR',
-      message: 'Kesinti işlemi detayı getirilirken hata oluştu.'
+      message: 'Kesinti işlemi detayı getirilirken hata oluştu.',
+      debug: error instanceof Error ? error.message : String(error)
     });
   }
 });
