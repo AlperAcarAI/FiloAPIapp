@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "./db";
-import { documents, docSubTypes, docMainTypes, users, personnel, companies, workAreas, assets } from "@shared/schema";
+import { documents, docSubTypes, docMainTypes, users, personnel, companies, workAreas, assets, foOutageProcess } from "@shared/schema";
 import { insertDocumentSchema, updateDocumentSchema, insertDocMainTypeSchema, updateDocMainTypeSchema, insertDocSubTypeSchema, updateDocSubTypeSchema } from "@shared/schema";
 import { eq, and, or, like, desc, asc, sql } from "drizzle-orm";
 import { authenticateToken } from "./auth";
@@ -588,6 +588,11 @@ documentRoutes.post("/", authenticateJWT, async (req: any, res) => {
           .from(assets).where(eq(assets.id, validatedData.entityId));
         entityExists = !!asset;
         break;
+      case 'operation':
+        const [operation] = await db.select({ id: foOutageProcess.id })
+          .from(foOutageProcess).where(eq(foOutageProcess.id, validatedData.entityId));
+        entityExists = !!operation;
+        break;
     }
     
     if (!entityExists) {
@@ -713,6 +718,11 @@ documentRoutes.post("/upload", authenticateJWT, documentUpload.single('file'), a
           .from(assets).where(eq(assets.id, parsedEntityId));
         entityExists = !!asset;
         break;
+      case 'operation':
+        const [operation] = await db.select({ id: foOutageProcess.id })
+          .from(foOutageProcess).where(eq(foOutageProcess.id, parsedEntityId));
+        entityExists = !!operation;
+        break;
       default:
         // Cleanup
         if (fs.existsSync(req.file.path)) {
@@ -720,7 +730,7 @@ documentRoutes.post("/upload", authenticateJWT, documentUpload.single('file'), a
         }
         return res.status(400).json({ 
           success: false, 
-          error: "Geçersiz entityType. personnel, asset, company veya work_area olmalı" 
+          error: "Geçersiz entityType. personnel, asset, company, work_area veya operation olmalı" 
         });
     }
 

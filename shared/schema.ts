@@ -841,7 +841,7 @@ export const tripRentals = pgTable("trip_rentals", {
 // Unified Documents Table - Polimorfik yapı
 export const documents = pgTable("documents", {
   id: serial("id").primaryKey(),
-  entityType: varchar("entity_type", { length: 20 }).notNull(), // 'personnel', 'asset', 'company', 'work_area'
+  entityType: varchar("entity_type", { length: 20 }).notNull(), // 'personnel', 'asset', 'company', 'work_area', 'operation'
   entityId: integer("entity_id").notNull(),
   docTypeId: integer("doc_type_id").notNull().references(() => docSubTypes.id),
   title: varchar("title", { length: 255 }).notNull(),
@@ -862,7 +862,7 @@ export const documents = pgTable("documents", {
   entityIdx: index("idx_documents_entity").on(table.entityType, table.entityId),
   fileHashIdx: index("idx_documents_file_hash").on(table.fileHash),
   uploadDateIdx: index("idx_documents_upload_date").on(table.uploadDate),
-  entityTypeCheck: check("entity_type_check", sql`entity_type IN ('personnel', 'asset', 'company', 'work_area')`),
+  entityTypeCheck: check("entity_type_check", sql`entity_type IN ('personnel', 'asset', 'company', 'work_area', 'operation')`),
 }));
 
 export const assetsPolicies = pgTable("assets_policies", {
@@ -1452,7 +1452,7 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({
   createdAt: true,
   updatedAt: true,
 }).extend({
-  entityType: z.enum(['personnel', 'asset', 'company', 'work_area']),
+  entityType: z.enum(['personnel', 'asset', 'company', 'work_area', 'operation']),
   title: z.string().min(1).max(255),
   fileName: z.string().min(1).max(255),
   filePath: z.string().min(1),
