@@ -514,7 +514,7 @@ documentRoutes.get("/", authenticateJWT, async (req: any, res) => {
   }
 });
 
-// Belirli bir dökümanı getir
+// Belirli bir dökümanı getir - MUST be after specific routes
 documentRoutes.get("/:id", authenticateJWT, async (req: any, res) => {
   try {
     const { id } = req.params;
@@ -965,8 +965,6 @@ documentRoutes.get("/types", authenticateJWT, async (req: any, res) => {
     });
   }
 });
-
-
 
 // Belirli ana tipe göre alt tipleri listele - NO AUTH
 documentRoutes.get("/types/:mainTypeId", async (req: any, res) => {
