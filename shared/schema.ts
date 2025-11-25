@@ -1974,3 +1974,634 @@ export type InsertFoOutageProcessPersonnel = z.infer<typeof insertFoOutageProces
 
 export type FoOutageProcessAsset = typeof foOutageProcessAssets.$inferSelect;
 export type InsertFoOutageProcessAsset = z.infer<typeof insertFoOutageProcessAssetSchema>;
+
+// ========================
+// PROGRESS PAYMENT (HAKEDİŞ) SYSTEM TABLES
+// ========================
+
+// 1. Units (Birimler - Ölçü Birimleri)
+export const units = pgTable("units", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+  symbol: varchar("symbol", { length: 10 }),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  nameIdx: index("idx_units_name").on(table.name),
+  isActiveIdx: index("idx_units_is_active").on(table.isActive),
+}));
+
+// 2. Unit Conversions (Birim Çevirim)
+export const unitConversions = pgTable("unit_conversions", {
+  id: serial("id").primaryKey(),
+  fromUnitId: integer("from_unit_id").notNull().references(() => units.id),
+  toUnitId: integer("to_unit_id").notNull().references(() => units.id),
+  conversionFactor: decimal("conversion_factor", { precision: 10, scale: 4 }).notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  uniqueUnitConversion: unique("unique_unit_conversion").on(table.fromUnitId, table.toUnitId),
+  fromIdx: index("idx_unit_conversions_from").on(table.fromUnitId),
+  toIdx: index("idx_unit_conversions_to").on(table.toUnitId),
+  checkDifferentUnits: check("check_different_units", sql`from_unit_id != to_unit_id`),
+  checkPositiveFactor: check("check_positive_factor", sql`conversion_factor > 0`),
+}));
+
+// 3. Material Types (Malzeme Türleri - Hiyerarşik)
+export const materialTypes: any = pgTable("material_types", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  parentTypeId: integer("parent_type_id").references((): any => materialTypes.id),
+  hierarchyLevel: integer("hierarchy_level").notNull().default(0),
+  fullPath: varchar("full_path", { length: 500 }),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  parentIdx: index("idx_material_types_parent").on(table.parentTypeId),
+  levelIdx: index("idx_material_types_level").on(table.hierarchyLevel),
+  nameIdx: index("idx_material_types_name").on(table.name),
+  activeIdx: index("idx_material_types_active").on(table.isActive),
+}));
+
+// 4. Materials (Malzemeler)
+export const materials = pgTable("materials", {
+  id: serial("id").primaryKey(),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  typeId: integer("type_id").references(() => materialTypes.id),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  codeIdx: index("idx_materials_code").on(table.code),
+  typeIdx: index("idx_materials_type").on(table.typeId),
+  nameIdx: index("idx_materials_name").on(table.name),
+  activeIdx: index("idx_materials_active").on(table.isActive),
+}));
+
+// 5. Material Code Mappings (Malzeme Kod Eşleştirme - Firma Bazlı)
+export const materialCodeMappings = pgTable("material_code_mappings", {
+  id: serial("id").primaryKey(),
+  materialId: integer("material_id").notNull().references(() => materials.id),
+  companyId: integer("company_id").notNull().references(() => companies.id),
+  companyMaterialCode: varchar("company_material_code", { length: 100 }).notNull(),
+  companyMaterialName: varchar("company_material_name", { length: 255 }),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  uniqueMaterialCompanyMapping: unique("unique_material_company_mapping").on(table.materialId, table.companyId),
+  materialIdx: index("idx_material_mappings_material").on(table.materialId),
+  companyIdx: index("idx_material_mappings_company").on(table.companyId),
+  codeIdx: index("idx_material_mappings_code").on(table.companyMaterialCode),
+}));
+
+// 6. Teams (Ekipler)
+export const teams = pgTable("teams", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  companyId: integer("company_id").notNull().references(() => companies.id),
+  supervisorId: integer("supervisor_id").references(() => personnel.id),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  companyIdx: index("idx_teams_company").on(table.companyId),
+  supervisorIdx: index("idx_teams_supervisor").on(table.supervisorId),
+  nameIdx: index("idx_teams_name").on(table.name),
+  activeIdx: index("idx_teams_active").on(table.isActive),
+}));
+
+// 7. Team Members (Ekip Üyeleri)
+export const teamMembers = pgTable("team_members", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  personnelId: integer("personnel_id").notNull().references(() => personnel.id),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  uniqueTeamMembersActive: unique("idx_team_members_active_unique").on(table.teamId, table.personnelId).where(sql`is_active = true`),
+  teamIdx: index("idx_team_members_team").on(table.teamId),
+  personnelIdx: index("idx_team_members_personnel").on(table.personnelId),
+  datesIdx: index("idx_team_members_dates").on(table.startDate, table.endDate),
+  checkMemberDates: check("check_member_dates", sql`end_date IS NULL OR end_date >= start_date`),
+}));
+
+// Note: Partial unique index (WHERE clause) removed as it's not fully supported in Drizzle
+// Instead, we'll enforce unique active members in application logic
+
+// 8. Unit Prices (Birim Fiyatlar - Tarihsel)
+export const unitPrices = pgTable("unit_prices", {
+  id: serial("id").primaryKey(),
+  materialId: integer("material_id").notNull().references(() => materials.id),
+  unitId: integer("unit_id").notNull().references(() => units.id),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  priceCents: integer("price_cents").notNull(),
+  validFrom: date("valid_from").notNull(),
+  validUntil: date("valid_until"),
+  currency: varchar("currency", { length: 3 }).notNull().default("TRY"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  materialIdx: index("idx_unit_prices_material").on(table.materialId),
+  unitIdx: index("idx_unit_prices_unit").on(table.unitId),
+  projectIdx: index("idx_unit_prices_project").on(table.projectId),
+  validityIdx: index("idx_unit_prices_validity").on(table.validFrom, table.validUntil),
+  activeIdx: index("idx_unit_prices_active").on(table.projectId, table.isActive),
+  checkPricePositive: check("check_price_positive", sql`price_cents >= 0`),
+  checkValidityDates: check("check_validity_dates", sql`valid_until IS NULL OR valid_until >= valid_from`),
+}));
+
+// 9. Progress Payment Types (Hakediş Türleri)
+export const progressPaymentTypes = pgTable("progress_payment_types", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  nameIdx: index("idx_payment_types_name").on(table.name),
+}));
+
+// 10. Progress Payments (Hakediş Ana Kayıtları)
+export const progressPayments = pgTable("progress_payments", {
+  id: serial("id").primaryKey(),
+  paymentNumber: varchar("payment_number", { length: 50 }).notNull().unique(),
+  paymentDate: date("payment_date").notNull(),
+  teamId: integer("team_id").notNull().references(() => teams.id),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  paymentTypeId: integer("payment_type_id").notNull().references(() => progressPaymentTypes.id),
+  totalAmountCents: integer("total_amount_cents").notNull().default(0),
+  status: varchar("status", { length: 20 }).notNull().default("draft"),
+  notes: text("notes"),
+  
+  // Onay süreci alanları (gelecek için hazır)
+  submittedAt: timestamp("submitted_at"),
+  submittedBy: integer("submitted_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  approvedBy: integer("approved_by").references(() => users.id),
+  rejectionReason: text("rejection_reason"),
+  paymentDateActual: date("payment_date_actual"),
+  
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  uniquePaymentNumber: unique("idx_progress_payments_number").on(table.paymentNumber),
+  teamDateIdx: index("idx_progress_payments_team_date").on(table.teamId, table.paymentDate),
+  projectDateIdx: index("idx_progress_payments_project_date").on(table.projectId, table.paymentDate),
+  statusIdx: index("idx_progress_payments_status").on(table.status),
+  dateIdx: index("idx_progress_payments_date").on(table.paymentDate),
+  activeIdx: index("idx_progress_payments_active").on(table.isActive),
+  checkTotalAmount: check("check_total_amount", sql`total_amount_cents >= 0`),
+  checkStatusValue: check("check_status_value", sql`status IN ('draft', 'submitted', 'approved', 'rejected', 'paid')`),
+}));
+
+// 11. Progress Payment Details (Hakediş Detayları)
+export const progressPaymentDetails = pgTable("progress_payment_details", {
+  id: serial("id").primaryKey(),
+  progressPaymentId: integer("progress_payment_id").notNull().references(() => progressPayments.id, { onDelete: "cascade" }),
+  materialId: integer("material_id").notNull().references(() => materials.id),
+  unitId: integer("unit_id").notNull().references(() => units.id),
+  quantity: decimal("quantity", { precision: 12, scale: 4 }).notNull(),
+  unitPriceCents: integer("unit_price_cents").notNull(),
+  lineTotalCents: integer("line_total_cents").notNull(),
+  notes: text("notes"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  paymentIdx: index("idx_payment_details_payment").on(table.progressPaymentId),
+  materialIdx: index("idx_payment_details_material").on(table.materialId),
+  unitIdx: index("idx_payment_details_unit").on(table.unitId),
+  uniquePaymentMaterial: unique("unique_payment_material").on(table.progressPaymentId, table.materialId),
+  checkQuantityPositive: check("check_quantity_positive", sql`quantity > 0`),
+  checkUnitPrice: check("check_unit_price", sql`unit_price_cents >= 0`),
+  checkLineTotal: check("check_line_total", sql`line_total_cents >= 0`),
+}));
+
+// ========================
+// PROGRESS PAYMENT RELATIONS
+// ========================
+
+export const unitsRelations = relations(units, ({ one, many }) => ({
+  createdByUser: one(users, {
+    fields: [units.createdBy],
+    references: [users.id],
+    relationName: "unitCreator",
+  }),
+  updatedByUser: one(users, {
+    fields: [units.updatedBy],
+    references: [users.id],
+    relationName: "unitUpdater",
+  }),
+  unitConversionsFrom: many(unitConversions, { relationName: "fromUnit" }),
+  unitConversionsTo: many(unitConversions, { relationName: "toUnit" }),
+  unitPrices: many(unitPrices),
+  progressPaymentDetails: many(progressPaymentDetails),
+}));
+
+export const unitConversionsRelations = relations(unitConversions, ({ one }) => ({
+  fromUnit: one(units, {
+    fields: [unitConversions.fromUnitId],
+    references: [units.id],
+    relationName: "fromUnit",
+  }),
+  toUnit: one(units, {
+    fields: [unitConversions.toUnitId],
+    references: [units.id],
+    relationName: "toUnit",
+  }),
+  createdByUser: one(users, {
+    fields: [unitConversions.createdBy],
+    references: [users.id],
+    relationName: "unitConversionCreator",
+  }),
+  updatedByUser: one(users, {
+    fields: [unitConversions.updatedBy],
+    references: [users.id],
+    relationName: "unitConversionUpdater",
+  }),
+}));
+
+export const materialTypesRelations = relations(materialTypes, ({ one, many }) => ({
+  parentType: one(materialTypes, {
+    fields: [materialTypes.parentTypeId],
+    references: [materialTypes.id],
+    relationName: "materialTypeHierarchy",
+  }),
+  childTypes: many(materialTypes, { relationName: "materialTypeHierarchy" }),
+  materials: many(materials),
+  createdByUser: one(users, {
+    fields: [materialTypes.createdBy],
+    references: [users.id],
+    relationName: "materialTypeCreator",
+  }),
+  updatedByUser: one(users, {
+    fields: [materialTypes.updatedBy],
+    references: [users.id],
+    relationName: "materialTypeUpdater",
+  }),
+}));
+
+export const materialsRelations = relations(materials, ({ one, many }) => ({
+  type: one(materialTypes, {
+    fields: [materials.typeId],
+    references: [materialTypes.id],
+  }),
+  materialCodeMappings: many(materialCodeMappings),
+  unitPrices: many(unitPrices),
+  progressPaymentDetails: many(progressPaymentDetails),
+  createdByUser: one(users, {
+    fields: [materials.createdBy],
+    references: [users.id],
+    relationName: "materialCreator",
+  }),
+  updatedByUser: one(users, {
+    fields: [materials.updatedBy],
+    references: [users.id],
+    relationName: "materialUpdater",
+  }),
+}));
+
+export const materialCodeMappingsRelations = relations(materialCodeMappings, ({ one }) => ({
+  material: one(materials, {
+    fields: [materialCodeMappings.materialId],
+    references: [materials.id],
+  }),
+  company: one(companies, {
+    fields: [materialCodeMappings.companyId],
+    references: [companies.id],
+  }),
+  createdByUser: one(users, {
+    fields: [materialCodeMappings.createdBy],
+    references: [users.id],
+    relationName: "materialCodeMappingCreator",
+  }),
+  updatedByUser: one(users, {
+    fields: [materialCodeMappings.updatedBy],
+    references: [users.id],
+    relationName: "materialCodeMappingUpdater",
+  }),
+}));
+
+export const teamsRelations = relations(teams, ({ one, many }) => ({
+  company: one(companies, {
+    fields: [teams.companyId],
+    references: [companies.id],
+  }),
+  supervisor: one(personnel, {
+    fields: [teams.supervisorId],
+    references: [personnel.id],
+  }),
+  teamMembers: many(teamMembers),
+  progressPayments: many(progressPayments),
+  createdByUser: one(users, {
+    fields: [teams.createdBy],
+    references: [users.id],
+    relationName: "teamCreator",
+  }),
+  updatedByUser: one(users, {
+    fields: [teams.updatedBy],
+    references: [users.id],
+    relationName: "teamUpdater",
+  }),
+}));
+
+export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
+  team: one(teams, {
+    fields: [teamMembers.teamId],
+    references: [teams.id],
+  }),
+  personnel: one(personnel, {
+    fields: [teamMembers.personnelId],
+    references: [personnel.id],
+  }),
+  createdByUser: one(users, {
+    fields: [teamMembers.createdBy],
+    references: [users.id],
+    relationName: "teamMemberCreator",
+  }),
+  updatedByUser: one(users, {
+    fields: [teamMembers.updatedBy],
+    references: [users.id],
+    relationName: "teamMemberUpdater",
+  }),
+}));
+
+export const unitPricesRelations = relations(unitPrices, ({ one }) => ({
+  material: one(materials, {
+    fields: [unitPrices.materialId],
+    references: [materials.id],
+  }),
+  unit: one(units, {
+    fields: [unitPrices.unitId],
+    references: [units.id],
+  }),
+  project: one(projects, {
+    fields: [unitPrices.projectId],
+    references: [projects.id],
+  }),
+  createdByUser: one(users, {
+    fields: [unitPrices.createdBy],
+    references: [users.id],
+    relationName: "unitPriceCreator",
+  }),
+  updatedByUser: one(users, {
+    fields: [unitPrices.updatedBy],
+    references: [users.id],
+    relationName: "unitPriceUpdater",
+  }),
+}));
+
+export const progressPaymentTypesRelations = relations(progressPaymentTypes, ({ one, many }) => ({
+  progressPayments: many(progressPayments),
+  createdByUser: one(users, {
+    fields: [progressPaymentTypes.createdBy],
+    references: [users.id],
+    relationName: "progressPaymentTypeCreator",
+  }),
+  updatedByUser: one(users, {
+    fields: [progressPaymentTypes.updatedBy],
+    references: [users.id],
+    relationName: "progressPaymentTypeUpdater",
+  }),
+}));
+
+export const progressPaymentsRelations = relations(progressPayments, ({ one, many }) => ({
+  team: one(teams, {
+    fields: [progressPayments.teamId],
+    references: [teams.id],
+  }),
+  project: one(projects, {
+    fields: [progressPayments.projectId],
+    references: [projects.id],
+  }),
+  paymentType: one(progressPaymentTypes, {
+    fields: [progressPayments.paymentTypeId],
+    references: [progressPaymentTypes.id],
+  }),
+  details: many(progressPaymentDetails),
+  createdByUser: one(users, {
+    fields: [progressPayments.createdBy],
+    references: [users.id],
+    relationName: "progressPaymentCreator",
+  }),
+  updatedByUser: one(users, {
+    fields: [progressPayments.updatedBy],
+    references: [users.id],
+    relationName: "progressPaymentUpdater",
+  }),
+  submittedByUser: one(users, {
+    fields: [progressPayments.submittedBy],
+    references: [users.id],
+    relationName: "progressPaymentSubmitter",
+  }),
+  approvedByUser: one(users, {
+    fields: [progressPayments.approvedBy],
+    references: [users.id],
+    relationName: "progressPaymentApprover",
+  }),
+}));
+
+export const progressPaymentDetailsRelations = relations(progressPaymentDetails, ({ one }) => ({
+  progressPayment: one(progressPayments, {
+    fields: [progressPaymentDetails.progressPaymentId],
+    references: [progressPayments.id],
+  }),
+  material: one(materials, {
+    fields: [progressPaymentDetails.materialId],
+    references: [materials.id],
+  }),
+  unit: one(units, {
+    fields: [progressPaymentDetails.unitId],
+    references: [units.id],
+  }),
+  createdByUser: one(users, {
+    fields: [progressPaymentDetails.createdBy],
+    references: [users.id],
+    relationName: "progressPaymentDetailCreator",
+  }),
+  updatedByUser: one(users, {
+    fields: [progressPaymentDetails.updatedBy],
+    references: [users.id],
+    relationName: "progressPaymentDetailUpdater",
+  }),
+}));
+
+// ========================
+// PROGRESS PAYMENT ZOD SCHEMAS
+// ========================
+
+// Units Schemas
+export const insertUnitSchema = createInsertSchema(units).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const updateUnitSchema = insertUnitSchema.partial();
+export type Unit = typeof units.$inferSelect;
+export type InsertUnit = z.infer<typeof insertUnitSchema>;
+export type UpdateUnit = z.infer<typeof updateUnitSchema>;
+
+// Unit Conversions Schemas
+export const insertUnitConversionSchema = createInsertSchema(unitConversions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  conversionFactor: z.string().refine((val) => parseFloat(val) > 0, "Katsayı pozitif olmalıdır"),
+});
+export const updateUnitConversionSchema = insertUnitConversionSchema.partial();
+export type UnitConversion = typeof unitConversions.$inferSelect;
+export type InsertUnitConversion = z.infer<typeof insertUnitConversionSchema>;
+export type UpdateUnitConversion = z.infer<typeof updateUnitConversionSchema>;
+
+// Material Types Schemas
+export const insertMaterialTypeSchema = createInsertSchema(materialTypes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const updateMaterialTypeSchema = insertMaterialTypeSchema.partial();
+export type MaterialType = typeof materialTypes.$inferSelect;
+export type InsertMaterialType = z.infer<typeof insertMaterialTypeSchema>;
+export type UpdateMaterialType = z.infer<typeof updateMaterialTypeSchema>;
+
+// Materials Schemas
+export const insertMaterialSchema = createInsertSchema(materials).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const updateMaterialSchema = insertMaterialSchema.partial();
+export type Material = typeof materials.$inferSelect;
+export type InsertMaterial = z.infer<typeof insertMaterialSchema>;
+export type UpdateMaterial = z.infer<typeof updateMaterialSchema>;
+
+// Material Code Mappings Schemas
+export const insertMaterialCodeMappingSchema = createInsertSchema(materialCodeMappings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const updateMaterialCodeMappingSchema = insertMaterialCodeMappingSchema.partial();
+export type MaterialCodeMapping = typeof materialCodeMappings.$inferSelect;
+export type InsertMaterialCodeMapping = z.infer<typeof insertMaterialCodeMappingSchema>;
+export type UpdateMaterialCodeMapping = z.infer<typeof updateMaterialCodeMappingSchema>;
+
+// Teams Schemas
+export const insertTeamSchema = createInsertSchema(teams).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const updateTeamSchema = insertTeamSchema.partial();
+export type Team = typeof teams.$inferSelect;
+export type InsertTeam = z.infer<typeof insertTeamSchema>;
+export type UpdateTeam = z.infer<typeof updateTeamSchema>;
+
+// Team Members Schemas
+export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır"),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır").optional(),
+});
+export const updateTeamMemberSchema = insertTeamMemberSchema.partial();
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
+export type UpdateTeamMember = z.infer<typeof updateTeamMemberSchema>;
+
+// Unit Prices Schemas
+export const insertUnitPriceSchema = createInsertSchema(unitPrices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  validFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır"),
+  validUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır").optional(),
+  priceCents: z.number().int().min(0, "Fiyat negatif olamaz"),
+});
+export const updateUnitPriceSchema = insertUnitPriceSchema.partial();
+export type UnitPrice = typeof unitPrices.$inferSelect;
+export type InsertUnitPrice = z.infer<typeof insertUnitPriceSchema>;
+export type UpdateUnitPrice = z.infer<typeof updateUnitPriceSchema>;
+
+// Progress Payment Types Schemas
+export const insertProgressPaymentTypeSchema = createInsertSchema(progressPaymentTypes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const updateProgressPaymentTypeSchema = insertProgressPaymentTypeSchema.partial();
+export type ProgressPaymentType = typeof progressPaymentTypes.$inferSelect;
+export type InsertProgressPaymentType = z.infer<typeof insertProgressPaymentTypeSchema>;
+export type UpdateProgressPaymentType = z.infer<typeof updateProgressPaymentTypeSchema>;
+
+// Progress Payments Schemas
+export const insertProgressPaymentSchema = createInsertSchema(progressPayments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  paymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır"),
+  paymentDateActual: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır").optional(),
+  totalAmountCents: z.number().int().min(0, "Toplam tutar negatif olamaz"),
+  status: z.enum(['draft', 'submitted', 'approved', 'rejected', 'paid']).default('draft'),
+});
+export const updateProgressPaymentSchema = insertProgressPaymentSchema.partial();
+export type ProgressPayment = typeof progressPayments.$inferSelect;
+export type InsertProgressPayment = z.infer<typeof insertProgressPaymentSchema>;
+export type UpdateProgressPayment = z.infer<typeof updateProgressPaymentSchema>;
+
+// Progress Payment Details Schemas
+export const insertProgressPaymentDetailSchema = createInsertSchema(progressPaymentDetails).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  quantity: z.string().refine((val) => parseFloat(val) > 0, "Miktar pozitif olmalıdır"),
+  unitPriceCents: z.number().int().min(0, "Birim fiyat negatif olamaz"),
+  lineTotalCents: z.number().int().min(0, "Satır toplamı negatif olamaz"),
+});
+export const updateProgressPaymentDetailSchema = insertProgressPaymentDetailSchema.partial();
+export type ProgressPaymentDetail = typeof progressPaymentDetails.$inferSelect;
+export type InsertProgressPaymentDetail = z.infer<typeof insertProgressPaymentDetailSchema>;
+export type UpdateProgressPaymentDetail = z.infer<typeof updateProgressPaymentDetailSchema>;

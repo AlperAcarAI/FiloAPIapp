@@ -1033,6 +1033,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/secure", personnelAccessRoutesModule.default);
   console.log("✅ Personnel Access Routes registered at /api/secure");
 
+  // Progress Payment (Hakediş) Management Route'larını kaydet
+  console.log("🔧 Loading Progress Payment Routes...");
+  const progressPaymentRoutes = await import("./progress-payment-routes.js");
+  console.log("🔧 Progress Payment Routes loaded:", !!progressPaymentRoutes.default);
+  app.use("/api/secure/progress-payments", progressPaymentRoutes.default);
+  console.log("✅ Progress Payment Routes registered at /api/secure/progress-payments");
+
   const httpServer = createServer(app);
   return httpServer;
 }
