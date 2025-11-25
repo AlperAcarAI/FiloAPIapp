@@ -49,13 +49,17 @@ router.get("/units", async (req, res) => {
   try {
     const { active } = req.query;
     
-    let query = db.select().from(units);
-    
+    const conditions = [];
     if (active === 'true') {
-      query = query.where(eq(units.isActive, true));
+      conditions.push(eq(units.isActive, true));
     }
     
-    const result = await query.orderBy(units.name);
+    const result = await db
+      .select()
+      .from(units)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(units.name);
+      
     res.json(result);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -792,13 +796,17 @@ router.get("/progress-payment-types", async (req, res) => {
   try {
     const { active } = req.query;
     
-    let query = db.select().from(progressPaymentTypes);
-    
+    const conditions = [];
     if (active === 'true') {
-      query = query.where(eq(progressPaymentTypes.isActive, true));
+      conditions.push(eq(progressPaymentTypes.isActive, true));
     }
     
-    const result = await query.orderBy(progressPaymentTypes.name);
+    const result = await db
+      .select()
+      .from(progressPaymentTypes)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(progressPaymentTypes.name);
+      
     res.json(result);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
