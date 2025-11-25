@@ -2104,15 +2104,14 @@ export const teamMembers = pgTable("team_members", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   updatedBy: integer("updated_by").references(() => users.id),
 }, (table) => ({
-  uniqueTeamMembersActive: unique("idx_team_members_active_unique").on(table.teamId, table.personnelId).where(sql`is_active = true`),
   teamIdx: index("idx_team_members_team").on(table.teamId),
   personnelIdx: index("idx_team_members_personnel").on(table.personnelId),
   datesIdx: index("idx_team_members_dates").on(table.startDate, table.endDate),
   checkMemberDates: check("check_member_dates", sql`end_date IS NULL OR end_date >= start_date`),
 }));
 
-// Note: Partial unique index (WHERE clause) removed as it's not fully supported in Drizzle
-// Instead, we'll enforce unique active members in application logic
+// Note: Partial unique index with WHERE clause is not supported in Drizzle ORM
+// Unique active team members constraint will be enforced in application logic
 
 // 8. Unit Prices (Birim Fiyatlar - Tarihsel)
 export const unitPrices = pgTable("unit_prices", {
