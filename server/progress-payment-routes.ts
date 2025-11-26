@@ -144,6 +144,118 @@ router.delete("/units/:id", async (req, res) => {
 });
 
 // ========================
+// MATERIAL TYPES (MALZEME TÜRLERİ)
+// ========================
+
+// Malzeme türlerini listele (Hiyerarşik)
+router.get("/material-types", async (req, res) => {
+  try {
+    const { active, parentId } = req.query;
+    
+    const conditions: any[] = [];
+    
+    if (active === 'true') {
+      conditions.push(eq(materialTypes.isActive, true));
+    }
+    
+    // parentId filtrelemesi
+    if (parentId !== undefined) {
+      if (parentId === 'null' || parentId === '') {
+        conditions.push(isNull(materialTypes.parentTypeId));
+      } else {
+        conditions.push(eq(materialTypes.parentTypeId, parseInt(parentId as string)));
+      }
+    }
+    
+    const result = await db.select()
+      .from(materialTypes)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(materialTypes.name);
+    
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Malzeme türü detayı
+router.get("/material-types/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [result] = await db.select().from(materialTypes).where(eq(materialTypes.id, parseInt(id)));
+    
+    if (!result) {
+      return res.status(404).json({ error: "Malzeme türü bulunamadı" });
+    }
+    
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Yeni malzeme türü ekle
+router.post("/material-types", async (req, res) => {
+  try {
+    const validated = insertMaterialTypeSchema.parse(req.body);
+    const userId = (req as any).user?.id;
+    
+    const [result] = await db.insert(materialTypes).values({
+      ...validated,
+      createdBy: userId,
+      updatedBy: userId
+    }).returning();
+    
+    res.status(201).json(result);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Malzeme türü güncelle
+router.put("/material-types/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const validated = updateMaterialTypeSchema.parse(req.body);
+    const userId = (req as any).user?.id;
+    
+    const [result] = await db.update(materialTypes)
+      .set({ ...validated, updatedBy: userId, updatedAt: new Date() })
+      .where(eq(materialTypes.id, parseInt(id)))
+      .returning();
+    
+    if (!result) {
+      return res.status(404).json({ error: "Malzeme türü bulunamadı" });
+    }
+    
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Malzeme türü sil (soft delete)
+router.delete("/material-types/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).user?.id;
+    
+    const [result] = await db.update(materialTypes)
+      .set({ isActive: false, updatedBy: userId, updatedAt: new Date() })
+      .where(eq(materialTypes.id, parseInt(id)))
+      .returning();
+    
+    if (!result) {
+      return res.status(404).json({ error: "Malzeme türü bulunamadı" });
+    }
+    
+    res.json({ message: "Malzeme türü pasif hale getirildi" });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========================
 // MATERIALS (MALZEMELER)
 // ========================
 
