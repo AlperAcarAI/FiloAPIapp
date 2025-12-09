@@ -2072,6 +2072,26 @@ export const materialCodeMappings = pgTable("material_code_mappings", {
   codeIdx: index("idx_material_mappings_code").on(table.companyMaterialCode),
 }));
 
+// 5b. Material Units (Malzeme-Birim Eşleştirme)
+export const materialUnits = pgTable("material_units", {
+  id: serial("id").primaryKey(),
+  materialId: integer("material_id").notNull().references(() => materials.id, { onDelete: "cascade" }),
+  unitId: integer("unit_id").notNull().references(() => units.id, { onDelete: "restrict" }),
+  isPrimary: boolean("is_primary").notNull().default(false),
+  conversionNote: text("conversion_note"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  uniqueMaterialUnit: unique("unique_material_unit").on(table.materialId, table.unitId),
+  materialIdx: index("idx_material_units_material").on(table.materialId),
+  unitIdx: index("idx_material_units_unit").on(table.unitId),
+  activeIdx: index("idx_material_units_active").on(table.isActive),
+  primaryIdx: index("idx_material_units_primary").on(table.materialId, table.isPrimary),
+}));
+
 // 6. Teams (Ekipler)
 export const teams = pgTable("teams", {
   id: serial("id").primaryKey(),
@@ -2230,8 +2250,30 @@ export const unitsRelations = relations(units, ({ one, many }) => ({
   }),
   unitConversionsFrom: many(unitConversions, { relationName: "fromUnit" }),
   unitConversionsTo: many(unitConversions, { relationName: "toUnit" }),
+  materialUnits: many(materialUnits),
   unitPrices: many(unitPrices),
   progressPaymentDetails: many(progressPaymentDetails),
+}));
+
+export const materialUnitsRelations = relations(materialUnits, ({ one }) => ({
+  material: one(materials, {
+    fields: [materialUnits.materialId],
+    references: [materials.id],
+  }),
+  unit: one(units, {
+    fields: [materialUnits.unitId],
+    references: [units.id],
+  }),
+  createdByUser: one(users, {
+    fields: [materialUnits.createdBy],
+    references: [users.id],
+    relationName: "materialUnitCreator",
+  }),
+  updatedByUser: one(users, {
+    fields: [materialUnits.updatedBy],
+    references: [users.id],
+    relationName: "materialUnitUpdater",
+  }),
 }));
 
 export const unitConversionsRelations = relations(unitConversions, ({ one }) => ({
@@ -2283,6 +2325,7 @@ export const materialsRelations = relations(materials, ({ one, many }) => ({
     references: [materialTypes.id],
   }),
   materialCodeMappings: many(materialCodeMappings),
+  materialUnits: many(materialUnits),
   unitPrices: many(unitPrices),
   progressPaymentDetails: many(progressPaymentDetails),
   createdByUser: one(users, {
@@ -2522,6 +2565,17 @@ export const updateMaterialCodeMappingSchema = insertMaterialCodeMappingSchema.p
 export type MaterialCodeMapping = typeof materialCodeMappings.$inferSelect;
 export type InsertMaterialCodeMapping = z.infer<typeof insertMaterialCodeMappingSchema>;
 export type UpdateMaterialCodeMapping = z.infer<typeof updateMaterialCodeMappingSchema>;
+
+// Material Units Schemas
+export const insertMaterialUnitSchema = createInsertSchema(materialUnits).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const updateMaterialUnitSchema = insertMaterialUnitSchema.partial();
+export type MaterialUnit = typeof materialUnits.$inferSelect;
+export type InsertMaterialUnit = z.infer<typeof insertMaterialUnitSchema>;
+export type UpdateMaterialUnit = z.infer<typeof updateMaterialUnitSchema>;
 
 // Teams Schemas
 export const insertTeamSchema = createInsertSchema(teams).omit({
