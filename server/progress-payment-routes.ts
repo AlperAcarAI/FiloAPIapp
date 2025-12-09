@@ -1141,4 +1141,81 @@ router.get("/progress-payment-types", async (req, res) => {
   }
 });
 
+// Hakediş türü detayı
+router.get("/progress-payment-types/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [result] = await db.select().from(progressPaymentTypes).where(eq(progressPaymentTypes.id, parseInt(id)));
+
+    if (!result) {
+      return res.status(404).json({ error: "Hakediş türü bulunamadı" });
+    }
+
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Yeni hakediş türü ekle
+router.post("/progress-payment-types", async (req, res) => {
+  try {
+    const validated = insertProgressPaymentTypeSchema.parse(req.body);
+    const userId = (req as any).user?.id;
+
+    const [result] = await db.insert(progressPaymentTypes).values({
+      ...validated,
+      createdBy: userId,
+      updatedBy: userId
+    }).returning();
+
+    res.status(201).json(result);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Hakediş türü güncelle
+router.put("/progress-payment-types/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const validated = updateProgressPaymentTypeSchema.parse(req.body);
+    const userId = (req as any).user?.id;
+
+    const [result] = await db.update(progressPaymentTypes)
+      .set({ ...validated, updatedBy: userId, updatedAt: new Date() })
+      .where(eq(progressPaymentTypes.id, parseInt(id)))
+      .returning();
+
+    if (!result) {
+      return res.status(404).json({ error: "Hakediş türü bulunamadı" });
+    }
+
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Hakediş türü sil (soft delete)
+router.delete("/progress-payment-types/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).user?.id;
+
+    const [result] = await db.update(progressPaymentTypes)
+      .set({ isActive: false, updatedBy: userId, updatedAt: new Date() })
+      .where(eq(progressPaymentTypes.id, parseInt(id)))
+      .returning();
+
+    if (!result) {
+      return res.status(404).json({ error: "Hakediş türü bulunamadı" });
+    }
+
+    res.json({ message: "Hakediş türü pasif hale getirildi" });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
