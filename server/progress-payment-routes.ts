@@ -6,6 +6,7 @@ import {
   materialTypes,
   materials,
   materialCodeMappings,
+  materialUnits,
   teams,
   teamMembers,
   unitPrices,
@@ -23,6 +24,8 @@ import {
   updateMaterialSchema,
   insertMaterialCodeMappingSchema,
   updateMaterialCodeMappingSchema,
+  insertMaterialUnitSchema,
+  updateMaterialUnitSchema,
   insertTeamSchema,
   updateTeamSchema,
   insertTeamMemberSchema,
@@ -398,6 +401,139 @@ router.put("/materials/:id", async (req, res) => {
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+// ========================
+// MATERIAL UNITS (MALZEME-BİRİM EŞLEŞTİRME)
+// ========================
+
+// Malzemeye ait birimleri listele
+router.get("/materials/:id/units", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { active } = req.query;
+
+    const conditions: any[] = [eq(materialUnits.materialId, parseInt(id))];
+
+    if (active === 'true') {
+      conditions.push(eq(materialUnits.isActive, true));
+    }
+
+    const result = await db.select()
+      .from(materialUnits)
+      .where(and(...conditions))
+      .orderBy(desc(materialUnits.isPrimary), materialUnits.id);
+
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Malzemeye birim ekle
+router.post("/materials/:id/units", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const validated = insertMaterialUnitSchema.parse(req.body);
+    const userId = (req as any).user?.id;
+
+    // Malzemenin var olduğunu kontrol et
+    const [material] = await db.select()
+      .from(materials)
+      .where(eq(materials.id, parseInt(id)));
+
+    if (!material) {
+      return res.status(404).json({ error: "Malzeme bulunamadı" });
+    }
+
+    // Aynı malzeme-birim çifti var mı kontrol et
+    const existing = await db.select()
+      .from(materialUnits)
+      .where(and(
+        eq(materialUnits.materialId, parseInt(id)),
+        eq(materialUnits.unitId, validated.unitId)
+      ));
+
+    if (existing.length > 0) {
+      return res.status(400).json({ error: "Bu birim zaten malzemeye ekli" });
+    }
+
+    // Eğer isPrimary true ise, diğerlerini false yap
+    if (validated.isPrimary) {
+      await db.update(materialUnits)
+        .set({ isPrimary: false, updatedAt: new Date() })
+        .where(eq(materialUnits.materialId, parseInt(id)));
+    }
+
+    const [result] = await db.insert(materialUnits).values({
+      ...validated,
+      materialId: parseInt(id),
+      createdBy: userId,
+      updatedBy: userId
+    }).returning();
+
+    res.status(201).json(result);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Malzeme-birim eşleştirmesini güncelle
+router.put("/material-units/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const validated = updateMaterialUnitSchema.parse(req.body);
+    const userId = (req as any).user?.id;
+
+    // Mevcut kaydı getir
+    const [existing] = await db.select()
+      .from(materialUnits)
+      .where(eq(materialUnits.id, parseInt(id)));
+
+    if (!existing) {
+      return res.status(404).json({ error: "Malzeme-birim eşleştirmesi bulunamadı" });
+    }
+
+    // Eğer isPrimary true yapılıyorsa, diğerlerini false yap
+    if (validated.isPrimary === true) {
+      await db.update(materialUnits)
+        .set({ isPrimary: false, updatedAt: new Date() })
+        .where(and(
+          eq(materialUnits.materialId, existing.materialId),
+          sql`${materialUnits.id} != ${parseInt(id)}`
+        ));
+    }
+
+    const [result] = await db.update(materialUnits)
+      .set({ ...validated, updatedBy: userId, updatedAt: new Date() })
+      .where(eq(materialUnits.id, parseInt(id)))
+      .returning();
+
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Malzeme-birim eşleştirmesini sil (soft delete)
+router.delete("/material-units/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).user?.id;
+
+    const [result] = await db.update(materialUnits)
+      .set({ isActive: false, updatedBy: userId, updatedAt: new Date() })
+      .where(eq(materialUnits.id, parseInt(id)))
+      .returning();
+
+    if (!result) {
+      return res.status(404).json({ error: "Malzeme-birim eşleştirmesi bulunamadı" });
+    }
+
+    res.json({ message: "Malzeme-birim eşleştirmesi pasif hale getirildi" });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 
