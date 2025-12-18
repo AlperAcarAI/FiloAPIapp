@@ -745,10 +745,10 @@ router.delete("/teams/:teamId/members/:memberId", async (req, res) => {
 // UNIT PRICES (BİRİM FİYATLAR)
 // ========================
 
-// Birim fiyatları listele (proje bazlı)
+// Birim fiyatları listele (proje ve şirket bazlı)
 router.get("/unit-prices", async (req, res) => {
   try {
-    const { projectId, materialId, active, date } = req.query;
+    const { projectId, materialId, companyId, active, date } = req.query;
 
     const conditions: any[] = [];
 
@@ -758,6 +758,10 @@ router.get("/unit-prices", async (req, res) => {
 
     if (materialId) {
       conditions.push(eq(unitPrices.materialId, parseInt(materialId as string)));
+    }
+
+    if (companyId) {
+      conditions.push(eq(unitPrices.companyId, parseInt(companyId as string)));
     }
 
     if (active === 'true') {

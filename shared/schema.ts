@@ -2139,6 +2139,7 @@ export const unitPrices = pgTable("unit_prices", {
   materialId: integer("material_id").notNull().references(() => materials.id),
   unitId: integer("unit_id").notNull().references(() => units.id),
   projectId: integer("project_id").notNull().references(() => projects.id),
+  companyId: integer("company_id").notNull().references(() => companies.id),
   priceCents: integer("price_cents").notNull(),
   validFrom: date("valid_from").notNull(),
   validUntil: date("valid_until"),
@@ -2152,6 +2153,7 @@ export const unitPrices = pgTable("unit_prices", {
   materialIdx: index("idx_unit_prices_material").on(table.materialId),
   unitIdx: index("idx_unit_prices_unit").on(table.unitId),
   projectIdx: index("idx_unit_prices_project").on(table.projectId),
+  companyIdx: index("idx_unit_prices_company").on(table.companyId),
   validityIdx: index("idx_unit_prices_validity").on(table.validFrom, table.validUntil),
   activeIdx: index("idx_unit_prices_active").on(table.projectId, table.isActive),
   checkPricePositive: check("check_price_positive", sql`price_cents >= 0`),
@@ -2417,6 +2419,10 @@ export const unitPricesRelations = relations(unitPrices, ({ one }) => ({
   project: one(projects, {
     fields: [unitPrices.projectId],
     references: [projects.id],
+  }),
+  company: one(companies, {
+    fields: [unitPrices.companyId],
+    references: [companies.id],
   }),
   createdByUser: one(users, {
     fields: [unitPrices.createdBy],
