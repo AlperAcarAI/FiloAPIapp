@@ -2655,6 +2655,9 @@ export const insertProgressPaymentDetailSchema = createInsertSchema(progressPaym
   id: true,
   createdAt: true,
   updatedAt: true,
+  progressPaymentId: true,
+  createdBy: true,
+  updatedBy: true,
 }).extend({
   quantity: z.string().refine((val) => parseFloat(val) > 0, "Miktar pozitif olmalıdır"),
   unitPriceCents: z.number().int().min(0, "Birim fiyat negatif olamaz"),
