@@ -2642,7 +2642,7 @@ export const insertProgressPaymentSchema = createInsertSchema(progressPayments).
 }).extend({
   paymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır"),
   paymentDateActual: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır").optional(),
-  totalAmountCents: z.number().int().min(0, "Toplam tutar negatif olamaz"),
+  totalAmountCents: z.number().int().min(0, "Toplam tutar negatif olamaz").optional(),
   status: z.enum(['draft', 'submitted', 'approved', 'rejected', 'paid']).default('draft'),
 });
 export const updateProgressPaymentSchema = insertProgressPaymentSchema.partial();
