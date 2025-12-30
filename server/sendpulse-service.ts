@@ -1,4 +1,4 @@
-import sendpulse from 'sendpulse-api';
+import https from 'https';
 
 interface PersonnelEmailData {
   name: string;
@@ -16,28 +16,75 @@ interface PersonnelEmailData {
 }
 
 class SendPulseService {
-  private isInitialized = false;
+  private accessToken: string | null = null;
+  private tokenExpiry: number = 0;
 
   constructor() {
-    this.initialize();
+    console.log('✅ SendPulse Service initialized (REST API)');
   }
 
-  private initialize() {
+  /**
+   * Get access token from SendPulse API
+   */
+  private async getAccessToken(): Promise<string> {
+    // Check if we have a valid token
+    if (this.accessToken && Date.now() < this.tokenExpiry) {
+      return this.accessToken;
+    }
+
     const apiUserId = process.env.SENDPULSE_API_ID;
     const apiSecret = process.env.SENDPULSE_API_SECRET;
 
     if (!apiUserId || !apiSecret) {
-      console.warn('⚠️ SendPulse API credentials not found in environment variables');
-      return;
+      throw new Error('SendPulse API credentials not found in environment variables');
     }
 
-    sendpulse.init(apiUserId, apiSecret, '/tmp/', (token: any) => {
-      if (token && token.access_token) {
-        this.isInitialized = true;
-        console.log('✅ SendPulse API initialized successfully');
-      } else {
-        console.error('❌ SendPulse API initialization failed:', token);
-      }
+    return new Promise((resolve, reject) => {
+      const postData = JSON.stringify({
+        grant_type: 'client_credentials',
+        client_id: apiUserId,
+        client_secret: apiSecret
+      });
+
+      const options = {
+        hostname: 'api.sendpulse.com',
+        port: 443,
+        path: '/oauth/access_token',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData)
+        }
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          try {
+            const response = JSON.parse(data);
+            if (response.access_token) {
+              this.accessToken = response.access_token;
+              // Token expires in 1 hour, we'll refresh 5 minutes before
+              this.tokenExpiry = Date.now() + ((response.expires_in - 300) * 1000);
+              console.log('🔑 SendPulse access token obtained');
+              resolve(this.accessToken);
+            } else {
+              reject(new Error('Failed to obtain access token'));
+            }
+          } catch (error) {
+            reject(error);
+          }
+        });
+      });
+
+      req.on('error', reject);
+      req.write(postData);
+      req.end();
     });
   }
 
@@ -325,42 +372,90 @@ class SendPulseService {
    * Yeni personel kaydı oluşturulduğunda email gönderir
    */
   public async sendPersonnelCreatedEmail(personnelData: PersonnelEmailData): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      const recipientEmail = process.env.SENDPULSE_RECIPIENT_EMAIL || 'alper.acar@dijiminds.com';
-      const senderEmail = process.env.SENDPULSE_SENDER_EMAIL || 'noreply@filoki.com';
-      const senderName = process.env.SENDPULSE_SENDER_NAME || 'Filoki Personel Sistemi';
+    try {
+      const recipientEmail = process.env.SENDPULSE_RECIPIENT_EMAIL || 'info@ersaulasim.com';
+      const senderEmail = process.env.SENDPULSE_SENDER_EMAIL || 'info@ersaulasim.com';
+      const senderName = process.env.SENDPULSE_SENDER_NAME || 'ERSA Ulaşım';
 
-      if (!this.isInitialized) {
-        console.error('❌ SendPulse is not initialized. Email not sent.');
-        return resolve(false);
-      }
+      // Get access token
+      console.log('📧 Preparing to send personnel creation email...');
+      const accessToken = await this.getAccessToken();
+
+      // Generate HTML and encode to Base64
+      const htmlContent = this.generateEmailHTML(personnelData);
+      const htmlBase64 = Buffer.from(htmlContent).toString('base64');
 
       const emailData = {
-        html: this.generateEmailHTML(personnelData),
-        text: `Yeni Personel Kaydı: ${personnelData.name} ${personnelData.surname}`,
-        subject: `🎉 Yeni Personel Kaydı: ${personnelData.name} ${personnelData.surname}`,
-        from: {
-          name: senderName,
-          email: senderEmail
-        },
-        to: [
-          {
-            name: 'Alper Acar',
-            email: recipientEmail
-          }
-        ]
+        email: {
+          html: htmlBase64,
+          text: `Yeni Personel Kaydı: ${personnelData.name} ${personnelData.surname}`,
+          subject: `🎉 Yeni Personel Kaydı: ${personnelData.name} ${personnelData.surname}`,
+          from: {
+            name: senderName,
+            email: senderEmail
+          },
+          to: [
+            {
+              name: 'Personel Yönetimi',
+              email: recipientEmail
+            }
+          ]
+        }
       };
 
-      sendpulse.smtpSendMail((data: any) => {
-        if (data.result === true || data.is_error === false) {
-          console.log('✅ Personnel creation email sent successfully:', personnelData.name, personnelData.surname);
-          resolve(true);
-        } else {
-          console.error('❌ Failed to send personnel creation email:', data);
+      return new Promise((resolve, reject) => {
+        const postData = JSON.stringify(emailData);
+
+        const options = {
+          hostname: 'api.sendpulse.com',
+          port: 443,
+          path: '/smtp/emails',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Length': Buffer.byteLength(postData)
+          }
+        };
+
+        const req = https.request(options, (res) => {
+          let data = '';
+
+          res.on('data', (chunk) => {
+            data += chunk;
+          });
+
+          res.on('end', () => {
+            try {
+              const response = JSON.parse(data);
+              
+              if (response.result === true || response.id) {
+                console.log('✅ Personnel creation email sent successfully:', personnelData.name, personnelData.surname);
+                console.log('📧 Email ID:', response.id);
+                resolve(true);
+              } else {
+                console.error('❌ Failed to send personnel creation email:', data);
+                resolve(false);
+              }
+            } catch (error) {
+              console.error('❌ Failed to parse SendPulse response:', error);
+              resolve(false);
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          console.error('❌ Network error while sending email:', error.message);
           resolve(false);
-        }
-      }, emailData);
-    });
+        });
+
+        req.write(postData);
+        req.end();
+      });
+    } catch (error) {
+      console.error('❌ Error in sendPersonnelCreatedEmail:', error);
+      return false;
+    }
   }
 }
 
