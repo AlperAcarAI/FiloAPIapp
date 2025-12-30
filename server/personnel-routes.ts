@@ -17,6 +17,7 @@ import {
   auditableUpdate,
   auditableDelete
 } from './audit-middleware.js';
+import { sendPulseService } from './sendpulse-service.js';
 
 // Custom validation schema that accepts tcNo as string and converts to bigint
 const personnelCreateSchema = z.object({
@@ -421,6 +422,7 @@ router.post('/personnel', authenticateJWT, async (req, res) => {
         birthplaceId: personnel.birthplaceId,
         address: personnel.address,
         phoneNo: personnel.phoneNo,
+        iban: personnel.iban,
         status: personnel.status,
         isActive: personnel.isActive,
         // Join data
@@ -437,6 +439,25 @@ router.post('/personnel', authenticateJWT, async (req, res) => {
       ...personnelDetail,
       tcNo: personnelDetail.tcNo ? personnelDetail.tcNo.toString() : null
     };
+    
+    // Send email notification asynchronously (non-blocking)
+    // Email gönderimi başarısız olsa bile personel kaydı tamamlanır
+    sendPulseService.sendPersonnelCreatedEmail({
+      name: personnelDetail.name,
+      surname: personnelDetail.surname,
+      tcNo: responseData.tcNo,
+      birthdate: personnelDetail.birthdate,
+      nationName: personnelDetail.nationName,
+      birthplaceName: personnelDetail.birthplaceName,
+      address: personnelDetail.address,
+      phoneNo: personnelDetail.phoneNo,
+      iban: personnelDetail.iban,
+      status: personnelDetail.status,
+      isActive: personnelDetail.isActive,
+      companyId: newPersonnel.companyId
+    }).catch(err => {
+      console.error('⚠️ Email gönderimi sırasında hata oluştu (personel kaydı tamamlandı):', err);
+    });
     
     res.status(201).json({
       success: true,
