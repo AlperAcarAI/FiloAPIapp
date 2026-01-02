@@ -390,13 +390,27 @@ router.post("/materials", async (req, res) => {
 router.put("/materials/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // DEBUG: Log incoming data
+    console.log("🔍 Material Update Request:");
+    console.log("  ID:", id);
+    console.log("  Body:", JSON.stringify(req.body, null, 2));
+    
     const validated = updateMaterialSchema.parse(req.body);
+    console.log("  Validated:", JSON.stringify(validated, null, 2));
+    
     const userId = (req as any).user?.id;
+    console.log("  UserId:", userId);
+
+    const updateData = { ...validated, updatedBy: userId, updatedAt: new Date() };
+    console.log("  Update Data:", JSON.stringify(updateData, null, 2));
 
     const [result] = await db.update(materials)
-      .set({ ...validated, updatedBy: userId, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(materials.id, parseInt(id)))
       .returning();
+
+    console.log("  DB Result:", JSON.stringify(result, null, 2));
 
     if (!result) {
       return res.status(404).json({ error: "Malzeme bulunamadı" });
@@ -404,6 +418,7 @@ router.put("/materials/:id", async (req, res) => {
 
     res.json(result);
   } catch (error: any) {
+    console.error("❌ Material Update Error:", error);
     res.status(400).json({ error: error.message });
   }
 });
