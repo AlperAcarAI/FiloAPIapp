@@ -1036,8 +1036,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Progress Payment (Hakediş) Management Route'larını kaydet
   console.log("🔧 Loading Progress Payment Routes...");
   const progressPaymentRoutes = await import("./progress-payment-routes.js");
+  console.log("🔧 Progress Payment Routes module loaded:", !!progressPaymentRoutes.default);
   app.use("/api/secure", progressPaymentRoutes.default);
   console.log("✅ Progress Payment Routes registered at /api/secure");
+  console.log("✅ Materials endpoint should be available at: PUT /api/secure/materials/:id");
 
   const httpServer = createServer(app);
   return httpServer;

@@ -63,14 +63,6 @@ app.use(morgan('combined', { stream: accessLogStream })); // Dosyaya loglama
   // ALWAYS register routes first, regardless of environment
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
-  });
-
   // CRITICAL: Add API route protection BEFORE any catch-all routes
   // This must come BEFORE serveStatic/setupVite to prevent HTML responses
   app.use('/api/*', (req, res, next) => {
@@ -103,6 +95,15 @@ app.use(morgan('combined', { stream: accessLogStream })); // Dosyaya loglama
     console.log("🔧 Production mode: Serving static files...");
     serveStatic(app);
   }
+
+  // Error handler MUST come AFTER all route registrations and static serving
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
+
+    res.status(status).json({ message });
+    throw err;
+  });
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
