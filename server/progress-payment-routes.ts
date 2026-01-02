@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authenticateToken } from "./auth";
 import { db } from "./db";
 import {
   units,
@@ -42,6 +43,9 @@ import {
 import { eq, and, desc, sql, gte, lte, or, isNull } from "drizzle-orm";
 
 const router = Router();
+
+// TÜM ROUTE'LAR İÇİN AUTHENTİCATİON ZORUNLU
+router.use(authenticateToken);
 
 // ========================
 // UNITS (BİRİMLER)
@@ -453,7 +457,8 @@ router.post("/materials/:id/units", async (req, res) => {
       .where(and(
         eq(materialUnits.materialId, parseInt(id)),
         eq(materialUnits.unitId, validated.unitId)
-      ));
+      ))
+      .execute();
 
     if (existing.length > 0) {
       return res.status(400).json({ error: "Bu birim zaten malzemeye ekli" });

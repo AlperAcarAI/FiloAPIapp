@@ -2544,6 +2544,8 @@ export const insertMaterialTypeSchema = createInsertSchema(materialTypes).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
 });
 export const updateMaterialTypeSchema = insertMaterialTypeSchema.partial();
 export type MaterialType = typeof materialTypes.$inferSelect;
@@ -2555,6 +2557,8 @@ export const insertMaterialSchema = createInsertSchema(materials).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
 });
 export const updateMaterialSchema = insertMaterialSchema.partial();
 export type Material = typeof materials.$inferSelect;
