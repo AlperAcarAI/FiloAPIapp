@@ -7,3 +7,8 @@ vite.config.ts.*
 # runtime logs
 logs/*.log
 uploads/
+
+# Claude Code local settings (contains API keys)
+.claude/settings.local.json
+.claude/api-key.txt
+.claude/get-api-key.sh

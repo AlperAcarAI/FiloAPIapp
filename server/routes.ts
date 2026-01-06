@@ -133,11 +133,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         deviceFingerprint: req.security?.deviceFingerprint,
       });
       
-      // Get user permissions if personnelId exists
+      // Get user permissions and personnel info if personnelId exists
       let permissions: any[] = [];
+      let personnelInfo = null;
+
       if (authenticatedUser.personnelId) {
         const { personnelAccess, accessTypes, workAreas } = await import('@shared/schema');
-        
+
+        // Fetch personnel info (name, surname)
+        const [personnelData] = await db
+          .select({
+            name: personnel.name,
+            surname: personnel.surname,
+          })
+          .from(personnel)
+          .where(eq(personnel.id, authenticatedUser.personnelId));
+
+        if (personnelData) {
+          personnelInfo = {
+            name: personnelData.name,
+            surname: personnelData.surname,
+            fullName: `${personnelData.name} ${personnelData.surname}`,
+          };
+        }
+
         const userPermissions = await db
           .select({
             id: personnelAccess.id,
@@ -150,10 +169,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .leftJoin(workAreas, eq(personnelAccess.workareaId, workAreas.id))
           .innerJoin(accessTypes, eq(personnelAccess.typeId, accessTypes.id))
           .where(eq(personnelAccess.personnelId, authenticatedUser.personnelId));
-        
+
         // Group permissions by workarea
         const permissionMap = new Map<number | null, { workareaId: number | null; workareaName: string | null; accessCodes: number[] }>();
-        
+
         for (const perm of userPermissions) {
           if (!permissionMap.has(perm.workareaId)) {
             permissionMap.set(perm.workareaId, {
@@ -164,7 +183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           permissionMap.get(perm.workareaId)!.accessCodes.push(perm.typeId);
         }
-        
+
         permissions = Array.from(permissionMap.values());
       }
       
@@ -178,8 +197,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         message: "Giriş başarılı",
-        data: { 
+        data: {
           user: authenticatedUser,
+          personnel: personnelInfo,
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
           expiresIn: tokens.expiresIn,
