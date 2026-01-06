@@ -138,9 +138,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let personnelInfo = null;
 
       if (authenticatedUser.personnelId) {
-        const { personnelAccess, accessTypes, workAreas } = await import('@shared/schema');
+        const { personnelAccess, accessTypes, workAreas, personnelCompanyMatches, personnelPositions } = await import('@shared/schema');
 
-        // Fetch personnel info (name, surname)
+        // Fetch personnel info (name, surname) and current position
         const [personnelData] = await db
           .select({
             name: personnel.name,
@@ -149,11 +149,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(personnel)
           .where(eq(personnel.id, authenticatedUser.personnelId));
 
+        // Fetch current position from personnelCompanyMatches
+        const [currentPosition] = await db
+          .select({
+            positionId: personnelCompanyMatches.positionId,
+            positionName: personnelPositions.name,
+            companyId: personnelCompanyMatches.companyId,
+          })
+          .from(personnelCompanyMatches)
+          .leftJoin(personnelPositions, eq(personnelCompanyMatches.positionId, personnelPositions.id))
+          .where(
+            and(
+              eq(personnelCompanyMatches.personnelId, authenticatedUser.personnelId),
+              eq(personnelCompanyMatches.isActive, true)
+            )
+          )
+          .limit(1);
+
         if (personnelData) {
           personnelInfo = {
             name: personnelData.name,
             surname: personnelData.surname,
             fullName: `${personnelData.name} ${personnelData.surname}`,
+            position: currentPosition ? {
+              id: currentPosition.positionId,
+              name: currentPosition.positionName,
+            } : null,
           };
         }
 
