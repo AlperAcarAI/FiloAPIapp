@@ -138,7 +138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let personnelInfo = null;
 
       if (authenticatedUser.personnelId) {
-        const { personnelAccess, accessTypes, workAreas, personnelCompanyMatches, personnelPositions } = await import('@shared/schema');
+        const { personnelAccess, accessTypes, workAreas, personnelWorkAreas, personnelPositions } = await import('@shared/schema');
 
         // Fetch personnel info (name, surname) and current position
         const [personnelData] = await db
@@ -149,19 +149,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(personnel)
           .where(eq(personnel.id, authenticatedUser.personnelId));
 
-        // Fetch current position from personnelCompanyMatches
+        // Fetch current position from personnelWorkAreas
         const [currentPosition] = await db
           .select({
-            positionId: personnelCompanyMatches.positionId,
+            positionId: personnelWorkAreas.positionId,
             positionName: personnelPositions.name,
-            companyId: personnelCompanyMatches.companyId,
           })
-          .from(personnelCompanyMatches)
-          .leftJoin(personnelPositions, eq(personnelCompanyMatches.positionId, personnelPositions.id))
+          .from(personnelWorkAreas)
+          .leftJoin(personnelPositions, eq(personnelWorkAreas.positionId, personnelPositions.id))
           .where(
             and(
-              eq(personnelCompanyMatches.personnelId, authenticatedUser.personnelId),
-              eq(personnelCompanyMatches.isActive, true)
+              eq(personnelWorkAreas.personnelId, authenticatedUser.personnelId),
+              eq(personnelWorkAreas.isActive, true),
+              sql`${personnelWorkAreas.endDate} IS NULL`
             )
           )
           .limit(1);
