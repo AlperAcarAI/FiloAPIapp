@@ -783,21 +783,22 @@ router.post('/addPersonnelWorkArea', authenticateJWT, async (req, res) => {
       }
     }
 
-    // Check for existing active assignment
+    // Check for existing active assignment (same personnel, work area, and position)
     const existingAssignment = await db
       .select({ id: personnelWorkAreas.id })
       .from(personnelWorkAreas)
       .where(and(
         eq(personnelWorkAreas.personnelId, personnelId),
         eq(personnelWorkAreas.workAreaId, workAreaId),
+        eq(personnelWorkAreas.positionId, positionId),
         eq(personnelWorkAreas.isActive, true)
       ));
-      
+
     if (existingAssignment.length > 0) {
       return res.status(409).json({
         success: false,
         error: 'DUPLICATE_ASSIGNMENT',
-        message: 'Bu personel bu çalışma alanında zaten aktif bir atamaya sahip.'
+        message: 'Bu personel bu çalışma alanında bu pozisyonda zaten aktif bir atamaya sahip.'
       });
     }
 
