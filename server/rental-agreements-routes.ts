@@ -200,7 +200,11 @@ rentalAgreementsRoutes.post("/", authenticateToken, async (req, res) => {
     const [newAgreement] = await auditableInsert(
       db,
       rentalAgreements,
-      validatedData,
+      {
+        ...validatedData,
+        createdBy: auditInfo.userId,
+        updatedBy: auditInfo.userId
+      },
       auditInfo
     );
 
@@ -266,7 +270,11 @@ rentalAgreementsRoutes.put("/:id", authenticateToken, async (req, res) => {
     const [updatedAgreement] = await auditableUpdate(
       db,
       rentalAgreements,
-      validatedData,
+      {
+        ...validatedData,
+        updatedBy: auditInfo.userId,
+        updatedAt: new Date()
+      },
       eq(rentalAgreements.id, parseInt(id)),
       existingAgreement,
       auditInfo
@@ -315,7 +323,11 @@ rentalAgreementsRoutes.delete("/:id", authenticateToken, async (req, res) => {
     await auditableUpdate(
       db,
       rentalAgreements,
-      { isActive: false },
+      {
+        isActive: false,
+        updatedBy: auditInfo.userId,
+        updatedAt: new Date()
+      },
       eq(rentalAgreements.id, parseInt(id)),
       existingAgreement,
       auditInfo

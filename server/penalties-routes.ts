@@ -195,11 +195,11 @@ router.post("/", async (req: Request, res: Response) => {
     }
 
     const auditInfo = captureAuditInfo(req);
-    
+
     const [newPenalty] = await auditableInsert(
       db,
       penalties,
-      { 
+      {
         assetId: Number(assetId),
         driverId: driverId ? Number(driverId) : null,
         penaltyTypeId: Number(penaltyTypeId),
@@ -208,7 +208,9 @@ router.post("/", async (req: Request, res: Response) => {
         penaltyDate,
         lastDate: lastDate || null,
         status: status || 'beklemede',
-        isActive: true
+        isActive: true,
+        createdBy: auditInfo.userId,
+        updatedBy: auditInfo.userId
       },
       auditInfo
     );
@@ -315,12 +317,17 @@ router.put("/:id", async (req: Request, res: Response) => {
     }
 
     const auditInfo = captureAuditInfo(req);
-    
+
     await auditableUpdate(
       db,
       penalties,
+      {
+        ...updateData,
+        updatedBy: auditInfo.userId,
+        updatedAt: new Date()
+      },
       eq(penalties.id, penaltyId),
-      updateData,
+      existingPenalty[0],
       auditInfo
     );
 
@@ -368,12 +375,17 @@ router.delete("/:id", async (req: Request, res: Response) => {
     }
 
     const auditInfo = captureAuditInfo(req);
-    
+
     await auditableUpdate(
       db,
       penalties,
+      {
+        isActive: false,
+        updatedBy: auditInfo.userId,
+        updatedAt: new Date()
+      },
       eq(penalties.id, penaltyId),
-      { isActive: false },
+      existingPenalty[0],
       auditInfo
     );
 
@@ -474,10 +486,11 @@ router.put("/:id/payment", async (req: Request, res: Response) => {
     }
 
     const auditInfo = captureAuditInfo(req);
-    
+
     // Update penalty status
     const updateData: any = {
       status,
+      updatedBy: auditInfo.userId,
       updatedAt: new Date()
     };
 

@@ -216,7 +216,11 @@ documentRoutes.post("/main-doc-types", authenticateJWT, async (req: any, res) =>
     const [newMainType] = await auditableInsert(
       db,
       docMainTypes,
-      validatedData,
+      {
+        ...validatedData,
+        createdBy: auditInfo.userId,
+        updatedBy: auditInfo.userId
+      },
       auditInfo
     );
 
@@ -276,7 +280,11 @@ documentRoutes.put("/main-doc-types/:id", authenticateJWT, async (req: any, res)
     const [updatedMainType] = await auditableUpdate(
       db,
       docMainTypes,
-      validatedData,
+      {
+        ...validatedData,
+        updatedBy: auditInfo.userId,
+        updatedAt: new Date()
+      },
       eq(docMainTypes.id, parseInt(id)),
       existingMainType,
       auditInfo
@@ -324,7 +332,11 @@ documentRoutes.post("/doc-sub-types", authenticateJWT, async (req: any, res) => 
     const [newSubType] = await auditableInsert(
       db,
       docSubTypes,
-      validatedData,
+      {
+        ...validatedData,
+        createdBy: auditInfo.userId,
+        updatedBy: auditInfo.userId
+      },
       auditInfo
     );
 
@@ -384,7 +396,11 @@ documentRoutes.put("/doc-sub-types/:id", authenticateJWT, async (req: any, res) 
     const [updatedSubType] = await auditableUpdate(
       db,
       docSubTypes,
-      validatedData,
+      {
+        ...validatedData,
+        updatedBy: auditInfo.userId,
+        updatedAt: new Date()
+      },
       eq(docSubTypes.id, parseInt(id)),
       existingSubType,
       auditInfo
@@ -621,7 +637,9 @@ documentRoutes.post("/", authenticateJWT, async (req: any, res) => {
       documents,
       {
         ...validatedData,
-        uploadedBy: req.userContext?.userId || 1
+        uploadedBy: req.userContext?.userId || 1,
+        createdBy: auditInfo.userId,
+        updatedBy: auditInfo.userId
       },
       auditInfo
     );
@@ -772,7 +790,11 @@ documentRoutes.post("/upload", authenticateJWT, documentUpload.single('file'), a
     const [newDocument] = await auditableInsert(
       db,
       documents,
-      documentData,
+      {
+        ...documentData,
+        createdBy: auditInfo.userId,
+        updatedBy: auditInfo.userId
+      },
       auditInfo
     );
 
@@ -821,7 +843,11 @@ documentRoutes.put("/:id", authenticateJWT, async (req: any, res) => {
     const [updatedDocument] = await auditableUpdate(
       db,
       documents,
-      validatedData,
+      {
+        ...validatedData,
+        updatedBy: auditInfo.userId,
+        updatedAt: new Date()
+      },
       eq(documents.id, parseInt(id)),
       existingDocument,
       auditInfo

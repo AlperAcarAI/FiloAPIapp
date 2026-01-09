@@ -6,6 +6,7 @@ import fs from "fs";
 import { createStream } from "rotating-file-stream";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { initializePolicyScheduler } from "./policy-scheduler";
 
 const app = express();
 
@@ -62,6 +63,15 @@ app.use(morgan('combined', { stream: accessLogStream })); // Dosyaya loglama
 (async () => {
   // ALWAYS register routes first, regardless of environment
   const server = await registerRoutes(app);
+
+  // Initialize policy expiration notification scheduler
+  if (app.get("env") === "production" || process.env.ENABLE_SCHEDULER === 'true') {
+    initializePolicyScheduler();
+    console.log('✅ Poliçe bildirim scheduler aktif');
+  } else {
+    console.log('⏸️  Poliçe bildirim scheduler pasif (development mode)');
+    console.log('💡 Scheduler\'ı development\'ta aktif etmek için ENABLE_SCHEDULER=true kullanın');
+  }
 
   // CRITICAL: Add API route protection BEFORE any catch-all routes
   // This must come BEFORE serveStatic/setupVite to prevent HTML responses

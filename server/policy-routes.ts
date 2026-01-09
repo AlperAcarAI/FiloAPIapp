@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { db } from "./db";
-import { 
-  policyTypes, 
-  assetsPolicies, 
-  companies, 
-  assets, 
-  damageTypes, 
+import {
+  policyTypes,
+  assetsPolicies,
+  companies,
+  assets,
+  damageTypes,
   assetsDamageData,
   carBrands,
   carModels,
@@ -18,6 +18,7 @@ import { eq, and, desc, asc, like, ilike, sql, count, gte, lte, inArray } from "
 import { auditableInsert, auditableUpdate, auditableDelete, captureAuditInfo } from "./audit-middleware";
 import { authenticateJWT, requirePermission, type AuthRequest } from "./hierarchical-auth";
 import type { Request, Response } from "express";
+import { policyNotificationService } from "./policy-notification-service";
 
 const router = Router();
 
@@ -113,13 +114,15 @@ router.post("/", async (req: Request, res: Response) => {
     }
 
     const auditInfo = captureAuditInfo(req);
-    
+
     const [newPolicyType] = await auditableInsert(
       db,
       policyTypes,
-      { 
+      {
         name: name.trim(),
-        isActive: true
+        isActive: true,
+        createdBy: auditInfo.userId,
+        updatedBy: auditInfo.userId
       },
       auditInfo
     );
@@ -173,7 +176,9 @@ router.put("/:id", async (req: Request, res: Response) => {
     if (isActive !== undefined) updateData.isActive = isActive;
 
     const auditInfo = captureAuditInfo(req);
-    
+    updateData.updatedBy = auditInfo.userId;
+    updateData.updatedAt = new Date();
+
     await auditableUpdate(
       db,
       policyTypes,
@@ -418,11 +423,11 @@ router.post("/policies", authenticateJWT, async (req: AuthRequest, res: Response
     }
 
     const auditInfo = captureAuditInfo(req);
-    
+
     const [newPolicy] = await auditableInsert(
       db,
       assetsPolicies,
-      { 
+      {
         assetId: Number(assetId),
         policyTypeId: Number(policyTypeId),
         sellerCompanyId: Number(sellerCompanyId),
@@ -431,7 +436,9 @@ router.post("/policies", authenticateJWT, async (req: AuthRequest, res: Response
         amountCents: Number(amountCents),
         startDate,
         endDate: endDate || null,
-        isActive: true
+        isActive: true,
+        createdBy: auditInfo.userId,
+        updatedBy: auditInfo.userId
       },
       auditInfo
     );
@@ -952,6 +959,42 @@ router.get("/policies/:id/detailed", authenticateJWT, async (req: AuthRequest, r
       success: false,
       error: 'POLICY_DETAIL_FETCH_ERROR',
       message: 'Detaylı poliçe bilgisi getirilirken hata oluştu.'
+    });
+  }
+});
+
+// ========================
+// TEST ENDPOINT FOR POLICY NOTIFICATIONS
+// ========================
+
+// POST /api/test/policy-notifications - Manually trigger policy notification check (development only)
+router.post("/test/policy-notifications", async (req: Request, res: Response) => {
+  // Only allow in development environment
+  if (process.env.NODE_ENV !== 'development' && process.env.NODE_ENV !== 'dev') {
+    return res.status(403).json({
+      success: false,
+      error: 'FORBIDDEN',
+      message: 'Bu endpoint sadece development ortamında kullanılabilir.'
+    });
+  }
+
+  try {
+    console.log('🧪 Test endpoint: Manuel poliçe bildirim kontrolü başlatıldı');
+
+    await policyNotificationService.runDailyNotificationCheck();
+
+    res.json({
+      success: true,
+      message: 'Poliçe bildirim kontrolü başarıyla tamamlandı. Loglara bakarak detayları görebilirsiniz.',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Test endpoint hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: 'TEST_NOTIFICATION_ERROR',
+      message: 'Bildirim kontrolü sırasında hata oluştu.',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });

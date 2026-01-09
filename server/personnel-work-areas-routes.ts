@@ -504,11 +504,13 @@ router.put('/personnel-work-areas/:id/terminate', async (req: AuthRequest, res) 
     }
 
     // Update assignment to terminate it
+    const userId = (req as any).userContext?.userId || (req as any).user?.id;
     const [terminatedAssignment] = await db
       .update(personnelWorkAreas)
       .set({
         endDate: endDate,
         isActive: false,
+        updatedBy: userId,
         updatedAt: new Date()
       })
       .where(eq(personnelWorkAreas.id, assignmentId))
@@ -713,11 +715,13 @@ router.post('/personnel-work-areas/:id/transfer', async (req: AuthRequest, res) 
       }
 
       // 7. Terminate current assignment
+      const userId = (req as any).userContext?.userId || (req as any).user?.id;
       const [terminatedAssignment] = await tx
         .update(personnelWorkAreas)
         .set({
           endDate: transferDate,
           isActive: false,
+          updatedBy: userId,
           updatedAt: new Date()
         })
         .where(eq(personnelWorkAreas.id, currentAssignmentId))
@@ -733,7 +737,9 @@ router.post('/personnel-work-areas/:id/transfer', async (req: AuthRequest, res) 
           projectId: newProjectId || null,
           startDate: transferDate,
           endDate: null,
-          isActive: true
+          isActive: true,
+          createdBy: userId,
+          updatedBy: userId
         })
         .returning();
 

@@ -298,7 +298,7 @@ router.post("/", async (req: Request, res: Response) => {
     }
 
     const auditInfo = captureAuditInfo(req);
-    
+
     const [newStuff] = await auditableInsert(
       db,
       stuff,
@@ -307,7 +307,9 @@ router.post("/", async (req: Request, res: Response) => {
         name,
         value: value || null,
         type: type || null,
-        isActive: true
+        isActive: true,
+        createdBy: auditInfo.userId,
+        updatedBy: auditInfo.userId
       },
       auditInfo
     );
@@ -395,7 +397,7 @@ router.post("/assignments", async (req: Request, res: Response) => {
     }
 
     const auditInfo = captureAuditInfo(req);
-    
+
     const [newAssignment] = await auditableInsert(
       db,
       personnelStuffMatcher,
@@ -405,7 +407,9 @@ router.post("/assignments", async (req: Request, res: Response) => {
         startDate,
         endDate: null,
         isActive: true,
-        notes: notes || null
+        notes: notes || null,
+        createdBy: auditInfo.userId,
+        updatedBy: auditInfo.userId
       },
       auditInfo
     );
@@ -472,7 +476,7 @@ router.put("/:id", async (req: Request, res: Response) => {
     }
 
     const auditInfo = captureAuditInfo(req);
-    
+
     const [updatedStuff] = await auditableUpdate(
       db,
       stuff,
@@ -480,7 +484,9 @@ router.put("/:id", async (req: Request, res: Response) => {
         stuffCode: stuffCode || existingStuff.stuffCode,
         name: name || existingStuff.name,
         value: value !== undefined ? value : existingStuff.value,
-        type: type !== undefined ? type : existingStuff.type
+        type: type !== undefined ? type : existingStuff.type,
+        updatedBy: auditInfo.userId,
+        updatedAt: new Date()
       },
       eq(stuff.id, stuffId),
       existingStuff,
@@ -531,11 +537,15 @@ router.delete("/:id", async (req: Request, res: Response) => {
     }
 
     const auditInfo = captureAuditInfo(req);
-    
+
     await auditableUpdate(
       db,
       stuff,
-      { isActive: false },
+      {
+        isActive: false,
+        updatedBy: auditInfo.userId,
+        updatedAt: new Date()
+      },
       eq(stuff.id, stuffId),
       existingStuff,
       auditInfo
@@ -585,7 +595,7 @@ router.put("/assignments/:id", async (req: Request, res: Response) => {
     }
 
     const auditInfo = captureAuditInfo(req);
-    
+
     const [updatedAssignment] = await auditableUpdate(
       db,
       personnelStuffMatcher,
@@ -594,7 +604,9 @@ router.put("/assignments/:id", async (req: Request, res: Response) => {
         stuffId: stuffId || existingAssignment.stuffId,
         startDate: startDate || existingAssignment.startDate,
         endDate: endDate !== undefined ? endDate : existingAssignment.endDate,
-        notes: notes !== undefined ? notes : existingAssignment.notes
+        notes: notes !== undefined ? notes : existingAssignment.notes,
+        updatedBy: auditInfo.userId,
+        updatedAt: new Date()
       },
       eq(personnelStuffMatcher.id, assignmentId),
       existingAssignment,
@@ -663,13 +675,15 @@ router.put("/assignments/:id/complete", async (req: Request, res: Response) => {
     }
 
     const auditInfo = captureAuditInfo(req);
-    
+
     const [completedAssignment] = await auditableUpdate(
       db,
       personnelStuffMatcher,
       {
         endDate,
-        notes: notes !== undefined ? notes : existingAssignment.notes
+        notes: notes !== undefined ? notes : existingAssignment.notes,
+        updatedBy: auditInfo.userId,
+        updatedAt: new Date()
       },
       eq(personnelStuffMatcher.id, assignmentId),
       existingAssignment,
@@ -720,11 +734,15 @@ router.delete("/assignments/:id", async (req: Request, res: Response) => {
     }
 
     const auditInfo = captureAuditInfo(req);
-    
+
     await auditableUpdate(
       db,
       personnelStuffMatcher,
-      { isActive: false },
+      {
+        isActive: false,
+        updatedBy: auditInfo.userId,
+        updatedAt: new Date()
+      },
       eq(personnelStuffMatcher.id, assignmentId),
       existingAssignment,
       auditInfo

@@ -503,7 +503,11 @@ router.post("/", async (req: AuthRequest, res) => {
     // Create assignment
     const [newAssignment] = await db
       .insert(assetsPersonelAssignment)
-      .values(data)
+      .values({
+        ...data,
+        createdBy: user.id,
+        updatedBy: user.id
+      })
       .returning();
 
     // Add audit log
@@ -624,7 +628,11 @@ router.put("/:id", async (req: AuthRequest, res) => {
     // Update assignment
     const [updatedAssignment] = await db
       .update(assetsPersonelAssignment)
-      .set(data)
+      .set({
+        ...data,
+        updatedBy: user.id,
+        updatedAt: new Date()
+      })
       .where(eq(assetsPersonelAssignment.id, parseInt(id)))
       .returning();
 
@@ -861,7 +869,11 @@ router.post("/:id/complete", async (req: AuthRequest, res) => {
     // Update assignment with end date
     const [completedAssignment] = await db
       .update(assetsPersonelAssignment)
-      .set({ endDate })
+      .set({
+        endDate,
+        updatedBy: user.id,
+        updatedAt: new Date()
+      })
       .where(eq(assetsPersonelAssignment.id, parseInt(id)))
       .returning();
 

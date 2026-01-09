@@ -156,11 +156,13 @@ router.post('/fuel-records', authenticateToken, async (req: AuthRequest, res) =>
     // Zod validation
     const validatedData = insertFuelRecordSchema.parse(req.body);
 
+    const userId = (req as any).userContext?.userId || (req as any).user?.id;
     const newRecord = await db
       .insert(fuelRecords)
       .values({
         ...validatedData,
-        // createdBy ve updatedBy otomatik olarak veritabanında ayarlanır
+        createdBy: userId,
+        updatedBy: userId
       })
       .returning();
 
@@ -204,11 +206,12 @@ router.put('/fuel-records/:id', authenticateToken, async (req: AuthRequest, res)
     // Zod validation for update
     const validatedData = updateFuelRecordSchema.parse(req.body);
 
+    const userId = (req as any).userContext?.userId || (req as any).user?.id;
     const updatedRecord = await db
       .update(fuelRecords)
       .set({
         ...validatedData,
-        // updatedBy otomatik olarak ayarlanır
+        updatedBy: userId,
         updatedAt: new Date()
       })
       .where(eq(fuelRecords.id, id))

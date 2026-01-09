@@ -181,9 +181,14 @@ router.post('/addPersonnelPosition', authenticateJWT, async (req: AuthRequest, r
     }
     
     // Yeni pozisyon oluştur
+    const userId = (req as any).userContext?.userId || (req as any).user?.id;
     const [newPosition] = await db
       .insert(personnelPositions)
-      .values(positionData)
+      .values({
+        ...positionData,
+        createdBy: userId,
+        updatedBy: userId
+      })
       .returning();
     
     res.status(201).json({
@@ -276,9 +281,14 @@ router.put('/updatePersonnelPosition/:id', authenticateJWT, async (req, res) => 
     }
     
     // Pozisyonu güncelle
+    const userId = (req as any).userContext?.userId || (req as any).user?.id;
     const [updatedPosition] = await db
       .update(personnelPositions)
-      .set(updateData)
+      .set({
+        ...updateData,
+        updatedBy: userId,
+        updatedAt: new Date()
+      })
       .where(eq(personnelPositions.id, positionId))
       .returning();
     

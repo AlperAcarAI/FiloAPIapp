@@ -312,8 +312,10 @@ router.post('/assign-permission',
 
       // Mevcut yetkileri pasif yap
       await db.update(userAccessRights)
-        .set({ 
-          isActive: false
+        .set({
+          isActive: false,
+          updatedBy: req.userContext!.userId,
+          updatedAt: new Date()
         })
         .where(eq(userAccessRights.userId, userId));
 
@@ -324,7 +326,9 @@ router.post('/assign-permission',
           accessLevelId: accessLevelId,
           accessScope: accessScope || null,
           isActive: true,
-          grantedBy: req.userContext!.userId
+          grantedBy: req.userContext!.userId,
+          createdBy: req.userContext!.userId,
+          updatedBy: req.userContext!.userId
         })
         .returning();
 
@@ -372,7 +376,9 @@ router.put('/update-permission/:id',
       const updatedRight = await db.update(userAccessRights)
         .set({
           accessLevelId: accessLevelId || existingRight[0].accessLevelId,
-          accessScope: accessScope !== undefined ? accessScope : existingRight[0].accessScope
+          accessScope: accessScope !== undefined ? accessScope : existingRight[0].accessScope,
+          updatedBy: req.userContext!.userId,
+          updatedAt: new Date()
         })
         .where(eq(userAccessRights.id, Number(id)))
         .returning();

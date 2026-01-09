@@ -382,7 +382,11 @@ router.post('/companies', authenticateToken, async (req, res) => {
     const [newCompany] = await auditableInsert(
       db,
       companies,
-      validatedData,
+      {
+        ...validatedData,
+        createdBy: auditInfo.userId,
+        updatedBy: auditInfo.userId
+      },
       auditInfo
     );
 
@@ -557,7 +561,11 @@ router.put('/companies/:id', authenticateToken, async (req, res) => {
     const [updatedCompany] = await auditableUpdate(
       db,
       companies,
-      validatedData,
+      {
+        ...validatedData,
+        updatedBy: auditInfo.userId,
+        updatedAt: new Date()
+      },
       eq(companies.id, companyId),
       existingCompany[0],
       auditInfo

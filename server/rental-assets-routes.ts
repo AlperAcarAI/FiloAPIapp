@@ -246,7 +246,11 @@ rentalAssetsRoutes.post("/", authenticateToken, async (req, res) => {
     const [newRentalAsset] = await auditableInsert(
       db,
       rentalAssets,
-      validatedData,
+      {
+        ...validatedData,
+        createdBy: auditInfo.userId,
+        updatedBy: auditInfo.userId
+      },
       auditInfo
     );
 
@@ -342,7 +346,11 @@ rentalAssetsRoutes.put("/:id", authenticateToken, async (req, res) => {
     const [updatedRentalAsset] = await auditableUpdate(
       db,
       rentalAssets,
-      validatedData,
+      {
+        ...validatedData,
+        updatedBy: auditInfo.userId,
+        updatedAt: new Date()
+      },
       eq(rentalAssets.id, parseInt(id)),
       existingRentalAsset,
       auditInfo

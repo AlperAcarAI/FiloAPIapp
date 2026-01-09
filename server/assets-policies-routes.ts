@@ -194,11 +194,11 @@ router.post("/", async (req: Request, res: Response) => {
     }
 
     const auditInfo = captureAuditInfo(req);
-    
+
     const [newPolicy] = await auditableInsert(
       db,
       assetsPolicies,
-      { 
+      {
         assetId: Number(assetId),
         policyTypeId: Number(policyTypeId),
         sellerCompanyId: Number(sellerCompanyId),
@@ -207,7 +207,9 @@ router.post("/", async (req: Request, res: Response) => {
         amountCents: Number(amountCents),
         startDate,
         endDate: endDate || null,
-        isActive: true
+        isActive: true,
+        createdBy: auditInfo.userId,
+        updatedBy: auditInfo.userId
       },
       auditInfo
     );
@@ -314,7 +316,9 @@ router.put("/:id", async (req: Request, res: Response) => {
     }
 
     const auditInfo = captureAuditInfo(req);
-    
+    updateData.updatedBy = auditInfo.userId;
+    updateData.updatedAt = new Date();
+
     await auditableUpdate(
       db,
       assetsPolicies,

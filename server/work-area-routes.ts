@@ -239,9 +239,14 @@ router.post('/addWorkArea', authenticateJWT, async (req: AuthRequest, res) => {
     }
     
     // Yeni çalışma alanı oluştur
+    const userId = (req as any).userContext?.userId || (req as any).user?.id;
     const [newWorkArea] = await db
       .insert(workAreas)
-      .values(workAreaData)
+      .values({
+        ...workAreaData,
+        createdBy: userId,
+        updatedBy: userId
+      })
       .returning();
     
     // Yeni oluşturulan çalışma alanının detaylı bilgilerini getir
@@ -378,9 +383,14 @@ router.put('/updateWorkArea/:id', authenticateJWT, filterByWorkArea, async (req:
     }
     
     // Çalışma alanını güncelle
+    const userId = (req as any).userContext?.userId || (req as any).user?.id;
     await db
       .update(workAreas)
-      .set(updateData)
+      .set({
+        ...updateData,
+        updatedBy: userId,
+        updatedAt: new Date()
+      })
       .where(eq(workAreas.id, workAreaId));
     
     // Güncellenmiş çalışma alanının detaylı bilgilerini getir

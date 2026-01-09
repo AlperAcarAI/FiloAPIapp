@@ -129,6 +129,8 @@ router.post("/current-accounts", authenticateToken, async (req: AuthRequest, res
       });
     }
 
+    const auditInfo = captureAuditInfo(req);
+
     const [newAccount] = await db.insert(finCurrentAccounts)
       .values({
         description,
@@ -142,7 +144,9 @@ router.post("/current-accounts", authenticateToken, async (req: AuthRequest, res
         notes,
         isDebit: Number(amountCents) < 0,
         isDone: false,
-        isActive: true
+        isActive: true,
+        createdBy: auditInfo.userId,
+        updatedBy: auditInfo.userId
       })
       .returning();
 
@@ -218,13 +222,16 @@ router.post("/accounts-details", authenticateToken, async (req: AuthRequest, res
     const { finCurAcId, amount, date, paymentTypeId } = req.body;
 
     const newDetail = await auditableInsert(
+      db,
       finAccountsDetails,
       {
         finCurAcId,
         amount,
         date: new Date(date),
         paymentTypeId,
-        isDone: false
+        isDone: false,
+        createdBy: auditInfo.userId,
+        updatedBy: auditInfo.userId
       },
       auditInfo
     );
@@ -302,9 +309,13 @@ router.put("/current-accounts/:id", authenticateToken, async (req: AuthRequest, 
     await auditableUpdate(
       db,
       finCurrentAccounts,
-      filteredData,
+      {
+        ...filteredData,
+        updatedBy: auditInfo.userId,
+        updatedAt: new Date()
+      },
       eq(finCurrentAccounts.id, accountId),
-      undefined,
+      existingAccount[0],
       auditInfo
     );
 
@@ -391,9 +402,13 @@ router.put("/accounts-details/:id", authenticateToken, async (req: AuthRequest, 
     await auditableUpdate(
       db,
       finAccountsDetails,
-      filteredData,
+      {
+        ...filteredData,
+        updatedBy: auditInfo.userId,
+        updatedAt: new Date()
+      },
       eq(finAccountsDetails.id, detailId),
-      undefined,
+      existingDetail[0],
       auditInfo
     );
 
