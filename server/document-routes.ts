@@ -992,6 +992,463 @@ documentRoutes.get("/types", authenticateJWT, async (req: any, res) => {
   }
 });
 
+// ============================================
+// PERSONEL EVRAK RAPORU ENDPOINTLERİ
+// ============================================
+
+// Eksik evrak raporu - Belirli evrak tipine sahip olmayan personelleri listele
+// GET /api/documents/missing-report?docTypeId=5&docTypeName=Adli Sicil Kaydı
+documentRoutes.get("/missing-report", authenticateJWT, async (req: any, res) => {
+  try {
+    const {
+      docTypeId,
+      docTypeName,
+      workAreaId,
+      companyId,
+      limit = "100",
+      offset = "0"
+    } = req.query;
+
+    // En az bir filtreleme kriteri olmalı
+    if (!docTypeId && !docTypeName) {
+      return res.status(400).json({
+        success: false,
+        error: "docTypeId veya docTypeName parametrelerinden en az biri gerekli"
+      });
+    }
+
+    // Evrak tipi ID'sini bul
+    let targetDocTypeId: number | null = null;
+    let targetDocTypeName: string | null = null;
+
+    if (docTypeId) {
+      targetDocTypeId = parseInt(docTypeId as string);
+      const [docType] = await db.select()
+        .from(docSubTypes)
+        .where(eq(docSubTypes.id, targetDocTypeId));
+
+      if (!docType) {
+        return res.status(404).json({
+          success: false,
+          error: "Belirtilen evrak tipi bulunamadı"
+        });
+      }
+      targetDocTypeName = docType.name;
+    } else if (docTypeName) {
+      // İsme göre evrak tipini bul (case-insensitive)
+      const [docType] = await db.select()
+        .from(docSubTypes)
+        .where(sql`LOWER(${docSubTypes.name}) LIKE LOWER(${'%' + docTypeName + '%'})`);
+
+      if (docType) {
+        targetDocTypeId = docType.id;
+        targetDocTypeName = docType.name;
+      } else {
+        targetDocTypeName = docTypeName as string;
+      }
+    }
+
+    // Aktif personelleri getir (evrak durumu ile birlikte)
+    const personnelWithDocStatus = await db.execute(sql`
+      WITH active_personnel AS (
+        SELECT DISTINCT
+          p.id,
+          p.name,
+          p.surname,
+          p.tc_no,
+          p.phone_no,
+          pwa.work_area_id,
+          wa.name as work_area_name,
+          pcm.company_id,
+          c.name as company_name
+        FROM personnel p
+        LEFT JOIN personnel_work_areas pwa ON p.id = pwa.personnel_id AND pwa.is_active = true AND pwa.exit_date IS NULL
+        LEFT JOIN work_areas wa ON pwa.work_area_id = wa.id
+        LEFT JOIN personnel_company_matches pcm ON p.id = pcm.personnel_id AND pcm.is_active = true
+        LEFT JOIN companies c ON pcm.company_id = c.id
+        WHERE p.is_active = true
+        ${workAreaId ? sql`AND pwa.work_area_id = ${parseInt(workAreaId as string)}` : sql``}
+        ${companyId ? sql`AND pcm.company_id = ${parseInt(companyId as string)}` : sql``}
+      ),
+      personnel_docs AS (
+        SELECT
+          d.entity_id as personnel_id,
+          d.doc_type_id,
+          dst.name as doc_type_name,
+          d.validity_end_date,
+          d.upload_date
+        FROM documents d
+        JOIN doc_sub_types dst ON d.doc_type_id = dst.id
+        WHERE d.entity_type = 'personnel'
+          AND d.is_active = true
+          ${targetDocTypeId ? sql`AND d.doc_type_id = ${targetDocTypeId}` : sql`AND LOWER(dst.name) LIKE LOWER(${'%' + (targetDocTypeName || '') + '%'})`}
+      )
+      SELECT
+        ap.id,
+        ap.name,
+        ap.surname,
+        ap.tc_no,
+        ap.phone_no,
+        ap.work_area_id,
+        ap.work_area_name,
+        ap.company_id,
+        ap.company_name,
+        CASE WHEN pd.personnel_id IS NULL THEN false ELSE true END as has_document,
+        pd.validity_end_date,
+        pd.upload_date,
+        CASE
+          WHEN pd.personnel_id IS NULL THEN 'missing'
+          WHEN pd.validity_end_date IS NOT NULL AND pd.validity_end_date < CURRENT_DATE THEN 'expired'
+          ELSE 'valid'
+        END as document_status
+      FROM active_personnel ap
+      LEFT JOIN personnel_docs pd ON ap.id = pd.personnel_id
+      ORDER BY
+        CASE
+          WHEN pd.personnel_id IS NULL THEN 0
+          WHEN pd.validity_end_date IS NOT NULL AND pd.validity_end_date < CURRENT_DATE THEN 1
+          ELSE 2
+        END,
+        ap.surname, ap.name
+      LIMIT ${parseInt(limit as string)}
+      OFFSET ${parseInt(offset as string)}
+    `);
+
+    // Toplam sayıları hesapla
+    const countResult = await db.execute(sql`
+      WITH active_personnel AS (
+        SELECT DISTINCT p.id
+        FROM personnel p
+        LEFT JOIN personnel_work_areas pwa ON p.id = pwa.personnel_id AND pwa.is_active = true AND pwa.exit_date IS NULL
+        LEFT JOIN personnel_company_matches pcm ON p.id = pcm.personnel_id AND pcm.is_active = true
+        WHERE p.is_active = true
+        ${workAreaId ? sql`AND pwa.work_area_id = ${parseInt(workAreaId as string)}` : sql``}
+        ${companyId ? sql`AND pcm.company_id = ${parseInt(companyId as string)}` : sql``}
+      ),
+      personnel_docs AS (
+        SELECT DISTINCT d.entity_id as personnel_id
+        FROM documents d
+        JOIN doc_sub_types dst ON d.doc_type_id = dst.id
+        WHERE d.entity_type = 'personnel'
+          AND d.is_active = true
+          ${targetDocTypeId ? sql`AND d.doc_type_id = ${targetDocTypeId}` : sql`AND LOWER(dst.name) LIKE LOWER(${'%' + (targetDocTypeName || '') + '%'})`}
+      )
+      SELECT
+        COUNT(DISTINCT ap.id) as total_personnel,
+        COUNT(DISTINCT CASE WHEN pd.personnel_id IS NULL THEN ap.id END) as missing_count,
+        COUNT(DISTINCT pd.personnel_id) as has_document_count
+      FROM active_personnel ap
+      LEFT JOIN personnel_docs pd ON ap.id = pd.personnel_id
+    `);
+
+    const stats = countResult.rows[0] as any;
+
+    res.json({
+      success: true,
+      data: {
+        docType: {
+          id: targetDocTypeId,
+          name: targetDocTypeName
+        },
+        statistics: {
+          totalPersonnel: parseInt(stats?.total_personnel || '0'),
+          missingCount: parseInt(stats?.missing_count || '0'),
+          hasDocumentCount: parseInt(stats?.has_document_count || '0'),
+          missingPercentage: stats?.total_personnel > 0
+            ? ((parseInt(stats?.missing_count || '0') / parseInt(stats?.total_personnel || '1')) * 100).toFixed(1)
+            : '0'
+        },
+        personnel: personnelWithDocStatus.rows,
+        pagination: {
+          limit: parseInt(limit as string),
+          offset: parseInt(offset as string)
+        }
+      },
+      message: `${targetDocTypeName} evrak durumu raporu`
+    });
+  } catch (error) {
+    console.error("Eksik evrak raporu hatası:", error);
+    res.status(500).json({
+      success: false,
+      error: "Eksik evrak raporu oluşturulurken hata oluştu"
+    });
+  }
+});
+
+// Personel evrak özet raporu - Tüm zorunlu evraklar için eksik evrak özeti
+// GET /api/documents/personnel-summary?personnelId=5
+// GET /api/documents/personnel-summary?workAreaId=3
+documentRoutes.get("/personnel-summary", authenticateJWT, async (req: any, res) => {
+  try {
+    const {
+      personnelId,
+      workAreaId,
+      companyId,
+      requiredDocTypes, // comma-separated doc type IDs (örn: "1,2,3,4")
+      limit = "100",
+      offset = "0"
+    } = req.query;
+
+    // Zorunlu evrak tiplerini belirle
+    let requiredDocTypeIds: number[] = [];
+    if (requiredDocTypes) {
+      requiredDocTypeIds = (requiredDocTypes as string).split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+    }
+
+    // Eğer zorunlu evrak tipleri belirtilmemişse, tüm aktif personel evrak tiplerini getir
+    if (requiredDocTypeIds.length === 0) {
+      const allDocTypes = await db.select({ id: docSubTypes.id })
+        .from(docSubTypes)
+        .innerJoin(docMainTypes, eq(docSubTypes.mainTypeId, docMainTypes.id))
+        .where(and(
+          eq(docSubTypes.isActive, true),
+          sql`LOWER(${docMainTypes.name}) LIKE '%personel%'`
+        ));
+      requiredDocTypeIds = allDocTypes.map(dt => dt.id);
+    }
+
+    // Personel evrak özetini getir
+    const summaryResult = await db.execute(sql`
+      WITH target_personnel AS (
+        SELECT DISTINCT
+          p.id,
+          p.name,
+          p.surname,
+          p.tc_no,
+          pwa.work_area_id,
+          wa.name as work_area_name
+        FROM personnel p
+        LEFT JOIN personnel_work_areas pwa ON p.id = pwa.personnel_id AND pwa.is_active = true AND pwa.exit_date IS NULL
+        LEFT JOIN work_areas wa ON pwa.work_area_id = wa.id
+        WHERE p.is_active = true
+        ${personnelId ? sql`AND p.id = ${parseInt(personnelId as string)}` : sql``}
+        ${workAreaId ? sql`AND pwa.work_area_id = ${parseInt(workAreaId as string)}` : sql``}
+        ${companyId ? sql`AND EXISTS (SELECT 1 FROM personnel_company_matches pcm WHERE pcm.personnel_id = p.id AND pcm.company_id = ${parseInt(companyId as string)} AND pcm.is_active = true)` : sql``}
+      ),
+      required_docs AS (
+        SELECT id, name FROM doc_sub_types
+        WHERE id = ANY(ARRAY[${sql.raw(requiredDocTypeIds.length > 0 ? requiredDocTypeIds.join(',') : '0')}]::int[])
+          AND is_active = true
+      ),
+      personnel_doc_status AS (
+        SELECT
+          tp.id as personnel_id,
+          tp.name,
+          tp.surname,
+          tp.tc_no,
+          tp.work_area_id,
+          tp.work_area_name,
+          rd.id as doc_type_id,
+          rd.name as doc_type_name,
+          d.id as document_id,
+          d.validity_end_date,
+          CASE
+            WHEN d.id IS NULL THEN 'missing'
+            WHEN d.validity_end_date IS NOT NULL AND d.validity_end_date < CURRENT_DATE THEN 'expired'
+            ELSE 'valid'
+          END as status
+        FROM target_personnel tp
+        CROSS JOIN required_docs rd
+        LEFT JOIN documents d ON d.entity_type = 'personnel'
+          AND d.entity_id = tp.id
+          AND d.doc_type_id = rd.id
+          AND d.is_active = true
+      )
+      SELECT
+        personnel_id,
+        name,
+        surname,
+        tc_no,
+        work_area_id,
+        work_area_name,
+        COUNT(*) as total_required,
+        COUNT(CASE WHEN status = 'valid' THEN 1 END) as valid_count,
+        COUNT(CASE WHEN status = 'missing' THEN 1 END) as missing_count,
+        COUNT(CASE WHEN status = 'expired' THEN 1 END) as expired_count,
+        json_agg(json_build_object(
+          'docTypeId', doc_type_id,
+          'docTypeName', doc_type_name,
+          'status', status,
+          'validityEndDate', validity_end_date
+        )) as document_details
+      FROM personnel_doc_status
+      GROUP BY personnel_id, name, surname, tc_no, work_area_id, work_area_name
+      ORDER BY missing_count DESC, expired_count DESC, surname, name
+      LIMIT ${parseInt(limit as string)}
+      OFFSET ${parseInt(offset as string)}
+    `);
+
+    // Toplam istatistikler
+    const totalStatsResult = await db.execute(sql`
+      WITH target_personnel AS (
+        SELECT DISTINCT p.id
+        FROM personnel p
+        LEFT JOIN personnel_work_areas pwa ON p.id = pwa.personnel_id AND pwa.is_active = true AND pwa.exit_date IS NULL
+        WHERE p.is_active = true
+        ${personnelId ? sql`AND p.id = ${parseInt(personnelId as string)}` : sql``}
+        ${workAreaId ? sql`AND pwa.work_area_id = ${parseInt(workAreaId as string)}` : sql``}
+        ${companyId ? sql`AND EXISTS (SELECT 1 FROM personnel_company_matches pcm WHERE pcm.personnel_id = p.id AND pcm.company_id = ${parseInt(companyId as string)} AND pcm.is_active = true)` : sql``}
+      )
+      SELECT COUNT(*) as total_personnel FROM target_personnel
+    `);
+
+    const totalPersonnel = parseInt((totalStatsResult.rows[0] as any)?.total_personnel || '0');
+
+    res.json({
+      success: true,
+      data: {
+        requiredDocTypes: requiredDocTypeIds,
+        totalPersonnel,
+        personnel: summaryResult.rows,
+        pagination: {
+          limit: parseInt(limit as string),
+          offset: parseInt(offset as string)
+        }
+      },
+      message: "Personel evrak özet raporu"
+    });
+  } catch (error) {
+    console.error("Personel evrak özet raporu hatası:", error);
+    res.status(500).json({
+      success: false,
+      error: "Personel evrak özet raporu oluşturulurken hata oluştu"
+    });
+  }
+});
+
+// Geçerliliği dolmuş evraklar raporu
+// GET /api/documents/expired-report?entityType=personnel&daysAhead=30
+documentRoutes.get("/expired-report", authenticateJWT, async (req: any, res) => {
+  try {
+    const {
+      entityType = "personnel",
+      workAreaId,
+      companyId,
+      daysAhead = "0", // Kaç gün içinde dolacak evrakları da göster
+      limit = "100",
+      offset = "0"
+    } = req.query;
+
+    const daysAheadNum = parseInt(daysAhead as string);
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + daysAheadNum);
+
+    const expiredDocsResult = await db.execute(sql`
+      SELECT
+        d.id as document_id,
+        d.entity_id,
+        d.title,
+        d.validity_end_date,
+        dst.name as doc_type_name,
+        CASE
+          WHEN d.validity_end_date < CURRENT_DATE THEN 'expired'
+          ELSE 'expiring_soon'
+        END as status,
+        CASE
+          WHEN ${entityType} = 'personnel' THEN (SELECT name || ' ' || surname FROM personnel WHERE id = d.entity_id)
+          WHEN ${entityType} = 'asset' THEN (SELECT plate_number FROM assets WHERE id = d.entity_id)
+          WHEN ${entityType} = 'company' THEN (SELECT name FROM companies WHERE id = d.entity_id)
+          WHEN ${entityType} = 'work_area' THEN (SELECT name FROM work_areas WHERE id = d.entity_id)
+        END as entity_name,
+        ${entityType === 'personnel' ? sql`
+          (SELECT wa.name FROM personnel_work_areas pwa
+           JOIN work_areas wa ON pwa.work_area_id = wa.id
+           WHERE pwa.personnel_id = d.entity_id AND pwa.is_active = true AND pwa.exit_date IS NULL
+           LIMIT 1)
+        ` : sql`NULL`} as work_area_name
+      FROM documents d
+      JOIN doc_sub_types dst ON d.doc_type_id = dst.id
+      WHERE d.entity_type = ${entityType}
+        AND d.is_active = true
+        AND d.validity_end_date IS NOT NULL
+        AND d.validity_end_date <= ${futureDate.toISOString().split('T')[0]}::date
+        ${workAreaId && entityType === 'personnel' ? sql`
+          AND EXISTS (
+            SELECT 1 FROM personnel_work_areas pwa
+            WHERE pwa.personnel_id = d.entity_id
+              AND pwa.work_area_id = ${parseInt(workAreaId as string)}
+              AND pwa.is_active = true
+              AND pwa.exit_date IS NULL
+          )
+        ` : sql``}
+        ${companyId && entityType === 'personnel' ? sql`
+          AND EXISTS (
+            SELECT 1 FROM personnel_company_matches pcm
+            WHERE pcm.personnel_id = d.entity_id
+              AND pcm.company_id = ${parseInt(companyId as string)}
+              AND pcm.is_active = true
+          )
+        ` : sql``}
+      ORDER BY d.validity_end_date ASC
+      LIMIT ${parseInt(limit as string)}
+      OFFSET ${parseInt(offset as string)}
+    `);
+
+    // İstatistikler
+    const statsResult = await db.execute(sql`
+      SELECT
+        COUNT(*) as total,
+        COUNT(CASE WHEN d.validity_end_date < CURRENT_DATE THEN 1 END) as expired_count,
+        COUNT(CASE WHEN d.validity_end_date >= CURRENT_DATE THEN 1 END) as expiring_soon_count
+      FROM documents d
+      WHERE d.entity_type = ${entityType}
+        AND d.is_active = true
+        AND d.validity_end_date IS NOT NULL
+        AND d.validity_end_date <= ${futureDate.toISOString().split('T')[0]}::date
+        ${workAreaId && entityType === 'personnel' ? sql`
+          AND EXISTS (
+            SELECT 1 FROM personnel_work_areas pwa
+            WHERE pwa.personnel_id = d.entity_id
+              AND pwa.work_area_id = ${parseInt(workAreaId as string)}
+              AND pwa.is_active = true
+              AND pwa.exit_date IS NULL
+          )
+        ` : sql``}
+        ${companyId && entityType === 'personnel' ? sql`
+          AND EXISTS (
+            SELECT 1 FROM personnel_company_matches pcm
+            WHERE pcm.personnel_id = d.entity_id
+              AND pcm.company_id = ${parseInt(companyId as string)}
+              AND pcm.is_active = true
+          )
+        ` : sql``}
+    `);
+
+    const stats = statsResult.rows[0] as any;
+
+    res.json({
+      success: true,
+      data: {
+        filters: {
+          entityType,
+          workAreaId: workAreaId ? parseInt(workAreaId as string) : null,
+          companyId: companyId ? parseInt(companyId as string) : null,
+          daysAhead: daysAheadNum
+        },
+        statistics: {
+          total: parseInt(stats?.total || '0'),
+          expiredCount: parseInt(stats?.expired_count || '0'),
+          expiringSoonCount: parseInt(stats?.expiring_soon_count || '0')
+        },
+        documents: expiredDocsResult.rows,
+        pagination: {
+          limit: parseInt(limit as string),
+          offset: parseInt(offset as string)
+        }
+      },
+      message: daysAheadNum > 0
+        ? `Süresi dolmuş ve ${daysAheadNum} gün içinde dolacak evraklar`
+        : "Süresi dolmuş evraklar"
+    });
+  } catch (error) {
+    console.error("Süresi dolmuş evrak raporu hatası:", error);
+    res.status(500).json({
+      success: false,
+      error: "Süresi dolmuş evrak raporu oluşturulurken hata oluştu"
+    });
+  }
+});
+
 // Belirli ana tipe göre alt tipleri listele - NO AUTH
 documentRoutes.get("/types/:mainTypeId", async (req: any, res) => {
   try {

@@ -1819,11 +1819,12 @@ export type InsertProjectPyp = z.infer<typeof insertProjectPypSchema>;
 export type UpdateProjectPyp = z.infer<typeof updateProjectPypSchema>;
 export type ProjectPyp = typeof projectPyps.$inferSelect;
 
-export const projectPypsRelations = relations(projectPyps, ({ one }) => ({
+export const projectPypsRelations = relations(projectPyps, ({ one, many }) => ({
   project: one(projects, {
     fields: [projectPyps.projectId],
     references: [projects.id],
   }),
+  progressPayments: many(progressPayments),
 }));
 
 export const foOutageProcess = pgTable("fo_outage_process", {
@@ -2181,6 +2182,7 @@ export const progressPayments = pgTable("progress_payments", {
   paymentDate: date("payment_date").notNull(),
   teamId: integer("team_id").notNull().references(() => teams.id),
   projectId: integer("project_id").notNull().references(() => projects.id),
+  pypId: integer("pyp_id").references(() => projectPyps.id),
   paymentTypeId: integer("payment_type_id").notNull().references(() => progressPaymentTypes.id),
   totalAmountCents: integer("total_amount_cents").notNull().default(0),
   status: varchar("status", { length: 20 }).notNull().default("draft"),
@@ -2458,6 +2460,10 @@ export const progressPaymentsRelations = relations(progressPayments, ({ one, man
   project: one(projects, {
     fields: [progressPayments.projectId],
     references: [projects.id],
+  }),
+  pyp: one(projectPyps, {
+    fields: [progressPayments.pypId],
+    references: [projectPyps.id],
   }),
   paymentType: one(progressPaymentTypes, {
     fields: [progressPayments.paymentTypeId],
