@@ -216,6 +216,7 @@ export const docSubTypes = pgTable("doc_sub_types", {
   mainTypeId: integer("main_type_id").notNull().references(() => docMainTypes.id),
   name: varchar("name", { length: 50 }).notNull(),
   isActive: boolean("is_active").notNull().default(true),
+  isRequiredForPersonnel: boolean("is_required_for_personnel").notNull().default(false),
 });
 
 // Doc Main Types Zod Schemas

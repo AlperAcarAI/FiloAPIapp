@@ -1192,19 +1192,36 @@ documentRoutes.get("/personnel-summary", authenticateJWT, async (req: any, res) 
     // Zorunlu evrak tiplerini belirle
     let requiredDocTypeIds: number[] = [];
     if (requiredDocTypes) {
+      // Manuel olarak belirtilmiş evrak tipleri
       requiredDocTypeIds = (requiredDocTypes as string).split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
     }
 
-    // Eğer zorunlu evrak tipleri belirtilmemişse, tüm aktif personel evrak tiplerini getir
+    // Eğer zorunlu evrak tipleri belirtilmemişse, is_required_for_personnel=true olan evrakları getir
     if (requiredDocTypeIds.length === 0) {
-      const allDocTypes = await db.select({ id: docSubTypes.id })
+      const requiredDocTypes = await db.select({ id: docSubTypes.id })
         .from(docSubTypes)
-        .innerJoin(docMainTypes, eq(docSubTypes.mainTypeId, docMainTypes.id))
         .where(and(
           eq(docSubTypes.isActive, true),
-          sql`LOWER(${docMainTypes.name}) LIKE '%personel%'`
+          eq(docSubTypes.isRequiredForPersonnel, true)
         ));
-      requiredDocTypeIds = allDocTypes.map(dt => dt.id);
+      requiredDocTypeIds = requiredDocTypes.map(dt => dt.id);
+
+      // Eğer hiç zorunlu evrak tanımlanmamışsa, boş sonuç döndür
+      if (requiredDocTypeIds.length === 0) {
+        return res.json({
+          success: true,
+          data: {
+            requiredDocTypes: [],
+            totalPersonnel: 0,
+            personnel: [],
+            pagination: {
+              limit: parseInt(limit as string),
+              offset: parseInt(offset as string)
+            }
+          },
+          message: "Henüz zorunlu evrak tipi tanımlanmamış. Lütfen evrak tiplerini 'is_required_for_personnel' olarak işaretleyin veya requiredDocTypes parametresi ile evrak tiplerini manuel olarak belirtin."
+        });
+      }
     }
 
     // Personel evrak özetini getir
