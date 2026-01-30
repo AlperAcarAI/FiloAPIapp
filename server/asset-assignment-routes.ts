@@ -866,11 +866,12 @@ router.post("/:id/complete", async (req: AuthRequest, res) => {
       });
     }
 
-    // Update assignment with end date
+    // Update assignment with end date and set isActive to false
     const [completedAssignment] = await db
       .update(assetsPersonelAssignment)
       .set({
         endDate,
+        isActive: false,
         updatedBy: user.id,
         updatedAt: new Date()
       })
