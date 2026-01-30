@@ -1063,7 +1063,7 @@ documentRoutes.get("/missing-report", authenticateJWT, async (req: any, res) => 
           pcm.company_id,
           c.name as company_name
         FROM personnel p
-        LEFT JOIN personnel_work_areas pwa ON p.id = pwa.personnel_id AND pwa.is_active = true AND pwa.exit_date IS NULL
+        LEFT JOIN personnel_work_areas pwa ON p.id = pwa.personnel_id AND pwa.is_active = true AND pwa.end_date IS NULL
         LEFT JOIN work_areas wa ON pwa.work_area_id = wa.id
         LEFT JOIN personnel_company_matches pcm ON p.id = pcm.personnel_id AND pcm.is_active = true
         LEFT JOIN companies c ON pcm.company_id = c.id
@@ -1120,7 +1120,7 @@ documentRoutes.get("/missing-report", authenticateJWT, async (req: any, res) => 
       WITH active_personnel AS (
         SELECT DISTINCT p.id
         FROM personnel p
-        LEFT JOIN personnel_work_areas pwa ON p.id = pwa.personnel_id AND pwa.is_active = true AND pwa.exit_date IS NULL
+        LEFT JOIN personnel_work_areas pwa ON p.id = pwa.personnel_id AND pwa.is_active = true AND pwa.end_date IS NULL
         LEFT JOIN personnel_company_matches pcm ON p.id = pcm.personnel_id AND pcm.is_active = true
         WHERE p.is_active = true
         ${workAreaId ? sql`AND pwa.work_area_id = ${parseInt(workAreaId as string)}` : sql``}
@@ -1236,7 +1236,7 @@ documentRoutes.get("/personnel-summary", authenticateJWT, async (req: any, res) 
           pwa.work_area_id,
           wa.name as work_area_name
         FROM personnel p
-        LEFT JOIN personnel_work_areas pwa ON p.id = pwa.personnel_id AND pwa.is_active = true AND pwa.exit_date IS NULL
+        LEFT JOIN personnel_work_areas pwa ON p.id = pwa.personnel_id AND pwa.is_active = true AND pwa.end_date IS NULL
         LEFT JOIN work_areas wa ON pwa.work_area_id = wa.id
         WHERE p.is_active = true
         ${personnelId ? sql`AND p.id = ${parseInt(personnelId as string)}` : sql``}
@@ -1301,7 +1301,7 @@ documentRoutes.get("/personnel-summary", authenticateJWT, async (req: any, res) 
       WITH target_personnel AS (
         SELECT DISTINCT p.id
         FROM personnel p
-        LEFT JOIN personnel_work_areas pwa ON p.id = pwa.personnel_id AND pwa.is_active = true AND pwa.exit_date IS NULL
+        LEFT JOIN personnel_work_areas pwa ON p.id = pwa.personnel_id AND pwa.is_active = true AND pwa.end_date IS NULL
         WHERE p.is_active = true
         ${personnelId ? sql`AND p.id = ${parseInt(personnelId as string)}` : sql``}
         ${workAreaId ? sql`AND pwa.work_area_id = ${parseInt(workAreaId as string)}` : sql``}
@@ -1371,7 +1371,7 @@ documentRoutes.get("/expired-report", authenticateJWT, async (req: any, res) => 
         ${entityType === 'personnel' ? sql`
           (SELECT wa.name FROM personnel_work_areas pwa
            JOIN work_areas wa ON pwa.work_area_id = wa.id
-           WHERE pwa.personnel_id = d.entity_id AND pwa.is_active = true AND pwa.exit_date IS NULL
+           WHERE pwa.personnel_id = d.entity_id AND pwa.is_active = true AND pwa.end_date IS NULL
            LIMIT 1)
         ` : sql`NULL`} as work_area_name
       FROM documents d
@@ -1386,7 +1386,7 @@ documentRoutes.get("/expired-report", authenticateJWT, async (req: any, res) => 
             WHERE pwa.personnel_id = d.entity_id
               AND pwa.work_area_id = ${parseInt(workAreaId as string)}
               AND pwa.is_active = true
-              AND pwa.exit_date IS NULL
+              AND pwa.end_date IS NULL
           )
         ` : sql``}
         ${companyId && entityType === 'personnel' ? sql`
@@ -1419,7 +1419,7 @@ documentRoutes.get("/expired-report", authenticateJWT, async (req: any, res) => 
             WHERE pwa.personnel_id = d.entity_id
               AND pwa.work_area_id = ${parseInt(workAreaId as string)}
               AND pwa.is_active = true
-              AND pwa.exit_date IS NULL
+              AND pwa.end_date IS NULL
           )
         ` : sql``}
         ${companyId && entityType === 'personnel' ? sql`
