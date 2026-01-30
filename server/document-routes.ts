@@ -531,10 +531,11 @@ documentRoutes.get("/", authenticateJWT, async (req: any, res) => {
 });
 
 // Belirli bir dökümanı getir - MUST be after specific routes
-documentRoutes.get("/:id", authenticateJWT, async (req: any, res) => {
+// Use regex to only match numeric IDs, so named routes like /personnel-summary are not caught
+documentRoutes.get("/:id(\\d+)", authenticateJWT, async (req: any, res) => {
   try {
     const { id } = req.params;
-    
+
     const [document] = await db.select({
       id: documents.id,
       entityType: documents.entityType,
@@ -823,7 +824,7 @@ documentRoutes.post("/upload", authenticateJWT, documentUpload.single('file'), a
 });
 
 // Döküman güncelle
-documentRoutes.put("/:id", authenticateJWT, async (req: any, res) => {
+documentRoutes.put("/:id(\\d+)", authenticateJWT, async (req: any, res) => {
   try {
     const { id } = req.params;
     const validatedData = updateDocumentSchema.parse(req.body);
@@ -875,7 +876,7 @@ documentRoutes.put("/:id", authenticateJWT, async (req: any, res) => {
 });
 
 // Döküman sil (soft delete)
-documentRoutes.delete("/:id", authenticateJWT, async (req: any, res) => {
+documentRoutes.delete("/:id(\\d+)", authenticateJWT, async (req: any, res) => {
   try {
     const { id } = req.params;
     const auditInfo = captureAuditInfo(req);
@@ -1244,7 +1245,7 @@ documentRoutes.get("/personnel-summary", authenticateJWT, async (req: any, res) 
       ),
       required_docs AS (
         SELECT id, name FROM doc_sub_types
-        WHERE id = ANY(${requiredDocTypeIds})
+        WHERE id = ANY(ARRAY[${sql.raw(requiredDocTypeIds.length > 0 ? requiredDocTypeIds.join(',') : '0')}]::int[])
           AND is_active = true
       ),
       personnel_doc_status AS (
