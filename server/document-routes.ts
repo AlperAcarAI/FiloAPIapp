@@ -1244,7 +1244,7 @@ documentRoutes.get("/personnel-summary", authenticateJWT, async (req: any, res) 
       ),
       required_docs AS (
         SELECT id, name FROM doc_sub_types
-        WHERE id = ANY(ARRAY[${sql.raw(requiredDocTypeIds.length > 0 ? requiredDocTypeIds.join(',') : '0')}]::int[])
+        WHERE id = ANY(${requiredDocTypeIds})
           AND is_active = true
       ),
       personnel_doc_status AS (
