@@ -8,6 +8,7 @@ import {
   materials,
   materialCodeMappings,
   materialUnits,
+  companies,
   teams,
   teamMembers,
   unitPrices,
@@ -40,7 +41,7 @@ import {
   insertProgressPaymentDetailSchema,
   updateProgressPaymentDetailSchema
 } from "../shared/schema";
-import { eq, and, desc, sql, gte, lte, or, isNull } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte, or, isNull, ilike, notInArray } from "drizzle-orm";
 
 const router = Router();
 
@@ -542,6 +543,416 @@ router.delete("/material-units/:id", async (req, res) => {
     }
 
     res.json({ message: "Malzeme-birim eşleştirmesi pasif hale getirildi" });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========================
+// MATERIAL CODE MAPPINGS (MALZEME KOD EŞLEŞTİRME - FİRMA BAZLI)
+// ========================
+
+// Tüm eşleştirmeleri listele (filtreli)
+router.get("/material-code-mappings", async (req, res) => {
+  try {
+    const { companyId, materialId, search, active } = req.query;
+
+    const conditions: any[] = [];
+
+    if (active !== 'false') {
+      conditions.push(eq(materialCodeMappings.isActive, true));
+    }
+
+    if (companyId) {
+      conditions.push(eq(materialCodeMappings.companyId, parseInt(companyId as string)));
+    }
+
+    if (materialId) {
+      conditions.push(eq(materialCodeMappings.materialId, parseInt(materialId as string)));
+    }
+
+    if (search) {
+      const searchTerm = `%${search}%`;
+      conditions.push(
+        or(
+          ilike(materialCodeMappings.companyMaterialCode, searchTerm),
+          ilike(materialCodeMappings.companyMaterialName, searchTerm)
+        )
+      );
+    }
+
+    const result = await db.select({
+      id: materialCodeMappings.id,
+      materialId: materialCodeMappings.materialId,
+      companyId: materialCodeMappings.companyId,
+      companyMaterialCode: materialCodeMappings.companyMaterialCode,
+      companyMaterialName: materialCodeMappings.companyMaterialName,
+      isActive: materialCodeMappings.isActive,
+      createdAt: materialCodeMappings.createdAt,
+      updatedAt: materialCodeMappings.updatedAt,
+      materialCode: materials.code,
+      materialName: materials.name,
+      companyName: companies.name,
+    })
+      .from(materialCodeMappings)
+      .leftJoin(materials, eq(materialCodeMappings.materialId, materials.id))
+      .leftJoin(companies, eq(materialCodeMappings.companyId, companies.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(materialCodeMappings.id);
+
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Firma bazlı tüm eşleştirmeler (malzeme detaylarıyla)
+router.get("/material-code-mappings/by-company/:companyId", async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    const { search } = req.query;
+
+    const conditions: any[] = [
+      eq(materialCodeMappings.companyId, parseInt(companyId)),
+      eq(materialCodeMappings.isActive, true),
+    ];
+
+    if (search) {
+      const searchTerm = `%${search}%`;
+      conditions.push(
+        or(
+          ilike(materialCodeMappings.companyMaterialCode, searchTerm),
+          ilike(materialCodeMappings.companyMaterialName, searchTerm),
+          ilike(materials.code, searchTerm),
+          ilike(materials.name, searchTerm)
+        )
+      );
+    }
+
+    const result = await db.select({
+      id: materialCodeMappings.id,
+      materialId: materialCodeMappings.materialId,
+      companyMaterialCode: materialCodeMappings.companyMaterialCode,
+      companyMaterialName: materialCodeMappings.companyMaterialName,
+      masterCode: materials.code,
+      masterName: materials.name,
+      materialDescription: materials.description,
+    })
+      .from(materialCodeMappings)
+      .innerJoin(materials, eq(materialCodeMappings.materialId, materials.id))
+      .where(and(...conditions))
+      .orderBy(materials.name);
+
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Eşleşmemiş malzemeleri öner (belirli firma için henüz eşleştirilmemiş master malzemeler)
+// fuzzy=true ile bulanık arama (trigram similarity) aktif olur
+// threshold parametresi ile minimum benzerlik skoru ayarlanır (varsayılan: 0.15)
+router.get("/material-code-mappings/suggest", async (req, res) => {
+  try {
+    const { companyId, search, fuzzy, threshold, includeMatched } = req.query;
+
+    if (!companyId) {
+      return res.status(400).json({ error: "companyId parametresi zorunludur" });
+    }
+
+    const useFuzzy = fuzzy === 'true';
+    const similarityThreshold = parseFloat(threshold as string) || 0.15;
+
+    // includeMatched=true değilse, zaten eşleştirilmiş malzemeleri hariç tut
+    let excludeIds: number[] = [];
+    if (includeMatched !== 'true') {
+      const existingMappings = await db.select({ materialId: materialCodeMappings.materialId })
+        .from(materialCodeMappings)
+        .where(and(
+          eq(materialCodeMappings.companyId, parseInt(companyId as string)),
+          eq(materialCodeMappings.isActive, true)
+        ));
+      excludeIds = existingMappings.map(m => m.materialId);
+    }
+
+    // Fuzzy search: trigram similarity kullan
+    if (search && useFuzzy) {
+      const searchStr = search as string;
+
+      const baseConditions = [eq(materials.isActive, true)];
+      if (excludeIds.length > 0) {
+        baseConditions.push(notInArray(materials.id, excludeIds));
+      }
+
+      const result = await db.select({
+        id: materials.id,
+        code: materials.code,
+        name: materials.name,
+        description: materials.description,
+        similarity: sql<number>`similarity(${materials.name}, ${searchStr})`.as('similarity'),
+      })
+        .from(materials)
+        .where(and(
+          ...baseConditions,
+          sql`similarity(${materials.name}, ${searchStr}) > ${similarityThreshold}`
+        ))
+        .orderBy(sql`similarity(${materials.name}, ${searchStr}) DESC`)
+        .limit(50);
+
+      return res.json(result);
+    }
+
+    // Normal search: ILIKE
+    const conditions: any[] = [eq(materials.isActive, true)];
+
+    if (excludeIds.length > 0) {
+      conditions.push(notInArray(materials.id, excludeIds));
+    }
+
+    if (search) {
+      const searchTerm = `%${search}%`;
+      conditions.push(
+        or(
+          ilike(materials.code, searchTerm),
+          ilike(materials.name, searchTerm)
+        )
+      );
+    }
+
+    const result = await db.select({
+      id: materials.id,
+      code: materials.code,
+      name: materials.name,
+      description: materials.description,
+    })
+      .from(materials)
+      .where(and(...conditions))
+      .orderBy(materials.name)
+      .limit(50);
+
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Toplu fuzzy eşleştirme önerisi
+// Firma malzeme isimlerini gönder, her biri için en yakın master malzeme önerilerini al
+router.post("/material-code-mappings/suggest-bulk", async (req, res) => {
+  try {
+    const { items, threshold, maxSuggestions } = req.body;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "items dizisi zorunludur. Örnek: [{ name: 'BAKIR BARA 30x5' }]" });
+    }
+
+    const simThreshold = parseFloat(threshold) || 0.15;
+    const limit = parseInt(maxSuggestions) || 5;
+
+    const suggestions = [];
+
+    for (const item of items) {
+      const itemName = item.name || item.companyMaterialName;
+      if (!itemName) {
+        suggestions.push({ input: item, matches: [], error: "name alanı zorunludur" });
+        continue;
+      }
+
+      const matches = await db.select({
+        id: materials.id,
+        code: materials.code,
+        name: materials.name,
+        similarity: sql<number>`similarity(${materials.name}, ${itemName})`.as('similarity'),
+      })
+        .from(materials)
+        .where(and(
+          eq(materials.isActive, true),
+          sql`similarity(${materials.name}, ${itemName}) > ${simThreshold}`
+        ))
+        .orderBy(sql`similarity(${materials.name}, ${itemName}) DESC`)
+        .limit(limit);
+
+      suggestions.push({
+        input: item,
+        matches,
+      });
+    }
+
+    res.json({
+      total: items.length,
+      matched: suggestions.filter(s => s.matches && s.matches.length > 0).length,
+      unmatched: suggestions.filter(s => !s.matches || s.matches.length === 0).length,
+      suggestions,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Tek eşleştirme detayı
+router.get("/material-code-mappings/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [result] = await db.select({
+      id: materialCodeMappings.id,
+      materialId: materialCodeMappings.materialId,
+      companyId: materialCodeMappings.companyId,
+      companyMaterialCode: materialCodeMappings.companyMaterialCode,
+      companyMaterialName: materialCodeMappings.companyMaterialName,
+      isActive: materialCodeMappings.isActive,
+      createdAt: materialCodeMappings.createdAt,
+      updatedAt: materialCodeMappings.updatedAt,
+      materialCode: materials.code,
+      materialName: materials.name,
+      companyName: companies.name,
+    })
+      .from(materialCodeMappings)
+      .leftJoin(materials, eq(materialCodeMappings.materialId, materials.id))
+      .leftJoin(companies, eq(materialCodeMappings.companyId, companies.id))
+      .where(eq(materialCodeMappings.id, parseInt(id)));
+
+    if (!result) {
+      return res.status(404).json({ error: "Eşleştirme bulunamadı" });
+    }
+
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Yeni eşleştirme oluştur
+router.post("/material-code-mappings", async (req, res) => {
+  try {
+    const validated = insertMaterialCodeMappingSchema.parse(req.body);
+    const userId = (req as any).user?.id;
+
+    const [result] = await db.insert(materialCodeMappings).values({
+      ...validated,
+      createdBy: userId,
+      updatedBy: userId,
+    }).returning();
+
+    res.status(201).json(result);
+  } catch (error: any) {
+    if (error.message?.includes("unique_material_company_mapping")) {
+      return res.status(409).json({ error: "Bu malzeme için bu firmada zaten bir eşleştirme mevcut" });
+    }
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Toplu eşleştirme (bulk upsert)
+router.post("/material-code-mappings/bulk", async (req, res) => {
+  try {
+    const { companyId, mappings } = req.body;
+    const userId = (req as any).user?.id;
+
+    if (!companyId || !Array.isArray(mappings) || mappings.length === 0) {
+      return res.status(400).json({ error: "companyId ve mappings dizisi zorunludur" });
+    }
+
+    const results: any[] = [];
+
+    for (const mapping of mappings) {
+      const { materialId, companyMaterialCode, companyMaterialName } = mapping;
+
+      if (!materialId || !companyMaterialCode) {
+        results.push({ materialId, status: "error", error: "materialId ve companyMaterialCode zorunludur" });
+        continue;
+      }
+
+      // Mevcut eşleştirme var mı kontrol et
+      const [existing] = await db.select()
+        .from(materialCodeMappings)
+        .where(and(
+          eq(materialCodeMappings.materialId, materialId),
+          eq(materialCodeMappings.companyId, parseInt(companyId))
+        ));
+
+      if (existing) {
+        // Güncelle
+        const [updated] = await db.update(materialCodeMappings)
+          .set({
+            companyMaterialCode,
+            companyMaterialName: companyMaterialName || null,
+            isActive: true,
+            updatedBy: userId,
+            updatedAt: new Date(),
+          })
+          .where(eq(materialCodeMappings.id, existing.id))
+          .returning();
+
+        results.push({ materialId, status: "updated", data: updated });
+      } else {
+        // Yeni ekle
+        const [inserted] = await db.insert(materialCodeMappings).values({
+          materialId,
+          companyId: parseInt(companyId),
+          companyMaterialCode,
+          companyMaterialName: companyMaterialName || null,
+          createdBy: userId,
+          updatedBy: userId,
+        }).returning();
+
+        results.push({ materialId, status: "created", data: inserted });
+      }
+    }
+
+    res.status(200).json({
+      total: mappings.length,
+      created: results.filter(r => r.status === "created").length,
+      updated: results.filter(r => r.status === "updated").length,
+      errors: results.filter(r => r.status === "error").length,
+      results,
+    });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Eşleştirmeyi güncelle
+router.put("/material-code-mappings/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const validated = updateMaterialCodeMappingSchema.parse(req.body);
+    const userId = (req as any).user?.id;
+
+    const [result] = await db.update(materialCodeMappings)
+      .set({ ...validated, updatedBy: userId, updatedAt: new Date() })
+      .where(eq(materialCodeMappings.id, parseInt(id)))
+      .returning();
+
+    if (!result) {
+      return res.status(404).json({ error: "Eşleştirme bulunamadı" });
+    }
+
+    res.json(result);
+  } catch (error: any) {
+    if (error.message?.includes("unique_material_company_mapping")) {
+      return res.status(409).json({ error: "Bu malzeme için bu firmada zaten bir eşleştirme mevcut" });
+    }
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Eşleştirmeyi sil (soft delete)
+router.delete("/material-code-mappings/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).user?.id;
+
+    const [result] = await db.update(materialCodeMappings)
+      .set({ isActive: false, updatedBy: userId, updatedAt: new Date() })
+      .where(eq(materialCodeMappings.id, parseInt(id)))
+      .returning();
+
+    if (!result) {
+      return res.status(404).json({ error: "Eşleştirme bulunamadı" });
+    }
+
+    res.json({ message: "Eşleştirme pasif hale getirildi" });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
