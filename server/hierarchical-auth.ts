@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 import { db } from './db';
 import { users, personnel, personnelWorkAreas, workAreas, personnelPositions, accessLevels, userAccessRights } from '@shared/schema';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, or, isNull, gt, inArray, sql } from 'drizzle-orm';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
 const JWT_EXPIRES_IN = '8h'; // 8 saatlik session
@@ -251,12 +251,26 @@ export const authenticateJWT = async (
     
     // Access scope kontrolü - Corporate için sınırsız erişim
     let allowedWorkAreaIds: number[] | null = null;
-    
+
     if (accessLevel === 'CORPORATE') {
       // Corporate seviye: Her zaman tüm work area'lara erişim
       allowedWorkAreaIds = null; // Tüm erişim - filtre yok
+    } else if (accessLevel === 'WORKSITE' && userData.personnelId) {
+      // WORKSITE seviye: Personelin anlık aktif şantiye atamalarından erişim kapsamı
+      // endDate NULL (devam eden) veya endDate > bugün (henüz bitmemiş) olanlar
+      const allActiveWorkAreas = await db.select({ workAreaId: personnelWorkAreas.workAreaId })
+        .from(personnelWorkAreas)
+        .where(and(
+          eq(personnelWorkAreas.personnelId, userData.personnelId),
+          eq(personnelWorkAreas.isActive, true),
+          or(
+            isNull(personnelWorkAreas.endDate),
+            gt(personnelWorkAreas.endDate, sql`CURRENT_DATE`)
+          )
+        ));
+      allowedWorkAreaIds = allActiveWorkAreas.map(w => w.workAreaId);
     } else {
-      // Diğer seviyeler için hesapla
+      // REGIONAL, DEPARTMENT => mevcut mantık
       allowedWorkAreaIds = calculateAllowedWorkAreas({
         accessLevel,
         accessScope: userData.accessScope,
@@ -402,7 +416,31 @@ export const loadUserContext = async (userId: number): Promise<UserContext | nul
 
     const userData = userWithAccess[0];
     const accessLevel = userData.accessLevel || 'WORKSITE';
-    
+
+    // WORKSITE seviye: Personelin tüm aktif şantiye atamalarından erişim kapsamı
+    let allowedWorkAreaIds: number[] | null;
+    if (accessLevel === 'CORPORATE') {
+      allowedWorkAreaIds = null;
+    } else if (accessLevel === 'WORKSITE' && userData.personnelId) {
+      const allActiveWorkAreas = await db.select({ workAreaId: personnelWorkAreas.workAreaId })
+        .from(personnelWorkAreas)
+        .where(and(
+          eq(personnelWorkAreas.personnelId, userData.personnelId),
+          eq(personnelWorkAreas.isActive, true),
+          or(
+            isNull(personnelWorkAreas.endDate),
+            gt(personnelWorkAreas.endDate, sql`CURRENT_DATE`)
+          )
+        ));
+      allowedWorkAreaIds = allActiveWorkAreas.map(w => w.workAreaId);
+    } else {
+      allowedWorkAreaIds = calculateAllowedWorkAreas({
+        accessLevel,
+        accessScope: userData.accessScope,
+        currentWorkAreaId: userData.currentWorkAreaId
+      });
+    }
+
     return {
       userId: userData.userId,
       personnelId: userData.personnelId,
@@ -410,11 +448,7 @@ export const loadUserContext = async (userId: number): Promise<UserContext | nul
       personnelSurname: userData.personnelSurname,
       accessLevel: accessLevel,
       hierarchyLevel: userData.hierarchyLevel || 1,
-      allowedWorkAreaIds: calculateAllowedWorkAreas({
-        accessLevel,
-        accessScope: userData.accessScope,
-        currentWorkAreaId: userData.currentWorkAreaId
-      }),
+      allowedWorkAreaIds,
       permissions: calculatePermissions({
         accessLevel,
         department: userData.department,
