@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from './db.js';
-import { eq, and, ilike, desc, asc, like, or, ne, inArray, sql } from 'drizzle-orm';
+import { eq, and, ilike, desc, asc, like, or, ne, inArray, isNull, gt, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { 
   personnel, countries, cities, personnelPositions, workAreas, personnelWorkAreas, projects,
@@ -837,6 +837,24 @@ router.post('/addPersonnelWorkArea', authenticateJWT, async (req, res) => {
       });
     }
 
+    // Mevcut aktif atamaları sonlandır (farklı şantiyelerdeki)
+    const closedAssignments = await db
+      .update(personnelWorkAreas)
+      .set({
+        endDate: startDate,
+        isActive: false,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(personnelWorkAreas.personnelId, personnelId),
+        eq(personnelWorkAreas.isActive, true),
+        or(
+          isNull(personnelWorkAreas.endDate),
+          gt(personnelWorkAreas.endDate, sql`CURRENT_DATE`)
+        )
+      ))
+      .returning({ id: personnelWorkAreas.id });
+
     // Create the assignment with project reference
     const [newAssignment] = await db
       .insert(personnelWorkAreas)
@@ -855,7 +873,8 @@ router.post('/addPersonnelWorkArea', authenticateJWT, async (req, res) => {
       success: true,
       message: 'Personel çalışma alanı ataması başarıyla oluşturuldu.',
       data: {
-        personnelWorkArea: newAssignment
+        personnelWorkArea: newAssignment,
+        closedAssignments: closedAssignments.length
       }
     });
 
