@@ -935,7 +935,7 @@ router.get('/personnel', authenticateJWT, filterByWorkArea, async (req: AuthRequ
           SELECT 1 FROM personnel_work_areas pwa 
           JOIN work_areas wa ON wa.id = pwa.work_area_id
           WHERE pwa.personnel_id = personnel.id 
-          AND wa.id = ANY(${req.workAreaFilter})
+          AND wa.id = ANY(${sql.raw(`ARRAY[${req.workAreaFilter!.join(',')}]`)})
           AND pwa.is_active = true
         )`
       );
@@ -1028,7 +1028,7 @@ router.get('/personnel', authenticateJWT, filterByWorkArea, async (req: AuthRequ
           SELECT 1 FROM personnel_work_areas pwa 
           JOIN work_areas wa ON wa.id = pwa.work_area_id
           WHERE pwa.personnel_id = personnel.id 
-          AND wa.id = ANY(${req.workAreaFilter})
+          AND wa.id = ANY(${sql.raw(`ARRAY[${req.workAreaFilter!.join(',')}]`)})
           AND pwa.is_active = true
         )`
       );
