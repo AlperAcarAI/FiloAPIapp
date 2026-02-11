@@ -87,7 +87,15 @@ router.get('/personnel', async (req: AuthRequest, res) => {
     
     // Work area filtering based on user's permissions
     if (req.workAreaFilter && req.workAreaFilter.length > 0) {
-      whereConditions.push(inArray(personnelWorkAreas.workAreaId, req.workAreaFilter));
+      whereConditions.push(
+        sql`EXISTS (
+          SELECT 1 FROM personnel_work_areas pwa
+          WHERE pwa.personnel_id = personnel.id
+          AND pwa.work_area_id = ANY(${sql.raw(`ARRAY[${req.workAreaFilter.join(',')}]`)})
+          AND pwa.is_active = true
+          AND (pwa.end_date IS NULL OR pwa.end_date > CURRENT_DATE)
+        )`
+      );
     }
     
     if (search) {
@@ -116,32 +124,59 @@ router.get('/personnel', async (req: AuthRequest, res) => {
         birthdate: personnel.birthdate,
         address: personnel.address,
         phoneNo: personnel.phoneNo,
-        iban: personnel.iban, // IBAN field added
+        iban: personnel.iban,
         status: personnel.status,
         isActive: personnel.isActive,
         companyId: personnel.companyId,
         // Join data
         nationName: countries.name,
         birthplaceName: cities.name,
-        // Work area information
-        currentWorkAreaId: personnelWorkAreas.workAreaId,
-        workAreaName: workAreas.name,
-        positionName: personnelPositions.name,
+        // Work area information (en güncel aktif atamadan subquery ile)
+        currentWorkAreaId: sql<number>`(
+          SELECT pwa.work_area_id FROM personnel_work_areas pwa
+          WHERE pwa.personnel_id = personnel.id AND pwa.is_active = true
+          AND (pwa.end_date IS NULL OR pwa.end_date > CURRENT_DATE)
+          ORDER BY pwa.start_date DESC LIMIT 1
+        )`.as('currentWorkAreaId'),
+        workAreaName: sql<string>`(
+          SELECT wa.name FROM personnel_work_areas pwa
+          JOIN work_areas wa ON wa.id = pwa.work_area_id
+          WHERE pwa.personnel_id = personnel.id AND pwa.is_active = true
+          AND (pwa.end_date IS NULL OR pwa.end_date > CURRENT_DATE)
+          ORDER BY pwa.start_date DESC LIMIT 1
+        )`.as('workAreaName'),
+        positionName: sql<string>`(
+          SELECT pp.name FROM personnel_work_areas pwa
+          JOIN personnel_positions pp ON pp.id = pwa.position_id
+          WHERE pwa.personnel_id = personnel.id AND pwa.is_active = true
+          AND (pwa.end_date IS NULL OR pwa.end_date > CURRENT_DATE)
+          ORDER BY pwa.start_date DESC LIMIT 1
+        )`.as('positionName'),
         // Project information
-        currentProjectId: personnelWorkAreas.projectId,
-        projectCode: projects.code,
-        projectStatus: projects.status
+        currentProjectId: sql<number>`(
+          SELECT pwa.project_id FROM personnel_work_areas pwa
+          WHERE pwa.personnel_id = personnel.id AND pwa.is_active = true
+          AND (pwa.end_date IS NULL OR pwa.end_date > CURRENT_DATE)
+          ORDER BY pwa.start_date DESC LIMIT 1
+        )`.as('currentProjectId'),
+        projectCode: sql<string>`(
+          SELECT pr.code FROM personnel_work_areas pwa
+          JOIN projects pr ON pr.id = pwa.project_id
+          WHERE pwa.personnel_id = personnel.id AND pwa.is_active = true
+          AND (pwa.end_date IS NULL OR pwa.end_date > CURRENT_DATE)
+          ORDER BY pwa.start_date DESC LIMIT 1
+        )`.as('projectCode'),
+        projectStatus: sql<string>`(
+          SELECT pr.status FROM personnel_work_areas pwa
+          JOIN projects pr ON pr.id = pwa.project_id
+          WHERE pwa.personnel_id = personnel.id AND pwa.is_active = true
+          AND (pwa.end_date IS NULL OR pwa.end_date > CURRENT_DATE)
+          ORDER BY pwa.start_date DESC LIMIT 1
+        )`.as('projectStatus')
       })
       .from(personnel)
       .leftJoin(countries, eq(personnel.nationId, countries.id))
-      .leftJoin(cities, eq(personnel.birthplaceId, cities.id))
-      .leftJoin(personnelWorkAreas, and(
-        eq(personnel.id, personnelWorkAreas.personnelId),
-        eq(personnelWorkAreas.isActive, true)
-      ))
-      .leftJoin(workAreas, eq(personnelWorkAreas.workAreaId, workAreas.id))
-      .leftJoin(personnelPositions, eq(personnelWorkAreas.positionId, personnelPositions.id))
-      .leftJoin(projects, eq(personnelWorkAreas.projectId, projects.id));
+      .leftJoin(cities, eq(personnel.birthplaceId, cities.id));
 
     // Apply where conditions if any exist
     const query = whereConditions.length > 0 
