@@ -1044,7 +1044,7 @@ router.get('/personnel', authenticateJWT, filterByWorkArea, async (req: AuthRequ
     // Format response data
     const formattedPersonnel = personnelData.map(person => ({
       personnelId: person.personnelId,
-      tcNo: person.tcNo?.toString(),
+      tcNo: person.tcNo ? ('********' + person.tcNo.toString().slice(-3)) : null,
       name: person.name,
       surname: person.surname,
       phoneNo: person.phoneNo,

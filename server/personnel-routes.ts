@@ -189,7 +189,7 @@ router.get('/personnel', async (req: AuthRequest, res) => {
     // Convert BigInt to string for JSON serialization
     const serializedPersonnelList = personnelList.map(person => ({
       ...person,
-      tcNo: person.tcNo ? person.tcNo.toString() : null
+      tcNo: person.tcNo ? ('********' + person.tcNo.toString().slice(-3)) : null
     }));
     
     res.json({
