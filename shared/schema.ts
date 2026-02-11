@@ -691,10 +691,14 @@ export const personnel = pgTable("personnel", {
   birthplaceId: integer("birthplace_id").references(() => cities.id),
   address: varchar("address", { length: 255 }),
   phoneNo: varchar("phone_no", { length: 50 }),
-  iban: varchar("iban", { length: 34 }), // IBAN field added
+  iban: varchar("iban", { length: 34 }),
   status: varchar("status", { length: 20 }),
   companyId: integer("company_id").references(() => companies.id),
   isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedBy: integer("updated_by").references(() => users.id),
 });
 
 export const workAreas = pgTable("work_areas", {
@@ -719,6 +723,8 @@ export const personnelWorkAreas = pgTable("personnel_work_areas", {
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedBy: integer("updated_by").references(() => users.id),
 }, (table) => ({
   personnelWorkAreaIdx: index("idx_personnel_work_areas_personnel").on(table.personnelId),
   workAreaIdx: index("idx_personnel_work_areas_work_area").on(table.workAreaId),

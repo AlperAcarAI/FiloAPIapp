@@ -372,7 +372,7 @@ router.get('/personnel/:id', async (req: AuthRequest, res) => {
  *       401:
  *         description: Geçersiz API anahtarı
  */
-router.post('/personnel', authenticateJWT, async (req, res) => {
+router.post('/personnel', authenticateJWT, async (req: AuthRequest, res) => {
   try {
     // Use custom validation schema
     const validationResult = personnelCreateSchema.safeParse(req.body);
@@ -442,7 +442,11 @@ router.post('/personnel', authenticateJWT, async (req, res) => {
     // Yeni personel oluştur
     const [newPersonnel] = await db
       .insert(personnel)
-      .values(personnelData)
+      .values({
+        ...personnelData,
+        createdBy: req.userContext?.userId ?? null,
+        updatedBy: req.userContext?.userId ?? null,
+      })
       .returning();
     
     // Yeni oluşturulan personelin detaylı bilgilerini getir (BigInt serialize for JSON)
@@ -583,7 +587,7 @@ router.post('/personnel', authenticateJWT, async (req, res) => {
  *       409:
  *         description: TC Kimlik Numarası zaten başka bir personel tarafından kullanılıyor
  */
-router.put('/personnel/:id', async (req, res) => {
+router.put('/personnel/:id', authenticateJWT, async (req: AuthRequest, res) => {
   try {
     const personnelId = parseInt(req.params.id);
     
@@ -641,7 +645,11 @@ router.put('/personnel/:id', async (req, res) => {
     // Personeli güncelle
     const [updatedPersonnel] = await db
       .update(personnel)
-      .set(updateData)
+      .set({
+        ...updateData,
+        updatedAt: new Date(),
+        updatedBy: req.userContext?.userId ?? null,
+      })
       .where(eq(personnel.id, personnelId))
       .returning();
     
@@ -852,7 +860,8 @@ router.post('/addPersonnelWorkArea', authenticateJWT, async (req: AuthRequest, r
       .set({
         endDate: startDate,
         isActive: false,
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        updatedBy: req.userContext?.userId ?? null
       })
       .where(and(
         eq(personnelWorkAreas.personnelId, personnelId),
@@ -874,7 +883,9 @@ router.post('/addPersonnelWorkArea', authenticateJWT, async (req: AuthRequest, r
         projectId: projectId || null,
         startDate,
         endDate: endDate || null,
-        isActive
+        isActive,
+        createdBy: req.userContext?.userId ?? null,
+        updatedBy: req.userContext?.userId ?? null
       })
       .returning();
 
