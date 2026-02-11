@@ -747,16 +747,25 @@ router.put('/personnel/:id', async (req, res) => {
  *       409:
  *         description: Personel zaten bu çalışma alanında aktif
  */
-router.post('/addPersonnelWorkArea', authenticateJWT, async (req, res) => {
+router.post('/addPersonnelWorkArea', authenticateJWT, async (req: AuthRequest, res) => {
   try {
     const { personnelId, workAreaId, positionId, projectId, startDate, endDate, isActive = true } = req.body;
-    
+
     // Required field validation
     if (!personnelId || !workAreaId || !positionId || !startDate) {
       return res.status(400).json({
         success: false,
         error: 'MISSING_REQUIRED_FIELDS',
         message: 'personnelId, workAreaId, positionId ve startDate alanları zorunludur.'
+      });
+    }
+
+    // Kişi kendine atama yapamaz
+    if (req.userContext?.personnelId === personnelId) {
+      return res.status(403).json({
+        success: false,
+        error: 'SELF_ASSIGNMENT_NOT_ALLOWED',
+        message: 'Kendinize atama işlemi yapamazsınız.'
       });
     }
 
