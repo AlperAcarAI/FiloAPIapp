@@ -210,6 +210,59 @@ router.get('/personnel', async (req: AuthRequest, res) => {
   }
 });
 
+// TC Kimlik Numarası ile personel sorgulama (/:id'den önce tanımlanmalı)
+router.get('/personnel/check-tc/:tcNo', async (req: AuthRequest, res) => {
+  try {
+    const tcNo = req.params.tcNo;
+
+    if (!tcNo || tcNo.length < 3) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_TC_NO',
+        message: 'Geçerli bir TC Kimlik Numarası giriniz.'
+      });
+    }
+
+    const [found] = await db
+      .select({
+        id: personnel.id,
+        tcNo: personnel.tcNo,
+        name: personnel.name,
+        surname: personnel.surname,
+        isActive: personnel.isActive,
+      })
+      .from(personnel)
+      .where(eq(personnel.tcNo, BigInt(tcNo)));
+
+    if (!found) {
+      return res.status(404).json({
+        success: false,
+        error: 'TC_NOT_FOUND',
+        message: 'Bu TC Kimlik Numarası ile kayıtlı personel bulunamadı.'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Personel bulundu.',
+      data: {
+        id: found.id,
+        tcNo: found.tcNo ? found.tcNo.toString() : null,
+        name: found.name,
+        surname: found.surname,
+        isActive: found.isActive,
+      }
+    });
+  } catch (error) {
+    console.error('TC kontrol hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: 'TC_CHECK_ERROR',
+      message: 'TC Kimlik Numarası kontrolü sırasında hata oluştu.'
+    });
+  }
+});
+
 /**
  * @swagger
  * /api/secure/personnel/{id}:
