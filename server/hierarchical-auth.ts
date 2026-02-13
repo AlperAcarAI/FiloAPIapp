@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 import { db } from './db';
-import { users, personnel, personnelWorkAreas, workAreas, personnelPositions, accessLevels, userAccessRights } from '@shared/schema';
+import { users, personnel, personnelWorkAreas, workAreas, personnelPositions, accessLevels, userAccessRights, personnelAccess } from '@shared/schema';
 import { eq, and, or, isNull, gt, inArray, sql } from 'drizzle-orm';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
@@ -268,7 +268,24 @@ export const authenticateJWT = async (
             gt(personnelWorkAreas.endDate, sql`CURRENT_DATE`)
           )
         ));
-      allowedWorkAreaIds = allActiveWorkAreas.map(w => w.workAreaId);
+      const workAreaIdsFromAssignments = allActiveWorkAreas.map(w => w.workAreaId);
+
+      // personnel_access tablosundan ek yetki verilen şantiyeler
+      const accessGrants = await db.select({ workareaId: personnelAccess.workareaId })
+        .from(personnelAccess)
+        .where(eq(personnelAccess.personnelId, userData.personnelId));
+
+      const hasGlobalAccess = accessGrants.some(g => g.workareaId === null);
+      if (hasGlobalAccess) {
+        // workarea_id NULL = tüm şantiyelere erişim
+        allowedWorkAreaIds = null;
+      } else {
+        // Atama + ek yetki birleşimi (tekrarsız)
+        const accessWorkAreaIds = accessGrants
+          .map(g => g.workareaId)
+          .filter((id): id is number => id !== null);
+        allowedWorkAreaIds = [...new Set([...workAreaIdsFromAssignments, ...accessWorkAreaIds])];
+      }
     } else {
       // REGIONAL, DEPARTMENT => mevcut mantık
       allowedWorkAreaIds = calculateAllowedWorkAreas({
@@ -432,7 +449,22 @@ export const loadUserContext = async (userId: number): Promise<UserContext | nul
             gt(personnelWorkAreas.endDate, sql`CURRENT_DATE`)
           )
         ));
-      allowedWorkAreaIds = allActiveWorkAreas.map(w => w.workAreaId);
+      const workAreaIdsFromAssignments = allActiveWorkAreas.map(w => w.workAreaId);
+
+      // personnel_access tablosundan ek yetki verilen şantiyeler
+      const accessGrants = await db.select({ workareaId: personnelAccess.workareaId })
+        .from(personnelAccess)
+        .where(eq(personnelAccess.personnelId, userData.personnelId));
+
+      const hasGlobalAccess = accessGrants.some(g => g.workareaId === null);
+      if (hasGlobalAccess) {
+        allowedWorkAreaIds = null;
+      } else {
+        const accessWorkAreaIds = accessGrants
+          .map(g => g.workareaId)
+          .filter((id): id is number => id !== null);
+        allowedWorkAreaIds = [...new Set([...workAreaIdsFromAssignments, ...accessWorkAreaIds])];
+      }
     } else {
       allowedWorkAreaIds = calculateAllowedWorkAreas({
         accessLevel,
