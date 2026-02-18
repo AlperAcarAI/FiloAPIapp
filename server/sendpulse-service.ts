@@ -368,6 +368,179 @@ class SendPulseService {
     `;
   }
 
+  private generatePasswordResetEmailHTML(resetUrl: string, userName?: string): string {
+    const greeting = userName ? `Merhaba ${userName},` : 'Merhaba,';
+
+    return `
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parola Sıfırlama</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 20px;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">
+                                Parola Sıfırlama
+                            </h1>
+                            <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 16px;">
+                                Filoki Filo Yönetim Sistemi
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Main Content -->
+                    <tr>
+                        <td style="padding: 40px 30px;">
+                            <p style="margin: 0 0 20px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+                                ${greeting}
+                            </p>
+                            <p style="margin: 0 0 30px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+                                Hesabınız için bir parola sıfırlama talebi aldık. Parolanızı sıfırlamak için aşağıdaki butona tıklayın:
+                            </p>
+
+                            <!-- CTA Button -->
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px;">
+                                <tr>
+                                    <td align="center">
+                                        <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 18px; font-weight: 600;">
+                                            Parolamı Sıfırla
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Warning Box -->
+                            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 4px; margin-bottom: 20px;">
+                                <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;">
+                                    <strong>Dikkat:</strong> Bu bağlantı 30 dakika içinde geçerliliğini yitirecektir.
+                                </p>
+                            </div>
+
+                            <!-- Security Notice -->
+                            <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; border-radius: 4px;">
+                                <p style="margin: 0; color: #991b1b; font-size: 14px; line-height: 1.6;">
+                                    <strong>Güvenlik Uyarısı:</strong> Bu talebi siz yapmadıysanız, bu e-postayı görmezden gelin. Parolanız değişmeyecektir.
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+                            <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                                &copy; ${new Date().getFullYear()} Filoki Filo Yönetim Sistemi<br>
+                                Bu e-posta ${new Date().toLocaleString('tr-TR')} tarihinde gönderilmiştir.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+    `;
+  }
+
+  /**
+   * Şifre sıfırlama e-postası gönderir
+   */
+  public async sendPasswordResetEmail(
+    recipientEmail: string,
+    resetUrl: string,
+    userName?: string
+  ): Promise<boolean> {
+    try {
+      const senderEmail = process.env.SENDPULSE_SENDER_EMAIL || 'info@ersaulasim.com';
+      const senderName = process.env.SENDPULSE_SENDER_NAME || 'ERSA Ulaşım';
+
+      console.log('📧 Preparing to send password reset email to:', recipientEmail);
+      const accessToken = await this.getAccessToken();
+
+      const htmlContent = this.generatePasswordResetEmailHTML(resetUrl, userName);
+      const htmlBase64 = Buffer.from(htmlContent).toString('base64');
+
+      const emailData = {
+        email: {
+          html: htmlBase64,
+          text: `Parola sıfırlama bağlantınız: ${resetUrl} - Bu bağlantı 30 dakika geçerlidir.`,
+          subject: 'Parola Sıfırlama Talebi - Filoki',
+          from: {
+            name: senderName,
+            email: senderEmail
+          },
+          to: [
+            {
+              name: recipientEmail,
+              email: recipientEmail
+            }
+          ]
+        }
+      };
+
+      return new Promise((resolve) => {
+        const postData = JSON.stringify(emailData);
+
+        const options = {
+          hostname: 'api.sendpulse.com',
+          port: 443,
+          path: '/smtp/emails',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Length': Buffer.byteLength(postData)
+          }
+        };
+
+        const req = https.request(options, (res) => {
+          let data = '';
+
+          res.on('data', (chunk) => {
+            data += chunk;
+          });
+
+          res.on('end', () => {
+            try {
+              const response = JSON.parse(data);
+
+              if (response.result === true || response.id) {
+                console.log('✅ Password reset email sent successfully to:', recipientEmail);
+                resolve(true);
+              } else {
+                console.error('❌ Failed to send password reset email:', data);
+                resolve(false);
+              }
+            } catch (error) {
+              console.error('❌ Failed to parse SendPulse response:', error);
+              resolve(false);
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          console.error('❌ Network error while sending password reset email:', error.message);
+          resolve(false);
+        });
+
+        req.write(postData);
+        req.end();
+      });
+    } catch (error) {
+      console.error('❌ Error in sendPasswordResetEmail:', error);
+      return false;
+    }
+  }
+
   /**
    * Yeni personel kaydı oluşturulduğunda email gönderir
    */

@@ -33,6 +33,7 @@ import {
   type SecurityRequest 
 } from "./security-middleware.js";
 import { registerSecurityRoutes } from "./security-routes.js";
+import { registerPasswordResetRoutes } from "./password-reset-routes.js";
 import { generateApiKey, hashApiKey } from "./api-security.js";
 import { apiKeys, apiClients } from "@shared/schema";
 
@@ -1054,6 +1055,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Security Route'larını kaydet (Advanced Security System)
   registerSecurityRoutes(app);
+
+  // Password Reset Route'larını kaydet (Şifremi Unuttum)
+  registerPasswordResetRoutes(app);
 
   // Proxy Route'larını kaydet
   const proxyRoutes = await import("./proxy-routes.js");

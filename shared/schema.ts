@@ -474,6 +474,23 @@ export const passwordHistory = pgTable("password_history", {
   timeIdx: index("idx_password_history_time").on(table.createdAt),
 }));
 
+// Şifre Sıfırlama Token'ları
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  isUsed: boolean("is_used").notNull().default(false),
+  usedAt: timestamp("used_at"),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  tokenHashIdx: index("idx_password_reset_token_hash").on(table.tokenHash),
+  userIdIdx: index("idx_password_reset_user_id").on(table.userId),
+  expiresAtIdx: index("idx_password_reset_expires_at").on(table.expiresAt),
+}));
+
 // Hiyerarşik Erişim Seviyeleri Tablosu
 export const accessLevels = pgTable("access_levels", {
   id: serial("id").primaryKey(),
