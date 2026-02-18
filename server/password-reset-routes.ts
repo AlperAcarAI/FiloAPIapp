@@ -97,7 +97,7 @@ export const registerPasswordResetRoutes = (app: Express) => {
       });
 
       // Build reset URL
-      const appUrl = process.env.APP_URL || process.env.CORS_ORIGIN || 'http://localhost:5000';
+      const appUrl = process.env.APP_URL || 'https://app.ersaulasim.com';
       const resetUrl = `${appUrl}/reset-password/${token}`;
 
       // Get user's name from personnel if available
