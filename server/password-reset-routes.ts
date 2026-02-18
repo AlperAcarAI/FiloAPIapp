@@ -270,20 +270,28 @@ export const registerPasswordResetRoutes = (app: Express) => {
       await revokeAllUserRefreshTokens(user.id);
 
       // Update security settings
-      await db
-        .insert(userSecuritySettings)
-        .values({
-          userId: user.id,
-          passwordChangedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .onConflictDoUpdate({
-          target: userSecuritySettings.userId,
-          set: {
+      const [existingSettings] = await db
+        .select()
+        .from(userSecuritySettings)
+        .where(eq(userSecuritySettings.userId, user.id));
+
+      if (existingSettings) {
+        await db
+          .update(userSecuritySettings)
+          .set({
             passwordChangedAt: new Date(),
             updatedAt: new Date(),
-          },
-        });
+          })
+          .where(eq(userSecuritySettings.userId, user.id));
+      } else {
+        await db
+          .insert(userSecuritySettings)
+          .values({
+            userId: user.id,
+            passwordChangedAt: new Date(),
+            updatedAt: new Date(),
+          });
+      }
 
       // Log security event
       await logSecurityEvent('password_reset_completed', {
@@ -298,12 +306,13 @@ export const registerPasswordResetRoutes = (app: Express) => {
         success: true,
         message: 'Parolanız başarıyla sıfırlanmıştır. Yeni parolanızla giriş yapabilirsiniz.',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Reset password error:', error);
       return res.status(500).json({
         success: false,
         error: 'SERVER_ERROR',
         message: 'Bir hata oluştu. Lütfen daha sonra tekrar deneyin.',
+        debug: process.env.NODE_ENV !== 'production' ? error?.message || String(error) : undefined,
       });
     }
   });
