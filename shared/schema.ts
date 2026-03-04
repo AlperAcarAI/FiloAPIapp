@@ -2701,3 +2701,401 @@ export const updateProgressPaymentDetailSchema = insertProgressPaymentDetailSche
 export type ProgressPaymentDetail = typeof progressPaymentDetails.$inferSelect;
 export type InsertProgressPaymentDetail = z.infer<typeof insertProgressPaymentDetailSchema>;
 export type UpdateProgressPaymentDetail = z.infer<typeof updateProgressPaymentDetailSchema>;
+
+// ========================
+// STOK YÖNETİM SİSTEMİ
+// ========================
+
+// 1. Depolar (Warehouses) - Şantiyeye bağlı
+export const warehouses = pgTable("warehouses", {
+  id: serial("id").primaryKey(),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  workAreaId: integer("work_area_id").notNull().references(() => workAreas.id),
+  managerId: integer("manager_id").references(() => personnel.id),
+  warehouseType: varchar("warehouse_type", { length: 20 }).notNull().default("ana_depo"), // ana_depo, saha_depo, gecici_depo
+  address: text("address"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  codeIdx: index("idx_warehouses_code").on(table.code),
+  workAreaIdx: index("idx_warehouses_work_area").on(table.workAreaId),
+  typeIdx: index("idx_warehouses_type").on(table.warehouseType),
+  activeIdx: index("idx_warehouses_active").on(table.isActive),
+}));
+
+// 2. Stok Seviyeleri (Stock Levels) - Depo bazlı anlık stok
+export const stockLevels = pgTable("stock_levels", {
+  id: serial("id").primaryKey(),
+  warehouseId: integer("warehouse_id").notNull().references(() => warehouses.id),
+  materialId: integer("material_id").notNull().references(() => materials.id),
+  unitId: integer("unit_id").notNull().references(() => units.id),
+  currentQuantity: decimal("current_quantity", { precision: 15, scale: 4 }).notNull().default("0"),
+  reservedQuantity: decimal("reserved_quantity", { precision: 15, scale: 4 }).notNull().default("0"),
+  minQuantity: decimal("min_quantity", { precision: 15, scale: 4 }),
+  lastMovementDate: timestamp("last_movement_date"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  uniqueStock: unique("unique_warehouse_material_unit").on(table.warehouseId, table.materialId, table.unitId),
+  warehouseIdx: index("idx_stock_levels_warehouse").on(table.warehouseId),
+  materialIdx: index("idx_stock_levels_material").on(table.materialId),
+  unitIdx: index("idx_stock_levels_unit").on(table.unitId),
+  checkCurrentQty: check("check_current_qty_non_negative", sql`current_quantity >= 0`),
+  checkReservedQty: check("check_reserved_qty_non_negative", sql`reserved_quantity >= 0`),
+  checkReservedLessOrEqual: check("check_reserved_lte_current", sql`reserved_quantity <= current_quantity`),
+}));
+
+// 3. Proje Bazlı Stok Rezervasyonu (Stock Reservations)
+export const stockReservations = pgTable("stock_reservations", {
+  id: serial("id").primaryKey(),
+  warehouseId: integer("warehouse_id").notNull().references(() => warehouses.id),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  materialId: integer("material_id").notNull().references(() => materials.id),
+  unitId: integer("unit_id").notNull().references(() => units.id),
+  reservedQuantity: decimal("reserved_quantity", { precision: 15, scale: 4 }).notNull(),
+  usedQuantity: decimal("used_quantity", { precision: 15, scale: 4 }).notNull().default("0"),
+  status: varchar("status", { length: 20 }).notNull().default("active"), // active, fulfilled, cancelled
+  notes: text("notes"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  uniqueReservation: unique("unique_reservation").on(table.warehouseId, table.projectId, table.materialId, table.unitId),
+  warehouseIdx: index("idx_stock_reservations_warehouse").on(table.warehouseId),
+  projectIdx: index("idx_stock_reservations_project").on(table.projectId),
+  materialIdx: index("idx_stock_reservations_material").on(table.materialId),
+  statusIdx: index("idx_stock_reservations_status").on(table.status),
+  checkReservedPositive: check("check_reserved_positive", sql`reserved_quantity > 0`),
+  checkUsedNonNegative: check("check_used_non_negative", sql`used_quantity >= 0`),
+  checkUsedLessOrEqual: check("check_used_lte_reserved", sql`used_quantity <= reserved_quantity`),
+}));
+
+// 4. Stok Hareketleri (Stock Movements) - Ana kayıt
+export const stockMovements = pgTable("stock_movements", {
+  id: serial("id").primaryKey(),
+  movementCode: varchar("movement_code", { length: 50 }).notNull().unique(),
+  movementType: varchar("movement_type", { length: 20 }).notNull(), // giris, cikis, transfer, sayim_duzeltme, iade
+  movementDate: timestamp("movement_date").notNull().defaultNow(),
+  sourceWarehouseId: integer("source_warehouse_id").references(() => warehouses.id),
+  targetWarehouseId: integer("target_warehouse_id").references(() => warehouses.id),
+  projectId: integer("project_id").references(() => projects.id),
+  companyId: integer("company_id").references(() => companies.id),
+  isFree: boolean("is_free").notNull().default(false),
+  referenceType: varchar("reference_type", { length: 30 }), // satin_alma, taseron_teslim, iade, sayim, serbest
+  referenceNo: varchar("reference_no", { length: 100 }),
+  description: text("description"),
+  status: varchar("status", { length: 20 }).notNull().default("taslak"), // taslak, onaylandi, iptal
+  approvedBy: integer("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  codeIdx: index("idx_stock_movements_code").on(table.movementCode),
+  typeIdx: index("idx_stock_movements_type").on(table.movementType),
+  dateIdx: index("idx_stock_movements_date").on(table.movementDate),
+  sourceIdx: index("idx_stock_movements_source").on(table.sourceWarehouseId),
+  targetIdx: index("idx_stock_movements_target").on(table.targetWarehouseId),
+  projectIdx: index("idx_stock_movements_project").on(table.projectId),
+  companyIdx: index("idx_stock_movements_company").on(table.companyId),
+  statusIdx: index("idx_stock_movements_status").on(table.status),
+  isFreeIdx: index("idx_stock_movements_is_free").on(table.isFree),
+}));
+
+// 5. Stok Hareket Detayları (Stock Movement Items)
+export const stockMovementItems = pgTable("stock_movement_items", {
+  id: serial("id").primaryKey(),
+  movementId: integer("movement_id").notNull().references(() => stockMovements.id, { onDelete: "cascade" }),
+  materialId: integer("material_id").notNull().references(() => materials.id),
+  unitId: integer("unit_id").notNull().references(() => units.id),
+  quantity: decimal("quantity", { precision: 15, scale: 4 }).notNull(),
+  unitPriceCents: integer("unit_price_cents").notNull().default(0),
+  lineTotalCents: integer("line_total_cents").notNull().default(0),
+  isFree: boolean("is_free").notNull().default(false),
+  notes: text("notes"),
+}, (table) => ({
+  movementIdx: index("idx_stock_movement_items_movement").on(table.movementId),
+  materialIdx: index("idx_stock_movement_items_material").on(table.materialId),
+  unitIdx: index("idx_stock_movement_items_unit").on(table.unitId),
+  checkQuantityPositive: check("check_item_quantity_positive", sql`quantity > 0`),
+  checkPriceNonNegative: check("check_item_price_non_negative", sql`unit_price_cents >= 0`),
+}));
+
+// 6. Taşeron Malzeme Takibi (Subcontractor Materials)
+export const subcontractorMaterials = pgTable("subcontractor_materials", {
+  id: serial("id").primaryKey(),
+  companyId: integer("company_id").notNull().references(() => companies.id),
+  projectId: integer("project_id").notNull().references(() => projects.id),
+  warehouseId: integer("warehouse_id").notNull().references(() => warehouses.id),
+  materialId: integer("material_id").notNull().references(() => materials.id),
+  unitId: integer("unit_id").notNull().references(() => units.id),
+  givenQuantity: decimal("given_quantity", { precision: 15, scale: 4 }).notNull().default("0"),
+  usedQuantity: decimal("used_quantity", { precision: 15, scale: 4 }).notNull().default("0"),
+  returnedQuantity: decimal("returned_quantity", { precision: 15, scale: 4 }).notNull().default("0"),
+  wasteQuantity: decimal("waste_quantity", { precision: 15, scale: 4 }).notNull().default("0"),
+  isFree: boolean("is_free").notNull().default(false),
+  lastUpdateDate: timestamp("last_update_date").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  uniqueSubMaterial: unique("unique_subcontractor_material").on(table.companyId, table.projectId, table.materialId, table.unitId),
+  companyIdx: index("idx_sub_materials_company").on(table.companyId),
+  projectIdx: index("idx_sub_materials_project").on(table.projectId),
+  warehouseIdx: index("idx_sub_materials_warehouse").on(table.warehouseId),
+  materialIdx: index("idx_sub_materials_material").on(table.materialId),
+  checkGivenNonNeg: check("check_given_non_negative", sql`given_quantity >= 0`),
+  checkUsedNonNeg: check("check_sub_used_non_negative", sql`used_quantity >= 0`),
+  checkReturnedNonNeg: check("check_returned_non_negative", sql`returned_quantity >= 0`),
+  checkWasteNonNeg: check("check_waste_non_negative", sql`waste_quantity >= 0`),
+}));
+
+// ========================
+// STOK SİSTEMİ RELATIONS
+// ========================
+
+export const warehousesRelations = relations(warehouses, ({ one, many }) => ({
+  workArea: one(workAreas, {
+    fields: [warehouses.workAreaId],
+    references: [workAreas.id],
+  }),
+  manager: one(personnel, {
+    fields: [warehouses.managerId],
+    references: [personnel.id],
+  }),
+  stockLevels: many(stockLevels),
+  stockReservations: many(stockReservations),
+  createdByUser: one(users, {
+    fields: [warehouses.createdBy],
+    references: [users.id],
+    relationName: "warehouseCreator",
+  }),
+  updatedByUser: one(users, {
+    fields: [warehouses.updatedBy],
+    references: [users.id],
+    relationName: "warehouseUpdater",
+  }),
+}));
+
+export const stockLevelsRelations = relations(stockLevels, ({ one }) => ({
+  warehouse: one(warehouses, {
+    fields: [stockLevels.warehouseId],
+    references: [warehouses.id],
+  }),
+  material: one(materials, {
+    fields: [stockLevels.materialId],
+    references: [materials.id],
+  }),
+  unit: one(units, {
+    fields: [stockLevels.unitId],
+    references: [units.id],
+  }),
+}));
+
+export const stockReservationsRelations = relations(stockReservations, ({ one }) => ({
+  warehouse: one(warehouses, {
+    fields: [stockReservations.warehouseId],
+    references: [warehouses.id],
+  }),
+  project: one(projects, {
+    fields: [stockReservations.projectId],
+    references: [projects.id],
+  }),
+  material: one(materials, {
+    fields: [stockReservations.materialId],
+    references: [materials.id],
+  }),
+  unit: one(units, {
+    fields: [stockReservations.unitId],
+    references: [units.id],
+  }),
+  createdByUser: one(users, {
+    fields: [stockReservations.createdBy],
+    references: [users.id],
+    relationName: "reservationCreator",
+  }),
+}));
+
+export const stockMovementsRelations = relations(stockMovements, ({ one, many }) => ({
+  sourceWarehouse: one(warehouses, {
+    fields: [stockMovements.sourceWarehouseId],
+    references: [warehouses.id],
+    relationName: "sourceMovements",
+  }),
+  targetWarehouse: one(warehouses, {
+    fields: [stockMovements.targetWarehouseId],
+    references: [warehouses.id],
+    relationName: "targetMovements",
+  }),
+  project: one(projects, {
+    fields: [stockMovements.projectId],
+    references: [projects.id],
+  }),
+  company: one(companies, {
+    fields: [stockMovements.companyId],
+    references: [companies.id],
+  }),
+  items: many(stockMovementItems),
+  createdByUser: one(users, {
+    fields: [stockMovements.createdBy],
+    references: [users.id],
+    relationName: "movementCreator",
+  }),
+  approvedByUser: one(users, {
+    fields: [stockMovements.approvedBy],
+    references: [users.id],
+    relationName: "movementApprover",
+  }),
+}));
+
+export const stockMovementItemsRelations = relations(stockMovementItems, ({ one }) => ({
+  movement: one(stockMovements, {
+    fields: [stockMovementItems.movementId],
+    references: [stockMovements.id],
+  }),
+  material: one(materials, {
+    fields: [stockMovementItems.materialId],
+    references: [materials.id],
+  }),
+  unit: one(units, {
+    fields: [stockMovementItems.unitId],
+    references: [units.id],
+  }),
+}));
+
+export const subcontractorMaterialsRelations = relations(subcontractorMaterials, ({ one }) => ({
+  company: one(companies, {
+    fields: [subcontractorMaterials.companyId],
+    references: [companies.id],
+  }),
+  project: one(projects, {
+    fields: [subcontractorMaterials.projectId],
+    references: [projects.id],
+  }),
+  warehouse: one(warehouses, {
+    fields: [subcontractorMaterials.warehouseId],
+    references: [warehouses.id],
+  }),
+  material: one(materials, {
+    fields: [subcontractorMaterials.materialId],
+    references: [materials.id],
+  }),
+  unit: one(units, {
+    fields: [subcontractorMaterials.unitId],
+    references: [units.id],
+  }),
+  createdByUser: one(users, {
+    fields: [subcontractorMaterials.createdBy],
+    references: [users.id],
+    relationName: "subMaterialCreator",
+  }),
+}));
+
+// ========================
+// STOK SİSTEMİ ZOD SCHEMAS
+// ========================
+
+// Warehouses Schemas
+export const insertWarehouseSchema = createInsertSchema(warehouses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+});
+export const updateWarehouseSchema = insertWarehouseSchema.partial();
+export type Warehouse = typeof warehouses.$inferSelect;
+export type InsertWarehouse = z.infer<typeof insertWarehouseSchema>;
+export type UpdateWarehouse = z.infer<typeof updateWarehouseSchema>;
+
+// Stock Levels Schemas
+export const insertStockLevelSchema = createInsertSchema(stockLevels).omit({
+  id: true,
+  updatedAt: true,
+  updatedBy: true,
+}).extend({
+  currentQuantity: z.string().refine((val) => parseFloat(val) >= 0, "Miktar negatif olamaz"),
+  reservedQuantity: z.string().refine((val) => parseFloat(val) >= 0, "Rezerve miktar negatif olamaz").optional(),
+});
+export const updateStockLevelSchema = insertStockLevelSchema.partial();
+export type StockLevel = typeof stockLevels.$inferSelect;
+export type InsertStockLevel = z.infer<typeof insertStockLevelSchema>;
+export type UpdateStockLevel = z.infer<typeof updateStockLevelSchema>;
+
+// Stock Reservations Schemas
+export const insertStockReservationSchema = createInsertSchema(stockReservations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+}).extend({
+  reservedQuantity: z.string().refine((val) => parseFloat(val) > 0, "Rezerve miktar pozitif olmalıdır"),
+  usedQuantity: z.string().refine((val) => parseFloat(val) >= 0, "Kullanılan miktar negatif olamaz").optional(),
+  status: z.enum(["active", "fulfilled", "cancelled"]).default("active"),
+});
+export const updateStockReservationSchema = insertStockReservationSchema.partial();
+export type StockReservation = typeof stockReservations.$inferSelect;
+export type InsertStockReservation = z.infer<typeof insertStockReservationSchema>;
+export type UpdateStockReservation = z.infer<typeof updateStockReservationSchema>;
+
+// Stock Movements Schemas
+export const insertStockMovementSchema = createInsertSchema(stockMovements).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+  approvedBy: true,
+  approvedAt: true,
+}).extend({
+  movementType: z.enum(["giris", "cikis", "transfer", "sayim_duzeltme", "iade"]),
+  movementDate: z.string().regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?/, "Geçersiz tarih formatı").optional(),
+  status: z.enum(["taslak", "onaylandi", "iptal"]).default("taslak"),
+  referenceType: z.enum(["satin_alma", "taseron_teslim", "iade", "sayim", "serbest"]).optional(),
+});
+export const updateStockMovementSchema = insertStockMovementSchema.partial();
+export type StockMovement = typeof stockMovements.$inferSelect;
+export type InsertStockMovement = z.infer<typeof insertStockMovementSchema>;
+export type UpdateStockMovement = z.infer<typeof updateStockMovementSchema>;
+
+// Stock Movement Items Schemas
+export const insertStockMovementItemSchema = createInsertSchema(stockMovementItems).omit({
+  id: true,
+  movementId: true,
+}).extend({
+  quantity: z.string().refine((val) => parseFloat(val) > 0, "Miktar pozitif olmalıdır"),
+  unitPriceCents: z.number().int().min(0, "Birim fiyat negatif olamaz").default(0),
+  lineTotalCents: z.number().int().min(0, "Satır toplamı negatif olamaz").default(0),
+});
+export const updateStockMovementItemSchema = insertStockMovementItemSchema.partial();
+export type StockMovementItem = typeof stockMovementItems.$inferSelect;
+export type InsertStockMovementItem = z.infer<typeof insertStockMovementItemSchema>;
+export type UpdateStockMovementItem = z.infer<typeof updateStockMovementItemSchema>;
+
+// Subcontractor Materials Schemas
+export const insertSubcontractorMaterialSchema = createInsertSchema(subcontractorMaterials).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+  lastUpdateDate: true,
+}).extend({
+  givenQuantity: z.string().refine((val) => parseFloat(val) >= 0, "Verilen miktar negatif olamaz").optional(),
+  usedQuantity: z.string().refine((val) => parseFloat(val) >= 0, "Kullanılan miktar negatif olamaz").optional(),
+  returnedQuantity: z.string().refine((val) => parseFloat(val) >= 0, "İade miktar negatif olamaz").optional(),
+  wasteQuantity: z.string().refine((val) => parseFloat(val) >= 0, "Fire miktar negatif olamaz").optional(),
+});
+export const updateSubcontractorMaterialSchema = insertSubcontractorMaterialSchema.partial();
+export type SubcontractorMaterial = typeof subcontractorMaterials.$inferSelect;
+export type InsertSubcontractorMaterial = z.infer<typeof insertSubcontractorMaterialSchema>;
+export type UpdateSubcontractorMaterial = z.infer<typeof updateSubcontractorMaterialSchema>;

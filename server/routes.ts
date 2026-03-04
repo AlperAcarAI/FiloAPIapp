@@ -1086,6 +1086,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.log("✅ Progress Payment Routes registered at /api/secure");
   console.log("✅ Materials endpoint should be available at: PUT /api/secure/materials/:id");
 
+  // Stock Management (Stok Yönetimi) Route'larını kaydet
+  console.log("🔧 Loading Stock Management Routes...");
+  const stockRoutes = await import("./stock-routes.js");
+  app.use("/api/secure", stockRoutes.default);
+  console.log("✅ Stock Management Routes registered at /api/secure");
+
   const httpServer = createServer(app);
   return httpServer;
 }
