@@ -1,12 +1,14 @@
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from "@shared/schema";
+import { getCurrentDb } from './tenant-context';
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL must be set.");
 }
 
-export const pool = new Pool({ 
+// Default pool - used as fallback and for startup checks
+export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: false,
   max: 10,
@@ -14,4 +16,19 @@ export const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
-export const db = drizzle(pool, { schema });
+const defaultDb = drizzle(pool, { schema });
+
+// Proxy: routes that import { db } will transparently get the correct tenant db
+// During a request → returns tenant-specific db from AsyncLocalStorage
+// Outside a request (schedulers, startup) → returns default db
+export const db: ReturnType<typeof drizzle> = new Proxy(defaultDb, {
+  get(_target, prop, receiver) {
+    try {
+      const tenantDb = getCurrentDb();
+      return Reflect.get(tenantDb, prop, receiver);
+    } catch {
+      // Fallback to default db (outside request context)
+      return Reflect.get(defaultDb, prop, receiver);
+    }
+  },
+});

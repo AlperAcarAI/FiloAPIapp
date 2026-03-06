@@ -7,13 +7,15 @@ import { createStream } from "rotating-file-stream";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializePolicyScheduler } from "./policy-scheduler";
+import { loadTenantConfigs, tenantDbMiddleware } from "./tenant-context";
+
+// Load tenant configurations from environment
+loadTenantConfigs();
 
 const app = express();
 
-// Log dizinini oluştur (development için relative path)
-const logDirectory = process.env.NODE_ENV === 'production' 
-  ? '/var/www/filokiapi/FiloAPIapp/logs' 
-  : './logs';
+// Log dizini: LOG_FILE_PATH env varsa onu kullan, yoksa relative ./logs
+const logDirectory = process.env.LOG_FILE_PATH || './logs';
 
 // Dizini recursive olarak oluştur
 if (!fs.existsSync(logDirectory)) {
@@ -26,32 +28,41 @@ const accessLogStream = createStream('access.log', {
   path: logDirectory
 });
 
-// CORS ayarları - Production domain için
+// CORS ayarlari - Tenant domainleri icin
+const allowedOrigins = [
+  'https://filokiapi.architectaiagency.com',
+  'https://filodemoapi.dijiminds.com',
+  'http://localhost:5000',
+  'http://localhost:5001',
+  'http://localhost:5002',
+  'http://localhost:3000',
+];
+// CORS_EXTRA_ORIGINS env ile ek originler eklenebilir (virgul ile ayrilmis)
+if (process.env.CORS_EXTRA_ORIGINS) {
+  allowedOrigins.push(...process.env.CORS_EXTRA_ORIGINS.split(',').map(s => s.trim()));
+}
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  const allowedOrigins = [
-    'https://filokiapi.architectaiagency.com',
-    'http://localhost:5000',
-    'http://localhost:5001',
-    'http://localhost:3000',
-    'https://b0c96118-25cf-4b36-bd73-c26e525daf3c-00-b95p9o9piblg.spock.replit.dev'
-  ];
-  
+
   if (allowedOrigins.includes(origin || '') || !origin) {
     res.setHeader('Access-Control-Allow-Origin', origin || '*');
   }
-  
+
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-API-Key');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  
+
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
-  
+
   next();
 });
+
+// Tenant DB middleware - domain'e gore dogru veritabanini secer
+app.use(tenantDbMiddleware);
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
