@@ -21,13 +21,27 @@ module.exports = {
 
       // Tenant 2: Demo (DijiMinds)
       TENANT_2_DOMAIN: 'filodemoapi.dijiminds.com',
-      TENANT_2_DB_URL: 'postgresql://demouser:DemoFilo5425@localhost:5432/demo_db',
+      TENANT_2_DB_URL: 'postgresql://demouser:DemoFilo5425.@localhost:5432/demo_db',
       TENANT_2_NAME: 'DijiMinds Demo',
 
       // Localhost fallback (development)
       TENANT_3_DOMAIN: 'localhost',
       TENANT_3_DB_URL: 'postgresql://filoki_user:FilokiDB2025@localhost:5432/filoki_db',
       TENANT_3_NAME: 'Localhost Dev',
+
+      // App URL (password reset linkleri icin)
+      APP_URL: 'https://app.ersaulasim.com',
+
+      // Admin email
+      ADMIN_EMAIL: 'alper.acar@architectaiagency.com',
+
+      // CORS - frontend domainleri
+      CORS_EXTRA_ORIGINS: 'https://app.ersaulasim.com,https://filodemo.dijiminds.com',
+
+      // SendPulse (varsayılan tenant icin)
+      SENDPULSE_SENDER_EMAIL: 'info@ersaulasim.com',
+      SENDPULSE_SENDER_NAME: 'ERSA Ulaşım',
+      SENDPULSE_RECIPIENT_EMAIL: 'info@ersaulasim.com',
     },
     error_file: '/var/log/pm2/filokiapi-error.log',
     out_file: '/var/log/pm2/filokiapi-out.log',

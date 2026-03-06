@@ -26,16 +26,21 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Multer configuration for document uploads
+// Multer configuration for document uploads (tenant-aware)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
-    
-    const dateDir = path.join(uploadsDir, year.toString(), month, day);
-    
+
+    // Tenant bazlı alt dizin: uploads/{tenant}/{year}/{month}/{day}
+    const tenantConfig = (req as any).tenantConfig;
+    const tenantSlug = tenantConfig
+      ? tenantConfig.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-')
+      : 'default';
+    const dateDir = path.join(uploadsDir, tenantSlug, year.toString(), month, day);
+
     // Dizini oluştur
     fs.mkdirSync(dateDir, { recursive: true });
     cb(null, dateDir);

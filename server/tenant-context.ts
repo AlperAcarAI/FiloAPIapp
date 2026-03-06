@@ -4,8 +4,12 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "@shared/schema";
 import type { Request, Response, NextFunction } from "express";
 
-// Per-request tenant db stored here
-const asyncLocalStorage = new AsyncLocalStorage<ReturnType<typeof drizzle>>();
+// Per-request tenant context stored here
+interface TenantContext {
+  db: ReturnType<typeof drizzle>;
+  config: TenantDbConfig;
+}
+const asyncLocalStorage = new AsyncLocalStorage<TenantContext>();
 
 export interface TenantDbConfig {
   domain: string;
@@ -121,7 +125,10 @@ export function tenantDbMiddleware(req: Request, res: Response, next: NextFuncti
 
   const db = getOrCreateDb(config);
 
-  asyncLocalStorage.run(db, () => {
+  // Tenant bilgisini request objesine de ekle (upload path vb. icin)
+  (req as any).tenantConfig = config;
+
+  asyncLocalStorage.run({ db, config }, () => {
     next();
   });
 }
@@ -131,8 +138,8 @@ export function tenantDbMiddleware(req: Request, res: Response, next: NextFuncti
  * Falls back to default db if called outside of request context (e.g. schedulers).
  */
 export function getCurrentDb(): ReturnType<typeof drizzle> {
-  const db = asyncLocalStorage.getStore();
-  if (db) return db;
+  const ctx = asyncLocalStorage.getStore();
+  if (ctx) return ctx.db;
 
   // Fallback: return the first tenant's db or default
   const fallbackConfig = tenantConfigs.find((c) => c.domain === "*") || tenantConfigs[0];
@@ -141,6 +148,25 @@ export function getCurrentDb(): ReturnType<typeof drizzle> {
   }
 
   throw new Error("[TENANT] No database connection available");
+}
+
+/**
+ * Get the current tenant config from AsyncLocalStorage.
+ * Useful for tenant-aware file uploads, email sending, etc.
+ */
+export function getCurrentTenantConfig(): TenantDbConfig | null {
+  const ctx = asyncLocalStorage.getStore();
+  return ctx?.config || null;
+}
+
+/**
+ * Get a safe tenant identifier for use in file paths, logs, etc.
+ * Returns lowercase name with special chars replaced by dashes.
+ */
+export function getCurrentTenantSlug(): string {
+  const config = getCurrentTenantConfig();
+  if (!config) return "default";
+  return config.name.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
 }
 
 /**

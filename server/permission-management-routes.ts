@@ -93,8 +93,8 @@ export const hasPermission = (requiredPermissions: string[]) => {
   };
 };
 
-// Admin email configuration
-const ADMIN_EMAIL = 'alper.acar@architectaiagency.com';
+// Admin email configuration - tenant bazlı env'den okunur
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'alper.acar@architectaiagency.com';
 
 // Admin veya yetki yöneticisi kontrolü
 const requirePermissionManager = async (req: AuthRequest, res: express.Response, next: express.NextFunction) => {

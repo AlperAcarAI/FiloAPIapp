@@ -91,7 +91,7 @@ export function registerApiManagementRoutes(app: Express) {
       description: 'Kapsamlı filo yönetimi API sistemi. 89 endpoint ile tam güvenlik kontrolü, döküman yönetimi ve sefer kiralama sistemi.',
       contact: {
         name: 'API Desteği',
-        email: 'alper.acar@architectaiagency.com'
+        email: process.env.ADMIN_EMAIL || 'alper.acar@architectaiagency.com'
       },
       license: {
         name: 'Private License',
