@@ -70,6 +70,7 @@ router.get("/warehouses", async (req, res) => {
         workAreaId: warehouses.workAreaId,
         workAreaName: workAreas.name,
         managerId: warehouses.managerId,
+        managerName: sql`CASE WHEN ${personnel.firstName} IS NOT NULL THEN ${personnel.firstName} || ' ' || ${personnel.lastName} ELSE NULL END`.as("managerName"),
         warehouseType: warehouses.warehouseType,
         address: warehouses.address,
         isActive: warehouses.isActive,
@@ -78,6 +79,7 @@ router.get("/warehouses", async (req, res) => {
       })
       .from(warehouses)
       .leftJoin(workAreas, eq(warehouses.workAreaId, workAreas.id))
+      .leftJoin(personnel, eq(warehouses.managerId, personnel.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(warehouses.name);
 
@@ -99,6 +101,7 @@ router.get("/warehouses/:id", async (req, res) => {
         workAreaId: warehouses.workAreaId,
         workAreaName: workAreas.name,
         managerId: warehouses.managerId,
+        managerName: sql`CASE WHEN ${personnel.firstName} IS NOT NULL THEN ${personnel.firstName} || ' ' || ${personnel.lastName} ELSE NULL END`.as("managerName"),
         warehouseType: warehouses.warehouseType,
         address: warehouses.address,
         isActive: warehouses.isActive,
@@ -107,6 +110,7 @@ router.get("/warehouses/:id", async (req, res) => {
       })
       .from(warehouses)
       .leftJoin(workAreas, eq(warehouses.workAreaId, workAreas.id))
+      .leftJoin(personnel, eq(warehouses.managerId, personnel.id))
       .where(eq(warehouses.id, parseInt(id)));
 
     if (!result) {
@@ -122,10 +126,32 @@ router.get("/warehouses/:id", async (req, res) => {
 router.post("/warehouses", async (req: AuthRequest, res) => {
   try {
     const parsed = insertWarehouseSchema.parse(req.body);
-    const [result] = await db
+    const [inserted] = await db
       .insert(warehouses)
       .values({ ...parsed, createdBy: req.user?.userId, updatedBy: req.user?.userId })
       .returning();
+
+    // Return with joined managerName and workAreaName
+    const [result] = await db
+      .select({
+        id: warehouses.id,
+        code: warehouses.code,
+        name: warehouses.name,
+        workAreaId: warehouses.workAreaId,
+        workAreaName: workAreas.name,
+        managerId: warehouses.managerId,
+        managerName: sql`CASE WHEN ${personnel.firstName} IS NOT NULL THEN ${personnel.firstName} || ' ' || ${personnel.lastName} ELSE NULL END`.as("managerName"),
+        warehouseType: warehouses.warehouseType,
+        address: warehouses.address,
+        isActive: warehouses.isActive,
+        createdAt: warehouses.createdAt,
+        updatedAt: warehouses.updatedAt,
+      })
+      .from(warehouses)
+      .leftJoin(workAreas, eq(warehouses.workAreaId, workAreas.id))
+      .leftJoin(personnel, eq(warehouses.managerId, personnel.id))
+      .where(eq(warehouses.id, inserted.id));
+
     res.status(201).json(result);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -137,15 +163,37 @@ router.put("/warehouses/:id", async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const parsed = updateWarehouseSchema.parse(req.body);
-    const [result] = await db
+    const [updated] = await db
       .update(warehouses)
       .set({ ...parsed, updatedBy: req.user?.userId, updatedAt: new Date() })
       .where(eq(warehouses.id, parseInt(id)))
       .returning();
 
-    if (!result) {
+    if (!updated) {
       return res.status(404).json({ error: "Depo bulunamadı" });
     }
+
+    // Return with joined managerName and workAreaName
+    const [result] = await db
+      .select({
+        id: warehouses.id,
+        code: warehouses.code,
+        name: warehouses.name,
+        workAreaId: warehouses.workAreaId,
+        workAreaName: workAreas.name,
+        managerId: warehouses.managerId,
+        managerName: sql`CASE WHEN ${personnel.firstName} IS NOT NULL THEN ${personnel.firstName} || ' ' || ${personnel.lastName} ELSE NULL END`.as("managerName"),
+        warehouseType: warehouses.warehouseType,
+        address: warehouses.address,
+        isActive: warehouses.isActive,
+        createdAt: warehouses.createdAt,
+        updatedAt: warehouses.updatedAt,
+      })
+      .from(warehouses)
+      .leftJoin(workAreas, eq(warehouses.workAreaId, workAreas.id))
+      .leftJoin(personnel, eq(warehouses.managerId, personnel.id))
+      .where(eq(warehouses.id, updated.id));
+
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
