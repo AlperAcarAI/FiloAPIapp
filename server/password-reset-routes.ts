@@ -12,7 +12,8 @@ import {
   savePasswordToHistory,
   isAccountLocked,
 } from './security-middleware';
-import { revokeAllUserRefreshTokens } from './auth';
+import { authenticateToken, revokeAllUserRefreshTokens } from './auth';
+import type { AuthRequest } from './auth';
 import { sendPulseService } from './sendpulse-service';
 
 const TOKEN_EXPIRY_MINUTES = 30;
@@ -345,6 +346,149 @@ export const registerPasswordResetRoutes = (app: Express) => {
     } catch (error) {
       console.error('Verify reset token error:', error);
       return res.json({ valid: false });
+    }
+  });
+
+  // POST /api/auth/change-password (authenticated)
+  app.post('/api/auth/change-password', authenticateToken, async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'UNAUTHORIZED',
+          message: 'Oturum açmanız gerekiyor.',
+        });
+      }
+
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || typeof currentPassword !== 'string') {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_INPUT',
+          message: 'Mevcut parolanızı giriniz.',
+        });
+      }
+
+      if (!newPassword || typeof newPassword !== 'string') {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_INPUT',
+          message: 'Yeni parolanızı giriniz.',
+        });
+      }
+
+      // Load user
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      if (!user || !user.isActive) {
+        return res.status(400).json({
+          success: false,
+          error: 'USER_NOT_FOUND',
+          message: 'Kullanıcı bulunamadı.',
+        });
+      }
+
+      // Check account lock
+      const locked = await isAccountLocked(user.id);
+      if (locked) {
+        return res.status(400).json({
+          success: false,
+          error: 'ACCOUNT_LOCKED',
+          message: 'Hesabınız kilitlenmiş durumda. Lütfen daha sonra tekrar deneyin.',
+        });
+      }
+
+      // Verify current password
+      const isCurrentValid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!isCurrentValid) {
+        await logSecurityEvent('password_change_failed', {
+          userId: user.id,
+          severity: 'medium',
+          description: 'Password change failed: incorrect current password',
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent'),
+        });
+
+        return res.status(400).json({
+          success: false,
+          error: 'WRONG_PASSWORD',
+          message: 'Mevcut parolanız hatalı.',
+        });
+      }
+
+      // Validate new password strength
+      const strengthCheck = validatePasswordStrength(newPassword);
+      if (!strengthCheck.isValid) {
+        return res.status(400).json({
+          success: false,
+          error: 'WEAK_PASSWORD',
+          message: 'Yeni parola yeterince güçlü değil.',
+          data: {
+            requirements: strengthCheck.requirements,
+            suggestions: strengthCheck.suggestions,
+            score: strengthCheck.score,
+          },
+        });
+      }
+
+      // Check password history
+      const isPasswordNew = await checkPasswordHistory(user.id, newPassword);
+      if (!isPasswordNew) {
+        return res.status(400).json({
+          success: false,
+          error: 'PASSWORD_REUSED',
+          message: 'Bu parolayı yakın zamanda kullandınız. Farklı bir parola seçin.',
+        });
+      }
+
+      // Hash and update
+      const newPasswordHash = await bcrypt.hash(newPassword, 12);
+      await db.update(users).set({ passwordHash: newPasswordHash }).where(eq(users.id, user.id));
+
+      // Save to history
+      await savePasswordToHistory(user.id, newPasswordHash);
+
+      // Update security settings
+      const [existingSettings] = await db
+        .select()
+        .from(userSecuritySettings)
+        .where(eq(userSecuritySettings.userId, user.id));
+
+      if (existingSettings) {
+        await db
+          .update(userSecuritySettings)
+          .set({ passwordChangedAt: new Date(), updatedAt: new Date() })
+          .where(eq(userSecuritySettings.userId, user.id));
+      } else {
+        await db
+          .insert(userSecuritySettings)
+          .values({ userId: user.id, passwordChangedAt: new Date(), updatedAt: new Date() });
+      }
+
+      // Revoke all refresh tokens (force re-login on other devices)
+      await revokeAllUserRefreshTokens(user.id);
+
+      // Log security event
+      await logSecurityEvent('password_changed', {
+        userId: user.id,
+        severity: 'high',
+        description: 'Password changed by user',
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+      });
+
+      return res.json({
+        success: true,
+        message: 'Parolanız başarıyla değiştirildi. Güvenliğiniz için tüm oturumlarınız sonlandırılmıştır.',
+      });
+    } catch (error: any) {
+      console.error('Change password error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'SERVER_ERROR',
+        message: 'Bir hata oluştu. Lütfen daha sonra tekrar deneyin.',
+      });
     }
   });
 };

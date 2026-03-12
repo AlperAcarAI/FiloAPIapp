@@ -187,13 +187,26 @@ export default function Login() {
                   </div>
                 </div>
                 
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full"
                   disabled={loginLoading}
                 >
                   {loginLoading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
                 </Button>
+
+                <div className="text-center">
+                  <a
+                    href="/forgot-password"
+                    className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setLocation('/forgot-password');
+                    }}
+                  >
+                    Şifremi Unuttum
+                  </a>
+                </div>
               </form>
             </TabsContent>
             

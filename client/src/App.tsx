@@ -14,6 +14,9 @@ import Dashboard from "@/pages/Dashboard";
 import Analytics from "@/pages/Analytics";
 import BulkImport from "@/pages/BulkImport";
 import Login from "@/pages/login";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
+import ChangePassword from "@/pages/change-password";
 import NotFound from "@/pages/not-found";
 import AdminTenants from "@/pages/AdminTenants";
 
@@ -71,6 +74,9 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password/:token" component={ResetPassword} />
+      <Route path="/change-password" component={() => <ProtectedRoute component={ChangePassword} />} />
       <Route path="/" component={() => <ProtectedRoute component={Home} />} />
       <Route path="/api/:id" component={() => <ProtectedRoute component={ApiDetails} />} />
       <Route path="/test" component={() => <ProtectedRoute component={VarlikTest} />} />
