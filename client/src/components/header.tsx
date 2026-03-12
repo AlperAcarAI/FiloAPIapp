@@ -1,17 +1,16 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Home,
-  Database,
-  BarChart3,
-  FileText,
-  Key,
+import { 
+  Home, 
+  Database, 
+  BarChart3, 
+  FileText, 
+  Key, 
   TestTube,
   Menu,
   X,
-  LogOut,
-  KeyRound
+  LogOut
 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -128,17 +127,6 @@ export function Header() {
               <span className="text-sm text-gray-600 hidden lg:block">
                 {user.email || user.username || 'Kullanıcı'}
               </span>
-              <Link href="/change-password">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
-                  title="Parola Değiştir"
-                >
-                  <KeyRound className="w-4 h-4" />
-                  <span className="hidden lg:block">Parola Değiştir</span>
-                </Button>
-              </Link>
               <Button
                 variant="outline"
                 size="sm"
@@ -196,17 +184,6 @@ export function Header() {
                 <div className="px-3 py-2 text-sm text-gray-600">
                   {user.email || user.username || 'Kullanıcı'}
                 </div>
-                <Link href="/change-password">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start space-x-3 text-gray-600 hover:text-gray-900"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <KeyRound className="h-4 w-4" />
-                    <span>Parola Değiştir</span>
-                  </Button>
-                </Link>
                 <Button
                   variant="outline"
                   size="sm"
