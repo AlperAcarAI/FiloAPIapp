@@ -26,6 +26,7 @@ import {
   updateSubcontractorMaterialSchema,
 } from "../shared/schema";
 import { eq, and, desc, asc, sql, gte, lte, or, ilike } from "drizzle-orm";
+import { captureAuditInfo, createAuditLog } from "./audit-middleware";
 
 const router = Router();
 
@@ -126,10 +127,13 @@ router.get("/warehouses/:id", async (req, res) => {
 router.post("/warehouses", async (req: AuthRequest, res) => {
   try {
     const parsed = insertWarehouseSchema.parse(req.body);
+    const auditInfo = captureAuditInfo(req);
     const [inserted] = await db
       .insert(warehouses)
       .values({ ...parsed, createdBy: req.user?.userId, updatedBy: req.user?.userId })
       .returning();
+
+    await createAuditLog("warehouses", inserted.id, "INSERT", null, parsed, auditInfo);
 
     // Return with joined managerName and workAreaName
     const [result] = await db
@@ -163,6 +167,14 @@ router.put("/warehouses/:id", async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const parsed = updateWarehouseSchema.parse(req.body);
+    const auditInfo = captureAuditInfo(req);
+
+    // Fetch old values before update
+    const [oldRecord] = await db
+      .select()
+      .from(warehouses)
+      .where(eq(warehouses.id, parseInt(id)));
+
     const [updated] = await db
       .update(warehouses)
       .set({ ...parsed, updatedBy: req.user?.userId, updatedAt: new Date() })
@@ -172,6 +184,9 @@ router.put("/warehouses/:id", async (req: AuthRequest, res) => {
     if (!updated) {
       return res.status(404).json({ error: "Depo bulunamadı" });
     }
+
+    // Audit log
+    await createAuditLog("warehouses", updated.id, "UPDATE", oldRecord || null, parsed, auditInfo);
 
     // Return with joined managerName and workAreaName
     const [result] = await db
@@ -204,6 +219,14 @@ router.put("/warehouses/:id", async (req: AuthRequest, res) => {
 router.delete("/warehouses/:id", async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    const auditInfo = captureAuditInfo(req);
+
+    // Fetch old values before soft delete
+    const [oldRecord] = await db
+      .select()
+      .from(warehouses)
+      .where(eq(warehouses.id, parseInt(id)));
+
     const [result] = await db
       .update(warehouses)
       .set({ isActive: false, updatedBy: req.user?.userId, updatedAt: new Date() })
@@ -213,6 +236,10 @@ router.delete("/warehouses/:id", async (req: AuthRequest, res) => {
     if (!result) {
       return res.status(404).json({ error: "Depo bulunamadı" });
     }
+
+    // Audit log
+    await createAuditLog("warehouses", result.id, "DELETE", oldRecord || null, { isActive: false }, auditInfo);
+
     res.json({ message: "Depo başarıyla silindi", id: result.id });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
