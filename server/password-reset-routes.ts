@@ -400,7 +400,27 @@ export const registerPasswordResetRoutes = (app: Express) => {
       }
 
       // Verify current password
-      const isCurrentValid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!user.passwordHash || !user.passwordHash.startsWith('$2')) {
+        console.error(`User ${user.id} has invalid password hash format`);
+        return res.status(400).json({
+          success: false,
+          error: 'PASSWORD_RESET_REQUIRED',
+          message: 'Parolanız güncellenemiyor. Lütfen "Şifremi Unuttum" seçeneğini kullanarak yeni bir parola belirleyin.',
+        });
+      }
+
+      let isCurrentValid: boolean;
+      try {
+        isCurrentValid = await bcrypt.compare(currentPassword, user.passwordHash);
+      } catch (bcryptError) {
+        console.error(`Bcrypt compare error for user ${user.id}:`, bcryptError);
+        return res.status(400).json({
+          success: false,
+          error: 'PASSWORD_RESET_REQUIRED',
+          message: 'Parolanız doğrulanamıyor. Lütfen "Şifremi Unuttum" seçeneğini kullanarak yeni bir parola belirleyin.',
+        });
+      }
+
       if (!isCurrentValid) {
         await logSecurityEvent('password_change_failed', {
           userId: user.id,
@@ -484,10 +504,20 @@ export const registerPasswordResetRoutes = (app: Express) => {
       });
     } catch (error: any) {
       console.error('Change password error:', error);
+
+      // Bcrypt pattern mismatch (geçersiz hash formatı)
+      if (error?.message?.includes('not match the expected pattern') || error?.message?.includes('Invalid hash')) {
+        return res.status(400).json({
+          success: false,
+          error: 'PASSWORD_RESET_REQUIRED',
+          message: 'Parolanız doğrulanamıyor. Lütfen "Şifremi Unuttum" seçeneğini kullanarak yeni bir parola belirleyin.',
+        });
+      }
+
       return res.status(500).json({
         success: false,
         error: 'SERVER_ERROR',
-        message: 'Bir hata oluştu. Lütfen daha sonra tekrar deneyin.',
+        message: 'Parola değiştirme işlemi sırasında bir hata oluştu. Lütfen daha sonra tekrar deneyin.',
       });
     }
   });

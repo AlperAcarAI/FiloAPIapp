@@ -115,6 +115,16 @@ export default function ChangePassword() {
         body: JSON.stringify({ currentPassword, newPassword }),
       });
 
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        toast({
+          title: 'Sunucu Hatası',
+          description: 'Beklenmeyen bir yanıt alındı. Lütfen sayfayı yenileyip tekrar deneyin.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       const data = await response.json();
 
       if (data.success) {
@@ -131,16 +141,28 @@ export default function ChangePassword() {
         // Redirect to login
         setTimeout(() => setLocation('/login'), 2000);
       } else {
+        // Hata koduna göre açıklayıcı mesajlar
+        const errorMessages: Record<string, string> = {
+          WRONG_PASSWORD: 'Girdiğiniz mevcut parola hatalı. Lütfen tekrar deneyin.',
+          WEAK_PASSWORD: data.data?.suggestions?.join(', ') || 'Yeni parola yeterince güçlü değil. Lütfen daha güçlü bir parola seçin.',
+          PASSWORD_REUSED: 'Bu parolayı yakın zamanda kullandınız. Farklı bir parola seçin.',
+          ACCOUNT_LOCKED: 'Hesabınız geçici olarak kilitlendi. Lütfen birkaç dakika bekleyip tekrar deneyin.',
+          PASSWORD_RESET_REQUIRED: 'Parolanız doğrulanamıyor. Lütfen "Şifremi Unuttum" seçeneğini kullanarak yeni bir parola belirleyin.',
+          UNAUTHORIZED: 'Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.',
+        };
+
+        const message = errorMessages[data.error] || data.message || 'Parola değiştirme işlemi başarısız oldu.';
+
         toast({
-          title: 'Hata',
-          description: data.message,
+          title: 'Parola Değiştirilemedi',
+          description: message,
           variant: 'destructive',
         });
       }
     } catch {
       toast({
         title: 'Bağlantı Hatası',
-        description: 'Sunucuya bağlanırken bir hata oluştu.',
+        description: 'Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.',
         variant: 'destructive',
       });
     } finally {
