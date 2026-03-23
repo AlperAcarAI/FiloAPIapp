@@ -1092,6 +1092,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/secure", stockRoutes.default);
   console.log("✅ Stock Management Routes registered at /api/secure");
 
+  // ========================
+  // YENİ MODÜLLER (İzole - Mevcut yapıyı etkilemez)
+  // ========================
+
+  // Site Handover (Yer Teslimi) Route'larını kaydet
+  const siteHandoverRoutes = await import("./site-handover-routes.js");
+  app.use("/api/secure", siteHandoverRoutes.default);
+  console.log("✅ Site Handover Routes registered at /api/secure");
+
+  // OHS (İSG - İş Sağlığı Güvenliği) Route'larını kaydet
+  const ohsRoutes = await import("./ohs-routes.js");
+  app.use("/api/secure", ohsRoutes.default);
+  console.log("✅ OHS Routes registered at /api/secure");
+
+  // Progress Payment Hierarchy (Hakediş Hiyerarşisi) Route'larını kaydet
+  const ppHierarchyRoutes = await import("./progress-payment-hierarchy-routes.js");
+  app.use("/api/secure", ppHierarchyRoutes.default);
+  console.log("✅ Progress Payment Hierarchy Routes registered at /api/secure");
+
   const httpServer = createServer(app);
   return httpServer;
 }

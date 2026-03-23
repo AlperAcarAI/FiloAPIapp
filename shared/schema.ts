@@ -2220,6 +2220,29 @@ export const progressPayments = pgTable("progress_payments", {
   rejectionReason: text("rejection_reason"),
   paymentDateActual: date("payment_date_actual"),
   
+  // Hakediş Hiyerarşisi (YENİ - nullable alanlar, mevcut veriyi etkilemez)
+  parentPaymentId: integer("parent_payment_id"),
+  // Günlük → Ara, Ara → Kesin ilişkisi (self-reference schema'da tanımlanamaz, migration'da FK eklenir)
+
+  // Revizyon takibi
+  revisionNumber: integer("revision_number").notNull().default(0),
+  previousRevisionId: integer("previous_revision_id"),
+  revisionReason: text("revision_reason"),
+
+  // Kurumsal onay (iç onaydan ayrı)
+  institutionalStatus: varchar("institutional_status", { length: 20 }),
+  // null, submitted, approved, rejected, revision_requested
+  institutionalSubmittedAt: timestamp("institutional_submitted_at"),
+  institutionalSubmittedBy: integer("institutional_submitted_by").references(() => users.id),
+  institutionalApprovedAt: timestamp("institutional_approved_at"),
+  institutionalApprovedBy: integer("institutional_approved_by").references(() => users.id),
+  institutionalRejectionReason: text("institutional_rejection_reason"),
+
+  // Birleştirme bilgisi
+  isMerged: boolean("is_merged").notNull().default(false),
+  mergedIntoId: integer("merged_into_id"),
+  mergedAt: timestamp("merged_at"),
+
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   createdBy: integer("created_by").references(() => users.id),
@@ -2232,6 +2255,8 @@ export const progressPayments = pgTable("progress_payments", {
   statusIdx: index("idx_progress_payments_status").on(table.status),
   dateIdx: index("idx_progress_payments_date").on(table.paymentDate),
   activeIdx: index("idx_progress_payments_active").on(table.isActive),
+  parentIdx: index("idx_progress_payments_parent").on(table.parentPaymentId),
+  mergedIdx: index("idx_progress_payments_merged").on(table.mergedIntoId),
   checkTotalAmount: check("check_total_amount", sql`total_amount_cents >= 0`),
   checkStatusValue: check("check_status_value", sql`status IN ('draft', 'submitted', 'approved', 'rejected', 'paid')`),
 }));
@@ -3099,3 +3124,701 @@ export const updateSubcontractorMaterialSchema = insertSubcontractorMaterialSche
 export type SubcontractorMaterial = typeof subcontractorMaterials.$inferSelect;
 export type InsertSubcontractorMaterial = z.infer<typeof insertSubcontractorMaterialSchema>;
 export type UpdateSubcontractorMaterial = z.infer<typeof updateSubcontractorMaterialSchema>;
+
+// ========================
+// YER TESLİMİ (SITE HANDOVER) MODÜLÜ
+// ========================
+
+// 1. Site Handovers - Ana Tablo
+export const siteHandovers = pgTable("site_handovers", {
+  id: serial("id").primaryKey(),
+  pypId: integer("pyp_id").notNull().references(() => projectPyps.id),
+  handoverCode: varchar("handover_code", { length: 50 }).notNull().unique(),
+  handoverDate: date("handover_date").notNull(),
+  handoverType: varchar("handover_type", { length: 30 }).notNull().default("initial"),
+  // initial: ilk teslim, revision: revizyon, partial: kısmi teslim
+
+  // Kurum bilgileri
+  institutionName: varchar("institution_name", { length: 255 }),
+  institutionRepresentative: varchar("institution_representative", { length: 255 }),
+
+  // Taşeron ataması
+  subcontractorId: integer("subcontractor_id").references(() => companies.id),
+
+  // Konum
+  locationDescription: text("location_description"),
+  coordinateX: varchar("coordinate_x", { length: 50 }),
+  coordinateY: varchar("coordinate_y", { length: 50 }),
+
+  // Durum yönetimi
+  status: varchar("status", { length: 20 }).notNull().default("draft"),
+  // draft -> pending_approval -> approved -> completed -> cancelled
+
+  notes: text("notes"),
+  completedAt: timestamp("completed_at"),
+  completedBy: integer("completed_by").references(() => users.id),
+
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  pypIdx: index("idx_site_handovers_pyp").on(table.pypId),
+  codeIdx: index("idx_site_handovers_code").on(table.handoverCode),
+  statusIdx: index("idx_site_handovers_status").on(table.status),
+  dateIdx: index("idx_site_handovers_date").on(table.handoverDate),
+  subcontractorIdx: index("idx_site_handovers_subcontractor").on(table.subcontractorId),
+  activeIdx: index("idx_site_handovers_active").on(table.isActive),
+  checkStatusValue: check("check_sh_status_value",
+    sql`status IN ('draft', 'pending_approval', 'approved', 'completed', 'cancelled')`),
+  checkHandoverType: check("check_sh_handover_type",
+    sql`handover_type IN ('initial', 'revision', 'partial')`),
+}));
+
+// 2. Site Handover Participants - Katılımcılar
+export const siteHandoverParticipants = pgTable("site_handover_participants", {
+  id: serial("id").primaryKey(),
+  handoverId: integer("handover_id").notNull()
+    .references(() => siteHandovers.id, { onDelete: "cascade" }),
+  personnelId: integer("personnel_id").references(() => personnel.id),
+  // Dış katılımcılar için (kurum temsilcisi vb.)
+  externalName: varchar("external_name", { length: 255 }),
+  externalTitle: varchar("external_title", { length: 100 }),
+  externalOrganization: varchar("external_organization", { length: 255 }),
+  role: varchar("role", { length: 50 }).notNull(),
+  // technician, engineer, institution_rep, subcontractor_rep, witness
+  signedAt: timestamp("signed_at"),
+  signatureData: text("signature_data"),
+}, (table) => ({
+  handoverIdx: index("idx_sh_participants_handover").on(table.handoverId),
+  personnelIdx: index("idx_sh_participants_personnel").on(table.personnelId),
+}));
+
+// 3. Site Handover Items - Checklist / Punch List
+export const siteHandoverItems = pgTable("site_handover_items", {
+  id: serial("id").primaryKey(),
+  handoverId: integer("handover_id").notNull()
+    .references(() => siteHandovers.id, { onDelete: "cascade" }),
+  itemOrder: integer("item_order").notNull().default(0),
+  category: varchar("category", { length: 100 }),
+  // terrain, infrastructure, safety, documentation
+  description: text("description").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  // pending, ok, defect, na
+  severity: varchar("severity", { length: 10 }),
+  // low, medium, high, critical (sadece defect durumunda)
+  defectDescription: text("defect_description"),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: integer("resolved_by").references(() => users.id),
+  notes: text("notes"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+}, (table) => ({
+  handoverIdx: index("idx_sh_items_handover").on(table.handoverId),
+  statusIdx: index("idx_sh_items_status").on(table.status),
+  categoryIdx: index("idx_sh_items_category").on(table.category),
+}));
+
+// 4. Site Handover Materials - Malzeme İhtiyaç Listesi
+export const siteHandoverMaterials = pgTable("site_handover_materials", {
+  id: serial("id").primaryKey(),
+  handoverId: integer("handover_id").notNull()
+    .references(() => siteHandovers.id, { onDelete: "cascade" }),
+  materialId: integer("material_id").notNull().references(() => materials.id),
+  unitId: integer("unit_id").notNull().references(() => units.id),
+  estimatedQuantity: decimal("estimated_quantity", { precision: 15, scale: 4 }).notNull(),
+  actualQuantity: decimal("actual_quantity", { precision: 15, scale: 4 }),
+  // Sahada gerçekleşen miktar (sonradan güncellenir)
+  notes: text("notes"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  handoverIdx: index("idx_sh_materials_handover").on(table.handoverId),
+  materialIdx: index("idx_sh_materials_material").on(table.materialId),
+  uniqueHandoverMaterial: unique("unique_sh_material")
+    .on(table.handoverId, table.materialId, table.unitId),
+}));
+
+// 5. Site Handover Photos - Fotoğraf Dokümantasyonu
+export const siteHandoverPhotos = pgTable("site_handover_photos", {
+  id: serial("id").primaryKey(),
+  handoverId: integer("handover_id").notNull()
+    .references(() => siteHandovers.id, { onDelete: "cascade" }),
+  handoverItemId: integer("handover_item_id")
+    .references(() => siteHandoverItems.id, { onDelete: "set null" }),
+  photoUrl: text("photo_url").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
+  caption: varchar("caption", { length: 500 }),
+  photoType: varchar("photo_type", { length: 30 }).notNull().default("general"),
+  // general, before, after, defect, panorama
+  takenAt: timestamp("taken_at"),
+  coordinateX: varchar("coordinate_x", { length: 50 }),
+  coordinateY: varchar("coordinate_y", { length: 50 }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+}, (table) => ({
+  handoverIdx: index("idx_sh_photos_handover").on(table.handoverId),
+  itemIdx: index("idx_sh_photos_item").on(table.handoverItemId),
+  typeIdx: index("idx_sh_photos_type").on(table.photoType),
+}));
+
+// Site Handover Relations
+export const siteHandoversRelations = relations(siteHandovers, ({ one, many }) => ({
+  pyp: one(projectPyps, {
+    fields: [siteHandovers.pypId],
+    references: [projectPyps.id],
+  }),
+  subcontractor: one(companies, {
+    fields: [siteHandovers.subcontractorId],
+    references: [companies.id],
+  }),
+  participants: many(siteHandoverParticipants),
+  items: many(siteHandoverItems),
+  materials: many(siteHandoverMaterials),
+  photos: many(siteHandoverPhotos),
+}));
+
+export const siteHandoverParticipantsRelations = relations(siteHandoverParticipants, ({ one }) => ({
+  handover: one(siteHandovers, {
+    fields: [siteHandoverParticipants.handoverId],
+    references: [siteHandovers.id],
+  }),
+  personnel: one(personnel, {
+    fields: [siteHandoverParticipants.personnelId],
+    references: [personnel.id],
+  }),
+}));
+
+export const siteHandoverItemsRelations = relations(siteHandoverItems, ({ one }) => ({
+  handover: one(siteHandovers, {
+    fields: [siteHandoverItems.handoverId],
+    references: [siteHandovers.id],
+  }),
+}));
+
+export const siteHandoverMaterialsRelations = relations(siteHandoverMaterials, ({ one }) => ({
+  handover: one(siteHandovers, {
+    fields: [siteHandoverMaterials.handoverId],
+    references: [siteHandovers.id],
+  }),
+  material: one(materials, {
+    fields: [siteHandoverMaterials.materialId],
+    references: [materials.id],
+  }),
+  unit: one(units, {
+    fields: [siteHandoverMaterials.unitId],
+    references: [units.id],
+  }),
+}));
+
+export const siteHandoverPhotosRelations = relations(siteHandoverPhotos, ({ one }) => ({
+  handover: one(siteHandovers, {
+    fields: [siteHandoverPhotos.handoverId],
+    references: [siteHandovers.id],
+  }),
+  item: one(siteHandoverItems, {
+    fields: [siteHandoverPhotos.handoverItemId],
+    references: [siteHandoverItems.id],
+  }),
+}));
+
+// Site Handover Zod Schemas
+export const insertSiteHandoverSchema = createInsertSchema(siteHandovers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+  completedBy: true,
+}).extend({
+  handoverType: z.enum(["initial", "revision", "partial"]).default("initial"),
+  status: z.enum(["draft", "pending_approval", "approved", "completed", "cancelled"]).default("draft"),
+  handoverDate: z.string().regex(/^\d{4}-\d{2}-\d{2}/, "Geçersiz tarih formatı"),
+});
+export const updateSiteHandoverSchema = insertSiteHandoverSchema.partial();
+export type SiteHandover = typeof siteHandovers.$inferSelect;
+export type InsertSiteHandover = z.infer<typeof insertSiteHandoverSchema>;
+export type UpdateSiteHandover = z.infer<typeof updateSiteHandoverSchema>;
+
+export const insertSiteHandoverParticipantSchema = createInsertSchema(siteHandoverParticipants).omit({
+  id: true,
+}).extend({
+  role: z.enum(["technician", "engineer", "institution_rep", "subcontractor_rep", "witness"]),
+});
+export type SiteHandoverParticipant = typeof siteHandoverParticipants.$inferSelect;
+export type InsertSiteHandoverParticipant = z.infer<typeof insertSiteHandoverParticipantSchema>;
+
+export const insertSiteHandoverItemSchema = createInsertSchema(siteHandoverItems).omit({
+  id: true,
+  createdAt: true,
+  resolvedAt: true,
+  resolvedBy: true,
+}).extend({
+  status: z.enum(["pending", "ok", "defect", "na"]).default("pending"),
+  severity: z.enum(["low", "medium", "high", "critical"]).optional(),
+});
+export const updateSiteHandoverItemSchema = insertSiteHandoverItemSchema.partial();
+export type SiteHandoverItem = typeof siteHandoverItems.$inferSelect;
+export type InsertSiteHandoverItem = z.infer<typeof insertSiteHandoverItemSchema>;
+export type UpdateSiteHandoverItem = z.infer<typeof updateSiteHandoverItemSchema>;
+
+export const insertSiteHandoverMaterialSchema = createInsertSchema(siteHandoverMaterials).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  estimatedQuantity: z.string().refine((val) => parseFloat(val) > 0, "Miktar pozitif olmalıdır"),
+  actualQuantity: z.string().refine((val) => parseFloat(val) >= 0, "Miktar negatif olamaz").optional(),
+});
+export const updateSiteHandoverMaterialSchema = insertSiteHandoverMaterialSchema.partial();
+export type SiteHandoverMaterial = typeof siteHandoverMaterials.$inferSelect;
+export type InsertSiteHandoverMaterial = z.infer<typeof insertSiteHandoverMaterialSchema>;
+export type UpdateSiteHandoverMaterial = z.infer<typeof updateSiteHandoverMaterialSchema>;
+
+export const insertSiteHandoverPhotoSchema = createInsertSchema(siteHandoverPhotos).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  photoType: z.enum(["general", "before", "after", "defect", "panorama"]).default("general"),
+});
+export type SiteHandoverPhoto = typeof siteHandoverPhotos.$inferSelect;
+export type InsertSiteHandoverPhoto = z.infer<typeof insertSiteHandoverPhotoSchema>;
+
+// ========================
+// İSG (İŞ SAĞLIĞI GÜVENLİĞİ) MODÜLÜ
+// ========================
+
+// 1. OHS Inspection Templates - Denetim Şablonları
+export const ohsInspectionTemplates = pgTable("ohs_inspection_templates", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }),
+  // ppe_check, work_permit, fire_safety, electrical, excavation, height_work
+  version: integer("version").notNull().default(1),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  codeIdx: index("idx_ohs_templates_code").on(table.code),
+  categoryIdx: index("idx_ohs_templates_category").on(table.category),
+  activeIdx: index("idx_ohs_templates_active").on(table.isActive),
+}));
+
+// 2. OHS Template Items - Şablon Maddeleri
+export const ohsTemplateItems = pgTable("ohs_template_items", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id").notNull()
+    .references(() => ohsInspectionTemplates.id, { onDelete: "cascade" }),
+  itemOrder: integer("item_order").notNull().default(0),
+  category: varchar("category", { length: 100 }),
+  question: text("question").notNull(),
+  responseType: varchar("response_type", { length: 20 }).notNull().default("yes_no"),
+  // yes_no, scale_1_5, text, numeric, photo_required
+  isCritical: boolean("is_critical").notNull().default(false),
+  referenceRegulation: varchar("reference_regulation", { length: 255 }),
+  isActive: boolean("is_active").notNull().default(true),
+}, (table) => ({
+  templateIdx: index("idx_ohs_template_items_template").on(table.templateId),
+  orderIdx: index("idx_ohs_template_items_order").on(table.templateId, table.itemOrder),
+}));
+
+// 3. OHS Inspections - Denetim Kayıtları
+export const ohsInspections = pgTable("ohs_inspections", {
+  id: serial("id").primaryKey(),
+  inspectionCode: varchar("inspection_code", { length: 50 }).notNull().unique(),
+  templateId: integer("template_id").notNull()
+    .references(() => ohsInspectionTemplates.id),
+  pypId: integer("pyp_id").references(() => projectPyps.id),
+  projectId: integer("project_id").references(() => projects.id),
+  workAreaId: integer("work_area_id").references(() => workAreas.id),
+
+  inspectionDate: date("inspection_date").notNull(),
+  inspectorId: integer("inspector_id").notNull().references(() => personnel.id),
+
+  status: varchar("status", { length: 20 }).notNull().default("draft"),
+  // draft -> in_progress -> completed -> reviewed
+  overallResult: varchar("overall_result", { length: 25 }),
+  // compliant, non_compliant, partially_compliant
+
+  complianceScore: decimal("compliance_score", { precision: 5, scale: 2 }),
+  // 0-100 uygunluk puanı
+
+  summary: text("summary"),
+  recommendations: text("recommendations"),
+
+  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  codeIdx: index("idx_ohs_inspections_code").on(table.inspectionCode),
+  templateIdx: index("idx_ohs_inspections_template").on(table.templateId),
+  pypIdx: index("idx_ohs_inspections_pyp").on(table.pypId),
+  projectIdx: index("idx_ohs_inspections_project").on(table.projectId),
+  inspectorIdx: index("idx_ohs_inspections_inspector").on(table.inspectorId),
+  dateIdx: index("idx_ohs_inspections_date").on(table.inspectionDate),
+  statusIdx: index("idx_ohs_inspections_status").on(table.status),
+  activeIdx: index("idx_ohs_inspections_active").on(table.isActive),
+  checkStatusValue: check("check_ohs_insp_status",
+    sql`status IN ('draft', 'in_progress', 'completed', 'reviewed')`),
+}));
+
+// 4. OHS Inspection Items - Denetim Madde Sonuçları
+export const ohsInspectionItems = pgTable("ohs_inspection_items", {
+  id: serial("id").primaryKey(),
+  inspectionId: integer("inspection_id").notNull()
+    .references(() => ohsInspections.id, { onDelete: "cascade" }),
+  templateItemId: integer("template_item_id").notNull()
+    .references(() => ohsTemplateItems.id),
+  response: varchar("response", { length: 50 }),
+  isCompliant: boolean("is_compliant"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  inspectionIdx: index("idx_ohs_insp_items_inspection").on(table.inspectionId),
+  templateItemIdx: index("idx_ohs_insp_items_template_item").on(table.templateItemId),
+  uniqueInspItem: unique("unique_ohs_inspection_item")
+    .on(table.inspectionId, table.templateItemId),
+}));
+
+// 5. OHS Inspection Photos - Denetim Fotoğrafları
+export const ohsInspectionPhotos = pgTable("ohs_inspection_photos", {
+  id: serial("id").primaryKey(),
+  inspectionId: integer("inspection_id").notNull()
+    .references(() => ohsInspections.id, { onDelete: "cascade" }),
+  inspectionItemId: integer("inspection_item_id")
+    .references(() => ohsInspectionItems.id, { onDelete: "set null" }),
+  photoUrl: text("photo_url").notNull(),
+  caption: varchar("caption", { length: 500 }),
+  takenAt: timestamp("taken_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+}, (table) => ({
+  inspectionIdx: index("idx_ohs_insp_photos_inspection").on(table.inspectionId),
+  itemIdx: index("idx_ohs_insp_photos_item").on(table.inspectionItemId),
+}));
+
+// 6. OHS Personnel Certifications - Personel İSG Sertifikaları
+export const ohsPersonnelCertifications = pgTable("ohs_personnel_certifications", {
+  id: serial("id").primaryKey(),
+  personnelId: integer("personnel_id").notNull().references(() => personnel.id),
+  certificationType: varchar("certification_type", { length: 100 }).notNull(),
+  // isg_a, isg_b, isg_c, first_aid, fire_safety, height_work, electrical, forklift
+  certificateNumber: varchar("certificate_number", { length: 100 }),
+  issuedBy: varchar("issued_by", { length: 255 }),
+  issueDate: date("issue_date").notNull(),
+  expiryDate: date("expiry_date"),
+  documentUrl: text("document_url"),
+  status: varchar("status", { length: 20 }).notNull().default("active"),
+  // active, expired, suspended, revoked
+  notes: text("notes"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  personnelIdx: index("idx_ohs_certs_personnel").on(table.personnelId),
+  typeIdx: index("idx_ohs_certs_type").on(table.certificationType),
+  expiryIdx: index("idx_ohs_certs_expiry").on(table.expiryDate),
+  statusIdx: index("idx_ohs_certs_status").on(table.status),
+  activeIdx: index("idx_ohs_certs_active").on(table.isActive),
+}));
+
+// 7. OHS Incidents - İş Kazası / Olay Kayıtları
+export const ohsIncidents = pgTable("ohs_incidents", {
+  id: serial("id").primaryKey(),
+  incidentCode: varchar("incident_code", { length: 50 }).notNull().unique(),
+  pypId: integer("pyp_id").references(() => projectPyps.id),
+  projectId: integer("project_id").references(() => projects.id),
+  workAreaId: integer("work_area_id").references(() => workAreas.id),
+
+  incidentDate: date("incident_date").notNull(),
+  incidentTime: varchar("incident_time", { length: 8 }),
+
+  incidentType: varchar("incident_type", { length: 30 }).notNull(),
+  // injury, near_miss, property_damage, environmental, fire, other
+  severity: varchar("severity", { length: 20 }).notNull(),
+  // minor, moderate, serious, critical, fatal
+
+  description: text("description").notNull(),
+  location: text("location"),
+  coordinateX: varchar("coordinate_x", { length: 50 }),
+  coordinateY: varchar("coordinate_y", { length: 50 }),
+
+  // Etkilenen personel
+  affectedPersonnelId: integer("affected_personnel_id").references(() => personnel.id),
+  injuryDescription: text("injury_description"),
+  treatmentGiven: text("treatment_given"),
+  hospitalReferral: boolean("hospital_referral").notNull().default(false),
+  lostWorkDays: integer("lost_work_days").default(0),
+
+  // Raporlama
+  reportedById: integer("reported_by_id").notNull().references(() => personnel.id),
+  reportedToSgk: boolean("reported_to_sgk").notNull().default(false),
+  sgkReportDate: date("sgk_report_date"),
+
+  rootCause: text("root_cause"),
+  preventiveMeasures: text("preventive_measures"),
+
+  status: varchar("status", { length: 20 }).notNull().default("reported"),
+  // reported -> investigating -> resolved -> closed
+
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  codeIdx: index("idx_ohs_incidents_code").on(table.incidentCode),
+  pypIdx: index("idx_ohs_incidents_pyp").on(table.pypId),
+  projectIdx: index("idx_ohs_incidents_project").on(table.projectId),
+  dateIdx: index("idx_ohs_incidents_date").on(table.incidentDate),
+  typeIdx: index("idx_ohs_incidents_type").on(table.incidentType),
+  severityIdx: index("idx_ohs_incidents_severity").on(table.severity),
+  statusIdx: index("idx_ohs_incidents_status").on(table.status),
+  affectedIdx: index("idx_ohs_incidents_affected").on(table.affectedPersonnelId),
+  activeIdx: index("idx_ohs_incidents_active").on(table.isActive),
+}));
+
+// 8. OHS Corrective Actions - Düzeltici Faaliyetler
+export const ohsCorrectiveActions = pgTable("ohs_corrective_actions", {
+  id: serial("id").primaryKey(),
+  inspectionId: integer("inspection_id")
+    .references(() => ohsInspections.id),
+  incidentId: integer("incident_id")
+    .references(() => ohsIncidents.id),
+  inspectionItemId: integer("inspection_item_id")
+    .references(() => ohsInspectionItems.id),
+
+  actionCode: varchar("action_code", { length: 50 }).notNull().unique(),
+  description: text("description").notNull(),
+  priority: varchar("priority", { length: 20 }).notNull().default("medium"),
+  // low, medium, high, critical
+
+  assignedToId: integer("assigned_to_id").references(() => personnel.id),
+  assignedCompanyId: integer("assigned_company_id").references(() => companies.id),
+
+  dueDate: date("due_date").notNull(),
+  completedDate: date("completed_date"),
+
+  status: varchar("status", { length: 20 }).notNull().default("open"),
+  // open -> in_progress -> completed -> verified -> closed
+
+  verifiedById: integer("verified_by_id").references(() => personnel.id),
+  verifiedAt: timestamp("verified_at"),
+  verificationNotes: text("verification_notes"),
+
+  notes: text("notes"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  inspectionIdx: index("idx_ohs_ca_inspection").on(table.inspectionId),
+  incidentIdx: index("idx_ohs_ca_incident").on(table.incidentId),
+  assignedIdx: index("idx_ohs_ca_assigned").on(table.assignedToId),
+  statusIdx: index("idx_ohs_ca_status").on(table.status),
+  dueDateIdx: index("idx_ohs_ca_due_date").on(table.dueDate),
+  priorityIdx: index("idx_ohs_ca_priority").on(table.priority),
+  activeIdx: index("idx_ohs_ca_active").on(table.isActive),
+}));
+
+// İSG Relations
+export const ohsInspectionTemplatesRelations = relations(ohsInspectionTemplates, ({ many }) => ({
+  items: many(ohsTemplateItems),
+  inspections: many(ohsInspections),
+}));
+
+export const ohsTemplateItemsRelations = relations(ohsTemplateItems, ({ one }) => ({
+  template: one(ohsInspectionTemplates, {
+    fields: [ohsTemplateItems.templateId],
+    references: [ohsInspectionTemplates.id],
+  }),
+}));
+
+export const ohsInspectionsRelations = relations(ohsInspections, ({ one, many }) => ({
+  template: one(ohsInspectionTemplates, {
+    fields: [ohsInspections.templateId],
+    references: [ohsInspectionTemplates.id],
+  }),
+  pyp: one(projectPyps, {
+    fields: [ohsInspections.pypId],
+    references: [projectPyps.id],
+  }),
+  project: one(projects, {
+    fields: [ohsInspections.projectId],
+    references: [projects.id],
+  }),
+  inspector: one(personnel, {
+    fields: [ohsInspections.inspectorId],
+    references: [personnel.id],
+  }),
+  items: many(ohsInspectionItems),
+  photos: many(ohsInspectionPhotos),
+  correctiveActions: many(ohsCorrectiveActions),
+}));
+
+export const ohsInspectionItemsRelations = relations(ohsInspectionItems, ({ one }) => ({
+  inspection: one(ohsInspections, {
+    fields: [ohsInspectionItems.inspectionId],
+    references: [ohsInspections.id],
+  }),
+  templateItem: one(ohsTemplateItems, {
+    fields: [ohsInspectionItems.templateItemId],
+    references: [ohsTemplateItems.id],
+  }),
+}));
+
+export const ohsIncidentsRelations = relations(ohsIncidents, ({ one, many }) => ({
+  pyp: one(projectPyps, {
+    fields: [ohsIncidents.pypId],
+    references: [projectPyps.id],
+  }),
+  affectedPersonnel: one(personnel, {
+    fields: [ohsIncidents.affectedPersonnelId],
+    references: [personnel.id],
+  }),
+  correctiveActions: many(ohsCorrectiveActions),
+}));
+
+export const ohsCorrectiveActionsRelations = relations(ohsCorrectiveActions, ({ one }) => ({
+  inspection: one(ohsInspections, {
+    fields: [ohsCorrectiveActions.inspectionId],
+    references: [ohsInspections.id],
+  }),
+  incident: one(ohsIncidents, {
+    fields: [ohsCorrectiveActions.incidentId],
+    references: [ohsIncidents.id],
+  }),
+  assignedTo: one(personnel, {
+    fields: [ohsCorrectiveActions.assignedToId],
+    references: [personnel.id],
+  }),
+}));
+
+// İSG Zod Schemas
+export const insertOhsTemplateSchema = createInsertSchema(ohsInspectionTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const updateOhsTemplateSchema = insertOhsTemplateSchema.partial();
+export type OhsInspectionTemplate = typeof ohsInspectionTemplates.$inferSelect;
+export type InsertOhsTemplate = z.infer<typeof insertOhsTemplateSchema>;
+export type UpdateOhsTemplate = z.infer<typeof updateOhsTemplateSchema>;
+
+export const insertOhsTemplateItemSchema = createInsertSchema(ohsTemplateItems).omit({
+  id: true,
+}).extend({
+  responseType: z.enum(["yes_no", "scale_1_5", "text", "numeric", "photo_required"]).default("yes_no"),
+});
+export const updateOhsTemplateItemSchema = insertOhsTemplateItemSchema.partial();
+export type OhsTemplateItem = typeof ohsTemplateItems.$inferSelect;
+export type InsertOhsTemplateItem = z.infer<typeof insertOhsTemplateItemSchema>;
+export type UpdateOhsTemplateItem = z.infer<typeof updateOhsTemplateItemSchema>;
+
+export const insertOhsInspectionSchema = createInsertSchema(ohsInspections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  reviewedBy: true,
+  reviewedAt: true,
+  complianceScore: true,
+  overallResult: true,
+}).extend({
+  status: z.enum(["draft", "in_progress", "completed", "reviewed"]).default("draft"),
+  inspectionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}/, "Geçersiz tarih formatı"),
+});
+export const updateOhsInspectionSchema = insertOhsInspectionSchema.partial();
+export type OhsInspection = typeof ohsInspections.$inferSelect;
+export type InsertOhsInspection = z.infer<typeof insertOhsInspectionSchema>;
+export type UpdateOhsInspection = z.infer<typeof updateOhsInspectionSchema>;
+
+export const insertOhsInspectionItemSchema = createInsertSchema(ohsInspectionItems).omit({
+  id: true,
+  createdAt: true,
+});
+export type OhsInspectionItem = typeof ohsInspectionItems.$inferSelect;
+export type InsertOhsInspectionItem = z.infer<typeof insertOhsInspectionItemSchema>;
+
+export const insertOhsCertificationSchema = createInsertSchema(ohsPersonnelCertifications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}/, "Geçersiz tarih formatı"),
+  expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}/, "Geçersiz tarih formatı").optional(),
+  status: z.enum(["active", "expired", "suspended", "revoked"]).default("active"),
+});
+export const updateOhsCertificationSchema = insertOhsCertificationSchema.partial();
+export type OhsPersonnelCertification = typeof ohsPersonnelCertifications.$inferSelect;
+export type InsertOhsCertification = z.infer<typeof insertOhsCertificationSchema>;
+export type UpdateOhsCertification = z.infer<typeof updateOhsCertificationSchema>;
+
+export const insertOhsIncidentSchema = createInsertSchema(ohsIncidents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  incidentType: z.enum(["injury", "near_miss", "property_damage", "environmental", "fire", "other"]),
+  severity: z.enum(["minor", "moderate", "serious", "critical", "fatal"]),
+  status: z.enum(["reported", "investigating", "resolved", "closed"]).default("reported"),
+  incidentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}/, "Geçersiz tarih formatı"),
+});
+export const updateOhsIncidentSchema = insertOhsIncidentSchema.partial();
+export type OhsIncident = typeof ohsIncidents.$inferSelect;
+export type InsertOhsIncident = z.infer<typeof insertOhsIncidentSchema>;
+export type UpdateOhsIncident = z.infer<typeof updateOhsIncidentSchema>;
+
+export const insertOhsCorrectiveActionSchema = createInsertSchema(ohsCorrectiveActions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  verifiedById: true,
+  verifiedAt: true,
+  verificationNotes: true,
+  completedDate: true,
+}).extend({
+  priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+  status: z.enum(["open", "in_progress", "completed", "verified", "closed"]).default("open"),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}/, "Geçersiz tarih formatı"),
+});
+export const updateOhsCorrectiveActionSchema = insertOhsCorrectiveActionSchema.partial();
+export type OhsCorrectiveAction = typeof ohsCorrectiveActions.$inferSelect;
+export type InsertOhsCorrectiveAction = z.infer<typeof insertOhsCorrectiveActionSchema>;
+export type UpdateOhsCorrectiveAction = z.infer<typeof updateOhsCorrectiveActionSchema>;
+
+// ========================
+// HAKEDİŞ HİYERARŞİSİ - BİRLEŞTİRME GEÇMİŞİ
+// ========================
+
+export const progressPaymentMergeHistory = pgTable("progress_payment_merge_history", {
+  id: serial("id").primaryKey(),
+  targetPaymentId: integer("target_payment_id").notNull()
+    .references(() => progressPayments.id),
+  sourcePaymentId: integer("source_payment_id").notNull()
+    .references(() => progressPayments.id),
+  mergedAt: timestamp("merged_at").notNull().defaultNow(),
+  mergedBy: integer("merged_by").references(() => users.id),
+  notes: text("notes"),
+}, (table) => ({
+  targetIdx: index("idx_pp_merge_target").on(table.targetPaymentId),
+  sourceIdx: index("idx_pp_merge_source").on(table.sourcePaymentId),
+  uniqueMerge: unique("unique_pp_merge").on(table.targetPaymentId, table.sourcePaymentId),
+}));
+
+export type ProgressPaymentMergeHistory = typeof progressPaymentMergeHistory.$inferSelect;
