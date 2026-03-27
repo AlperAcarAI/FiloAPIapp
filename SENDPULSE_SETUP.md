@@ -25,7 +25,7 @@ Personel kaydı oluşturulduğunda otomatik olarak `alper.acar@dijiminds.com` ad
 SENDPULSE_API_ID=YOUR_ACTUAL_API_ID_HERE
 SENDPULSE_API_SECRET=YOUR_ACTUAL_API_SECRET_HERE
 SENDPULSE_SENDER_EMAIL=noreply@filoki.com
-SENDPULSE_SENDER_NAME=Filoki Personel Sistemi
+SENDPULSE_SENDER_NAME=Sahacı Personel Sistemi
 SENDPULSE_RECIPIENT_EMAIL=alper.acar@dijiminds.com
 ```
 

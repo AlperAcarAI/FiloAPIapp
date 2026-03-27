@@ -175,3 +175,23 @@ export function getCurrentTenantSlug(): string {
 export function getPoolForDomain(domain: string): Pool | null {
   return poolCache.get(domain) || null;
 }
+
+/**
+ * Bot istekleri gibi HTTP domain header'ı olmayan durumlar için
+ * belirli bir tenant domain'i ile AsyncLocalStorage scope'u oluşturur.
+ */
+export function runWithTenant<T>(domain: string, fn: () => Promise<T>): Promise<T> {
+  const config = findTenantConfig(domain);
+  if (!config) {
+    throw new Error(`[TENANT] Tenant bulunamadı: ${domain}`);
+  }
+  const db = getOrCreateDb(config);
+  return asyncLocalStorage.run({ db, config }, fn);
+}
+
+/**
+ * Mevcut tenant config'lerini döndürür (bot auth için tenant eşleştirmede kullanılır)
+ */
+export function getTenantConfigs(): TenantDbConfig[] {
+  return tenantConfigs;
+}

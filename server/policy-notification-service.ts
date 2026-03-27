@@ -326,7 +326,7 @@ class PolicyNotificationService {
                                 ⚠️ ${config.title}
                             </h1>
                             <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 16px; opacity: 0.9;">
-                                Filoki Poliçe Yönetim Sistemi
+                                Sahacı Poliçe Yönetim Sistemi
                             </p>
                         </td>
                     </tr>
@@ -364,7 +364,7 @@ class PolicyNotificationService {
                     <tr>
                         <td style="padding: 30px; background-color: #eff6ff; border-top: 1px solid #e5e7eb;">
                             <p style="margin: 0; color: #1e40af; font-size: 14px; line-height: 1.6;">
-                                <strong>ℹ️ Bilgi:</strong> Bu e-posta otomatik olarak Filoki Poliçe Yönetim Sistemi tarafından gönderilmiştir.
+                                <strong>ℹ️ Bilgi:</strong> Bu e-posta otomatik olarak Sahacı Poliçe Yönetim Sistemi tarafından gönderilmiştir.
                             </p>
                         </td>
                     </tr>
@@ -373,7 +373,7 @@ class PolicyNotificationService {
                     <tr>
                         <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
                             <p style="margin: 0; color: #6b7280; font-size: 14px;">
-                                © ${new Date().getFullYear()} Filoki Poliçe Yönetim Sistemi<br>
+                                © ${new Date().getFullYear()} Sahacı Poliçe Yönetim Sistemi<br>
                                 Bu e-posta ${new Date().toLocaleString('tr-TR')} tarihinde gönderilmiştir.
                             </p>
                         </td>

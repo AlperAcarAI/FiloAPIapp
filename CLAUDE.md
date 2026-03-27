@@ -1,7 +1,7 @@
-# FILOKI Fleet Management API
+# SAHACI Fleet Management API
 
 ## Proje Hakkinda
-Filoki Backend API — Express.js + TypeScript tabanli filo yonetim sistemi backend'i.
+Sahacı Backend API — Express.js + TypeScript tabanli filo yonetim sistemi backend'i.
 - **Runtime:** Node.js 20, TypeScript 5.6, Express.js 4
 - **ORM:** Drizzle ORM + Neon PostgreSQL (serverless)
 - **Auth:** JWT (access + refresh token), Passport.js, hierarchical RBAC

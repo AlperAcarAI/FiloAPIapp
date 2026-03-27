@@ -113,7 +113,7 @@ class SendPulseService {
                                 🎉 Yeni Personel Kaydı
                             </h1>
                             <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 16px;">
-                                Filoki Personel Yönetim Sistemi
+                                Sahacı Personel Yönetim Sistemi
                             </p>
                         </td>
                     </tr>
@@ -344,7 +344,7 @@ class SendPulseService {
                             <!-- Info Box -->
                             <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 16px; border-radius: 4px; margin-top: 30px;">
                                 <p style="margin: 0; color: #1e40af; font-size: 14px; line-height: 1.6;">
-                                    <strong>ℹ️ Bilgi:</strong> Bu e-posta otomatik olarak Filoki Personel Yönetim Sistemi tarafından gönderilmiştir.
+                                    <strong>ℹ️ Bilgi:</strong> Bu e-posta otomatik olarak Sahacı Personel Yönetim Sistemi tarafından gönderilmiştir.
                                 </p>
                             </div>
                         </td>
@@ -354,7 +354,7 @@ class SendPulseService {
                     <tr>
                         <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
                             <p style="margin: 0; color: #6b7280; font-size: 14px;">
-                                © ${new Date().getFullYear()} Filoki Personel Yönetim Sistemi<br>
+                                © ${new Date().getFullYear()} Sahacı Personel Yönetim Sistemi<br>
                                 Bu e-posta ${new Date().toLocaleString('tr-TR')} tarihinde gönderilmiştir.
                             </p>
                         </td>
@@ -391,7 +391,7 @@ class SendPulseService {
                                 Parola Sıfırlama
                             </h1>
                             <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 16px;">
-                                Filoki Filo Yönetim Sistemi
+                                Sahacı Filo Yönetim Sistemi
                             </p>
                         </td>
                     </tr>
@@ -437,7 +437,7 @@ class SendPulseService {
                     <tr>
                         <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
                             <p style="margin: 0; color: #6b7280; font-size: 14px;">
-                                &copy; ${new Date().getFullYear()} Filoki Filo Yönetim Sistemi<br>
+                                &copy; ${new Date().getFullYear()} Sahacı Filo Yönetim Sistemi<br>
                                 Bu e-posta ${new Date().toLocaleString('tr-TR')} tarihinde gönderilmiştir.
                             </p>
                         </td>
@@ -473,7 +473,7 @@ class SendPulseService {
         email: {
           html: htmlBase64,
           text: `Parola sıfırlama bağlantınız: ${resetUrl} - Bu bağlantı 30 dakika geçerlidir.`,
-          subject: 'Parola Sıfırlama Talebi - Filoki',
+          subject: 'Parola Sıfırlama Talebi - Sahacı',
           from: {
             name: senderName,
             email: senderEmail

@@ -36,6 +36,7 @@ import { registerSecurityRoutes } from "./security-routes.js";
 import { registerPasswordResetRoutes } from "./password-reset-routes.js";
 import { generateApiKey, hashApiKey } from "./api-security.js";
 import { apiKeys, apiClients } from "@shared/schema";
+import { createBotRouter, setupTelegramWebhook } from "./bot-webhook-routes.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Security headers - tüm isteklere uygula
@@ -46,6 +47,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Document Management Routes - Before auth middleware
   app.use('/api/documents', documentRoutes);
+
+  // Telegram Bot Webhook Routes - Auth middleware OLMADAN (kendi doğrulamasını yapar)
+  app.use('/api/bot', createBotRouter());
 
   // Position Management Route'larını kaydet - EN ÜSTTE (HTML dönme sorununu önlemek için)
   console.log('📍 Registering Position Routes at /api/secure');
@@ -1110,6 +1114,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const ppHierarchyRoutes = await import("./progress-payment-hierarchy-routes.js");
   app.use("/api/secure", ppHierarchyRoutes.default);
   console.log("✅ Progress Payment Hierarchy Routes registered at /api/secure");
+
+  // Telegram Bot webhook kurulumu
+  setupTelegramWebhook().catch((err) => {
+    console.error('[TELEGRAM-BOT] Webhook kurulum hatası:', err);
+  });
 
   const httpServer = createServer(app);
   return httpServer;

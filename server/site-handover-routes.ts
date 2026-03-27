@@ -15,6 +15,7 @@ import {
   users,
   stockMovements,
   stockMovementItems,
+  materialUnits,
   projects,
   insertSiteHandoverSchema,
   updateSiteHandoverSchema,
@@ -774,6 +775,27 @@ router.post("/site-handovers/:id/materials", async (req: AuthRequest, res) => {
     const handoverId = parseInt(req.params.id);
     const userId = req.user?.id;
     const parsed = insertSiteHandoverMaterialSchema.parse({ ...req.body, handoverId });
+
+    // Malzeme-birim ilişkisi yoksa otomatik oluştur
+    const [existingMU] = await db
+      .select({ id: materialUnits.id })
+      .from(materialUnits)
+      .where(and(eq(materialUnits.materialId, parsed.materialId), eq(materialUnits.unitId, parsed.unitId)));
+
+    if (!existingMU) {
+      try {
+        await db.insert(materialUnits).values({
+          materialId: parsed.materialId,
+          unitId: parsed.unitId,
+          isPrimary: false,
+          isActive: true,
+          createdBy: userId,
+          updatedBy: userId,
+        });
+      } catch {
+        // unique constraint varsa atla (race condition)
+      }
+    }
 
     const [created] = await db
       .insert(siteHandoverMaterials)

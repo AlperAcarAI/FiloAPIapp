@@ -3822,3 +3822,26 @@ export const progressPaymentMergeHistory = pgTable("progress_payment_merge_histo
 }));
 
 export type ProgressPaymentMergeHistory = typeof progressPaymentMergeHistory.$inferSelect;
+
+// ========================
+// BOT SESSIONS - Telegram / WhatsApp bot oturumları
+// ========================
+
+export const botSessions = pgTable("bot_sessions", {
+  id: serial("id").primaryKey(),
+  platform: varchar("platform", { length: 20 }).notNull(), // 'telegram' | 'whatsapp'
+  platformUserId: varchar("platform_user_id", { length: 100 }).notNull(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  personnelId: integer("personnel_id").references(() => personnel.id),
+  companyId: integer("company_id").notNull().references(() => companies.id),
+  tenantDomain: varchar("tenant_domain", { length: 200 }).notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  lastActivityAt: timestamp("last_activity_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  uniqueSession: unique("unique_bot_session").on(table.platform, table.platformUserId),
+  userIdx: index("idx_bot_sessions_user").on(table.userId),
+  platformIdx: index("idx_bot_sessions_platform").on(table.platform, table.isActive),
+}));
+
+export type BotSession = typeof botSessions.$inferSelect;
