@@ -952,14 +952,11 @@ router.post('/addPersonnelWorkArea', authenticateJWT, async (req: AuthRequest, r
     });
 
   } catch (error) {
-    const errorDetail = error instanceof Error ? error.message : String(error);
     console.error('Personnel work area assignment error:', error);
-    console.error('Request body was:', JSON.stringify(req.body));
     res.status(500).json({
       success: false,
       error: 'ASSIGNMENT_CREATE_ERROR',
-      message: 'Personel çalışma alanı ataması oluşturulurken hata oluştu.',
-      detail: errorDetail
+      message: 'Personel çalışma alanı ataması oluşturulurken hata oluştu.'
     });
   }
 });
