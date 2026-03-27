@@ -212,7 +212,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         permissions = Array.from(permissionMap.values());
       }
-      
+
+      // Pozisyon bazlı sayfa yetkilerini getir
+      let pagePermissions: string[] | null = null;
+      if (authenticatedUser.positionLevel === 999 || authenticatedUser.department === 'admin') {
+        // Admin kullanıcılar tüm sayfalara erişebilir
+        pagePermissions = null;
+      } else if (personnelInfo?.position?.id) {
+        const { positionPagePermissions } = await import('@shared/schema');
+        const posPagePerms = await db
+          .select({ pageKey: positionPagePermissions.pageKey })
+          .from(positionPagePermissions)
+          .where(eq(positionPagePermissions.positionId, personnelInfo.position.id));
+        pagePermissions = posPagePerms.map(p => p.pageKey);
+      }
+
       // Token çifti oluştur (access + refresh)
       const tokens = await generateTokenPair(
         { id: authenticatedUser.id, email: authenticatedUser.email },
@@ -231,7 +245,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           expiresIn: tokens.expiresIn,
           refreshExpiresIn: tokens.refreshExpiresIn,
           tokenType: "Bearer",
-          permissions: permissions
+          permissions: permissions,
+          pagePermissions: pagePermissions
         }
       });
     } catch (error) {
@@ -1114,6 +1129,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const ppHierarchyRoutes = await import("./progress-payment-hierarchy-routes.js");
   app.use("/api/secure", ppHierarchyRoutes.default);
   console.log("✅ Progress Payment Hierarchy Routes registered at /api/secure");
+
+  // Position Page Permissions (Pozisyon Sayfa Yetkileri) Route'larını kaydet
+  const positionPagePermissionsRoutes = await import("./position-page-permissions-routes.js");
+  app.use("/api/secure", positionPagePermissionsRoutes.default);
+  console.log("✅ Position Page Permissions Routes registered at /api/secure");
 
   // Telegram Bot webhook kurulumu
   setupTelegramWebhook().catch((err) => {

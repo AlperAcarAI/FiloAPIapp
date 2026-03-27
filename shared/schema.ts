@@ -157,6 +157,18 @@ export const personnelPositions = pgTable("personnel_positions", {
   isActive: boolean("is_active").notNull().default(true),
 });
 
+// Position Page Permissions - Pozisyon bazlı sayfa erişim yetkileri
+export const positionPagePermissions = pgTable("position_page_permissions", {
+  id: serial("id").primaryKey(),
+  positionId: integer("position_id").notNull().references(() => personnelPositions.id, { onDelete: "cascade" }),
+  pageKey: varchar("page_key", { length: 50 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by"),
+}, (table) => ({
+  uniquePositionPage: unique("unique_position_page").on(table.positionId, table.pageKey),
+  positionIdx: index("idx_position_page_position").on(table.positionId),
+}));
+
 // ========================
 // Personnel Access Control Tables
 // ========================
