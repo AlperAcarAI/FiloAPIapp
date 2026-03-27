@@ -11,6 +11,8 @@ import {
   companies,
   teams,
   teamMembers,
+  teamVehicles,
+  assets,
   unitPrices,
   progressPaymentTypes,
   progressPayments,
@@ -32,6 +34,8 @@ import {
   updateTeamSchema,
   insertTeamMemberSchema,
   updateTeamMemberSchema,
+  insertTeamVehicleSchema,
+  updateTeamVehicleSchema,
   insertUnitPriceSchema,
   updateUnitPriceSchema,
   insertProgressPaymentTypeSchema,
@@ -868,7 +872,26 @@ router.get("/teams/:id", async (req, res) => {
       ))
       .orderBy(teamMembers.startDate);
 
-    res.json({ ...team, members });
+    // Ekip araçlarını getir
+    const vehicles = await db.select({
+      id: teamVehicles.id,
+      teamId: teamVehicles.teamId,
+      assetId: teamVehicles.assetId,
+      startDate: teamVehicles.startDate,
+      endDate: teamVehicles.endDate,
+      isActive: teamVehicles.isActive,
+      createdAt: teamVehicles.createdAt,
+      plateNumber: assets.plateNumber,
+    })
+      .from(teamVehicles)
+      .leftJoin(assets, eq(teamVehicles.assetId, assets.id))
+      .where(and(
+        eq(teamVehicles.teamId, parseInt(id)),
+        eq(teamVehicles.isActive, true)
+      ))
+      .orderBy(teamVehicles.startDate);
+
+    res.json({ ...team, members, vehicles });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -1019,6 +1042,114 @@ router.delete("/teams/:teamId/members/:memberId", async (req, res) => {
     res.json({ message: "Ekip üyesi çıkarıldı", member: result });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ========================
+// TEAM VEHICLES (EKİP ARAÇLARI)
+// ========================
+
+// Ekibe araç ekle
+router.post("/teams/:id/vehicles", async (req, res) => {
+  try {
+    const teamId = parseInt(req.params.id);
+    const userId = (req as any).user?.id;
+
+    const parsed = insertTeamVehicleSchema.parse({
+      ...req.body,
+      teamId,
+      createdBy: userId,
+      updatedBy: userId,
+    });
+
+    // Ekip var mı kontrol et
+    const [team] = await db.select().from(teams).where(eq(teams.id, teamId));
+    if (!team) {
+      return res.status(404).json({ success: false, error: "TEAM_NOT_FOUND", message: "Ekip bulunamadı" });
+    }
+
+    // Araç var mı ve aktif mi kontrol et
+    const [asset] = await db.select().from(assets).where(eq(assets.id, parsed.assetId));
+    if (!asset) {
+      return res.status(404).json({ success: false, error: "VEHICLE_NOT_FOUND", message: "Araç bulunamadı" });
+    }
+    if (!asset.isActive) {
+      return res.status(400).json({ success: false, error: "VEHICLE_INACTIVE", message: "Pasif araç ekibe eklenemez" });
+    }
+
+    // Aynı araç zaten bu ekipte aktif mi kontrol et
+    const [existing] = await db.select().from(teamVehicles).where(and(
+      eq(teamVehicles.teamId, teamId),
+      eq(teamVehicles.assetId, parsed.assetId),
+      eq(teamVehicles.isActive, true)
+    ));
+    if (existing) {
+      return res.status(400).json({ success: false, error: "VEHICLE_ALREADY_IN_TEAM", message: "Bu araç zaten ekipte" });
+    }
+
+    const [result] = await db.insert(teamVehicles).values(parsed).returning();
+    res.json({ success: true, message: "Araç ekibe eklendi", data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: "VALIDATION_ERROR", message: error.message });
+  }
+});
+
+// Ekip aracını güncelle
+router.put("/teams/:teamId/vehicles/:vehicleId", async (req, res) => {
+  try {
+    const { teamId, vehicleId } = req.params;
+    const userId = (req as any).user?.id;
+
+    const parsed = updateTeamVehicleSchema.parse(req.body);
+
+    const [result] = await db.update(teamVehicles)
+      .set({
+        ...parsed,
+        updatedBy: userId,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(teamVehicles.id, parseInt(vehicleId)),
+        eq(teamVehicles.teamId, parseInt(teamId))
+      ))
+      .returning();
+
+    if (!result) {
+      return res.status(404).json({ success: false, error: "TEAM_VEHICLE_NOT_FOUND", message: "Ekip aracı bulunamadı" });
+    }
+
+    res.json({ success: true, message: "Ekip aracı güncellendi", data: result });
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: "VALIDATION_ERROR", message: error.message });
+  }
+});
+
+// Ekipten araç çıkar (soft delete)
+router.delete("/teams/:teamId/vehicles/:vehicleId", async (req, res) => {
+  try {
+    const { teamId, vehicleId } = req.params;
+    const userId = (req as any).user?.id;
+
+    const [result] = await db.update(teamVehicles)
+      .set({
+        isActive: false,
+        endDate: new Date().toISOString().split('T')[0],
+        updatedBy: userId,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(teamVehicles.id, parseInt(vehicleId)),
+        eq(teamVehicles.teamId, parseInt(teamId))
+      ))
+      .returning();
+
+    if (!result) {
+      return res.status(404).json({ success: false, error: "TEAM_VEHICLE_NOT_FOUND", message: "Ekip aracı bulunamadı" });
+    }
+
+    res.json({ success: true, message: "Araç ekipten çıkarıldı", data: result });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: "SERVER_ERROR", message: error.message });
   }
 });
 

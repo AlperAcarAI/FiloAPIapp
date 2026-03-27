@@ -1253,6 +1253,7 @@ export const assetsRelations = relations(assets, ({ one, many }) => ({
   maintenance: many(assetsMaintenance),
   rentalAssets: many(rentalAssets),
   penalties: many(penalties),
+  teamVehicles: many(teamVehicles),
 }));
 
 // Personnel Relations
@@ -2158,6 +2159,24 @@ export const teamMembers = pgTable("team_members", {
 // Note: Partial unique index with WHERE clause is not supported in Drizzle ORM
 // Unique active team members constraint will be enforced in application logic
 
+export const teamVehicles = pgTable("team_vehicles", {
+  id: serial("id").primaryKey(),
+  teamId: integer("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  assetId: integer("asset_id").notNull().references(() => assets.id),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: integer("created_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: integer("updated_by").references(() => users.id),
+}, (table) => ({
+  teamIdx: index("idx_team_vehicles_team").on(table.teamId),
+  assetIdx: index("idx_team_vehicles_asset").on(table.assetId),
+  datesIdx: index("idx_team_vehicles_dates").on(table.startDate, table.endDate),
+  checkVehicleDates: check("check_vehicle_dates", sql`end_date IS NULL OR end_date >= start_date`),
+}));
+
 // 8. Unit Prices (Birim Fiyatlar - Tarihsel)
 export const unitPrices = pgTable("unit_prices", {
   id: serial("id").primaryKey(),
@@ -2424,6 +2443,7 @@ export const teamsRelations = relations(teams, ({ one, many }) => ({
     references: [personnel.id],
   }),
   teamMembers: many(teamMembers),
+  teamVehicles: many(teamVehicles),
   progressPayments: many(progressPayments),
   createdByUser: one(users, {
     fields: [teams.createdBy],
@@ -2455,6 +2475,27 @@ export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
     fields: [teamMembers.updatedBy],
     references: [users.id],
     relationName: "teamMemberUpdater",
+  }),
+}));
+
+export const teamVehiclesRelations = relations(teamVehicles, ({ one }) => ({
+  team: one(teams, {
+    fields: [teamVehicles.teamId],
+    references: [teams.id],
+  }),
+  asset: one(assets, {
+    fields: [teamVehicles.assetId],
+    references: [assets.id],
+  }),
+  createdByUser: one(users, {
+    fields: [teamVehicles.createdBy],
+    references: [users.id],
+    relationName: "teamVehicleCreator",
+  }),
+  updatedByUser: one(users, {
+    fields: [teamVehicles.updatedBy],
+    references: [users.id],
+    relationName: "teamVehicleUpdater",
   }),
 }));
 
@@ -2666,6 +2707,20 @@ export const updateTeamMemberSchema = insertTeamMemberSchema.partial();
 export type TeamMember = typeof teamMembers.$inferSelect;
 export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
 export type UpdateTeamMember = z.infer<typeof updateTeamMemberSchema>;
+
+// Team Vehicles Schemas
+export const insertTeamVehicleSchema = createInsertSchema(teamVehicles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır"),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tarih YYYY-MM-DD formatında olmalıdır").optional(),
+});
+export const updateTeamVehicleSchema = insertTeamVehicleSchema.partial();
+export type TeamVehicle = typeof teamVehicles.$inferSelect;
+export type InsertTeamVehicle = z.infer<typeof insertTeamVehicleSchema>;
+export type UpdateTeamVehicle = z.infer<typeof updateTeamVehicleSchema>;
 
 // Unit Prices Schemas
 export const insertUnitPriceSchema = createInsertSchema(unitPrices).omit({
