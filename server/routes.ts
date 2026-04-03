@@ -121,8 +121,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Çalışma süresi dolmuş personel kontrolü
-      if (authenticatedUser.personnelId) {
+      // Çalışma süresi dolmuş personel kontrolü (admin kullanıcısı hariç)
+      if (authenticatedUser.personnelId && authenticatedUser.id !== 1) {
         const [employment] = await db
           .select({ id: personnelCompanyMatches.id })
           .from(personnelCompanyMatches)
@@ -325,7 +325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(users.id, tokenData.userId))
         .limit(1);
 
-      if (refreshUser?.personnelId) {
+      if (refreshUser?.personnelId && tokenData.userId !== 1) {
         const [activeEmployment] = await db
           .select({ id: personnelCompanyMatches.id })
           .from(personnelCompanyMatches)
