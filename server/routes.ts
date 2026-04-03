@@ -2,12 +2,12 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
 import { authenticateToken, type AuthRequest } from "./auth";
-import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset, cities, type City, companies, users, personnel, paymentMethods } from "@shared/schema";
+import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset, cities, type City, companies, users, personnel, paymentMethods, personnelCompanyMatches } from "@shared/schema";
 import { generateTokenPair, validateRefreshToken, revokeRefreshToken, revokeAllUserRefreshTokens } from "./auth";
 import { z } from "zod";
 import { db } from "./db";
 import { assets, countries } from "@shared/schema";
-import { eq, desc, asc, sql, like, ilike, and } from "drizzle-orm";
+import { eq, desc, asc, sql, like, ilike, and, or, isNull } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { registerApiManagementRoutes } from "./api-management-routes";
@@ -121,10 +121,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Çalışma süresi dolmuş personel kontrolü
+      if (authenticatedUser.personnelId) {
+        const [employment] = await db
+          .select({ id: personnelCompanyMatches.id })
+          .from(personnelCompanyMatches)
+          .where(
+            and(
+              eq(personnelCompanyMatches.personnelId, authenticatedUser.personnelId),
+              eq(personnelCompanyMatches.isActive, true),
+              or(
+                isNull(personnelCompanyMatches.endDate),
+                sql`${personnelCompanyMatches.endDate} >= CURRENT_DATE`
+              )
+            )
+          )
+          .limit(1);
+
+        if (!employment) {
+          await trackLoginAttempt(email, false, req.ip || 'unknown', req.get('User-Agent'), 'employment_expired');
+          return res.status(403).json({
+            success: false,
+            error: "EMPLOYMENT_EXPIRED",
+            message: "Çalışma süreniz sona ermiştir. Lütfen yöneticinizle iletişime geçin."
+          });
+        }
+      }
+
       // IP ve User-Agent bilgilerini al
       const ipAddress = req.ip || req.connection.remoteAddress;
       const userAgent = req.get('User-Agent');
-      
+
       // Successful login tracking
       await trackLoginAttempt(email, true, req.ip || 'unknown', req.get('User-Agent'));
       
@@ -141,6 +168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user permissions and personnel info if personnelId exists
       let permissions: any[] = [];
       let personnelInfo = null;
+      let hasActiveAssignment = false;
 
       if (authenticatedUser.personnelId) {
         const { personnelAccess, accessTypes, workAreas, personnelWorkAreas, personnelPositions } = await import('@shared/schema');
@@ -170,6 +198,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             )
           )
           .limit(1);
+
+        hasActiveAssignment = !!currentPosition;
 
         if (personnelData) {
           personnelInfo = {
@@ -246,7 +276,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           refreshExpiresIn: tokens.refreshExpiresIn,
           tokenType: "Bearer",
           permissions: permissions,
-          pagePermissions: pagePermissions
+          pagePermissions: pagePermissions,
+          hasActiveAssignment
         }
       });
     } catch (error) {
@@ -286,14 +317,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Refresh token'ı doğrula
       const tokenData = await validateRefreshToken(refreshToken);
-      
+
+      // Çalışma süresi dolmuş personel kontrolü
+      const [refreshUser] = await db
+        .select({ personnelId: users.personnelId })
+        .from(users)
+        .where(eq(users.id, tokenData.userId))
+        .limit(1);
+
+      if (refreshUser?.personnelId) {
+        const [activeEmployment] = await db
+          .select({ id: personnelCompanyMatches.id })
+          .from(personnelCompanyMatches)
+          .where(
+            and(
+              eq(personnelCompanyMatches.personnelId, refreshUser.personnelId),
+              eq(personnelCompanyMatches.isActive, true),
+              or(
+                isNull(personnelCompanyMatches.endDate),
+                sql`${personnelCompanyMatches.endDate} >= CURRENT_DATE`
+              )
+            )
+          )
+          .limit(1);
+
+        if (!activeEmployment) {
+          await revokeRefreshToken(tokenData.id);
+          return res.status(403).json({
+            success: false,
+            error: "EMPLOYMENT_EXPIRED",
+            message: "Çalışma süreniz sona ermiştir. Lütfen yöneticinizle iletişime geçin."
+          });
+        }
+      }
+
       // IP ve User-Agent bilgilerini al
       const ipAddress = req.ip || req.connection.remoteAddress;
       const userAgent = req.get('User-Agent');
-      
+
       // Eski refresh token'ı iptal et (token rotation güvenliği)
       await revokeRefreshToken(tokenData.id);
-      
+
       // Yeni token çifti oluştur
       const tokens = await generateTokenPair(
         { id: tokenData.userId, email: tokenData.username },

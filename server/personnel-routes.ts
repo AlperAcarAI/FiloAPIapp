@@ -2,9 +2,10 @@ import { Router } from 'express';
 import { db } from './db.js';
 import { eq, and, ilike, desc, asc, like, or, ne, inArray, isNull, gt, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { 
+import {
   personnel, countries, cities, personnelPositions, workAreas, personnelWorkAreas, projects,
   assetsPersonelAssignment, assets, stuff, personnelStuffMatcher,
+  teams, teamMembers,
   insertPersonnelSchema, type InsertPersonnel, type Personnel
 } from '../shared/schema.js';
 import { 
@@ -810,7 +811,7 @@ router.put('/personnel/:id', authenticateJWT, async (req: AuthRequest, res) => {
  */
 router.post('/addPersonnelWorkArea', authenticateJWT, async (req: AuthRequest, res) => {
   try {
-    const { personnelId, workAreaId, positionId, projectId, startDate, endDate, isActive = true } = req.body;
+    const { personnelId, workAreaId, positionId, projectId, subcontractorId, teamId, startDate, endDate, isActive = true } = req.body;
 
     // Required field validation
     if (!personnelId || !workAreaId || !positionId || !startDate) {
@@ -926,7 +927,7 @@ router.post('/addPersonnelWorkArea', authenticateJWT, async (req: AuthRequest, r
       ))
       .returning({ id: personnelWorkAreas.id });
 
-    // Create the assignment with project reference
+    // Create the assignment with project, subcontractor and team reference
     const [newAssignment] = await db
       .insert(personnelWorkAreas)
       .values({
@@ -934,6 +935,8 @@ router.post('/addPersonnelWorkArea', authenticateJWT, async (req: AuthRequest, r
         workAreaId,
         positionId,
         projectId: projectId || null,
+        subcontractorId: subcontractorId || null,
+        teamId: teamId || null,
         startDate,
         endDate: endDate || null,
         isActive,
@@ -941,6 +944,30 @@ router.post('/addPersonnelWorkArea', authenticateJWT, async (req: AuthRequest, r
         updatedBy: req.userContext?.userId ?? null
       })
       .returning();
+
+    // Ekip atandıysa teamMembers'a da kayıt ekle
+    if (teamId) {
+      const existingMember = await db
+        .select({ teamId: teamMembers.teamId })
+        .from(teamMembers)
+        .where(and(
+          eq(teamMembers.teamId, teamId),
+          eq(teamMembers.personnelId, personnelId),
+          eq(teamMembers.isActive, true)
+        ));
+
+      if (existingMember.length === 0) {
+        await db.insert(teamMembers).values({
+          teamId,
+          personnelId,
+          startDate,
+          endDate: endDate || null,
+          isActive: true,
+          createdBy: req.userContext?.userId ?? null,
+          updatedBy: req.userContext?.userId ?? null
+        });
+      }
+    }
 
     res.status(201).json({
       success: true,

@@ -747,6 +747,8 @@ export const personnelWorkAreas = pgTable("personnel_work_areas", {
   workAreaId: integer("work_area_id").notNull().references(() => workAreas.id),
   positionId: integer("position_id").notNull().references(() => personnelPositions.id),
   projectId: integer("project_id").references(() => projects.id),
+  subcontractorId: integer("subcontractor_id").references(() => companies.id),
+  teamId: integer("team_id").references(() => teams.id),
   startDate: date("start_date").notNull(),
   endDate: date("end_date"),
   isActive: boolean("is_active").notNull().default(true),
@@ -759,6 +761,8 @@ export const personnelWorkAreas = pgTable("personnel_work_areas", {
   workAreaIdx: index("idx_personnel_work_areas_work_area").on(table.workAreaId),
   projectIdx: index("idx_personnel_work_areas_project").on(table.projectId),
   activeIdx: index("idx_personnel_work_areas_active").on(table.isActive),
+  subcontractorIdx: index("idx_personnel_work_areas_subcontractor").on(table.subcontractorId),
+  teamIdx: index("idx_personnel_work_areas_team").on(table.teamId),
 }));
 
 export const assetsPersonelAssignment = pgTable("assets_personel_assignment", {
