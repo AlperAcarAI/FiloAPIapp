@@ -314,6 +314,12 @@ zipUploadRoutes.post('/analyze', authenticateJWT, zipUpload.single('zipFile'), a
     const subTypes = await db.select().from(docSubTypes).where(eq(docSubTypes.isActive, true));
     const categories = buildCategoryTree(mainTypes, subTypes);
 
+    console.log(`[ZIP-AI] Kategoriler: ${categories.length} ana tip, ${categories.reduce((s, c) => s + c.subTypes.length, 0)} alt tip`);
+    categories.forEach(c => {
+      console.log(`  [${c.mainTypeId}] ${c.mainTypeName}: ${c.subTypes.map(s => `[${s.subTypeId}] ${s.subTypeName}`).join(', ')}`);
+    });
+    console.log(`[ZIP-AI] ${fileInfos.length} dosya sınıflandırılacak`);
+
     let classifications: ClassificationResult[];
     try {
       classifications = await classifyDocuments(fileInfos, categories, entityType);

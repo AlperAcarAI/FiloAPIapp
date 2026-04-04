@@ -63,30 +63,43 @@ export function buildCategoryTree(
 
 /** Ortak sınıflandırma prompt metni */
 function getClassificationPrompt(categories: CategoryTree[], entityType: string): string {
-  return `Sen bir filo yönetim sistemi için döküman sınıflandırma asistanısın.
-Dosyanın İÇERİĞİNİ analiz ederek en uygun döküman kategorisine sınıflandır.
+  // Kategorileri okunabilir liste formatında oluştur
+  const categoryList = categories.map(c => {
+    const subList = c.subTypes.map(s => `    - subTypeId: ${s.subTypeId} → "${s.subTypeName}"`).join('\n');
+    return `  Ana Kategori: mainTypeId: ${c.mainTypeId} → "${c.mainTypeName}"\n  Alt Kategoriler:\n${subList}`;
+  }).join('\n\n');
+
+  return `Sen bir filo yönetim sistemi için döküman sınıflandırma uzmanısın.
+
+GÖREV: Sana verilen dosyanın İÇERİĞİNİ dikkatlice oku ve analiz et. İçeriğe göre aşağıdaki kategori listesinden EN UYGUN olanı seç.
 
 Entity tipi: ${entityType}
 
-Mevcut kategoriler:
-${JSON.stringify(categories, null, 2)}
+─── KULLANILACAK KATEGORİLER ───
+${categoryList}
+─── KATEGORİ LİSTESİ SONU ───
 
-SADECE JSON formatında yanıt ver, başka metin olmasın:
+ÖNEMLİ KURALLAR:
+1. Yanıtında mainTypeId ve subTypeId MUTLAKA yukarıdaki listeden olmalı. Listede olmayan ID kullanma.
+2. Dosyanın İÇERİĞİNE bak: Belgenin ne hakkında olduğunu, içindeki metinleri, başlıkları, logoları, tabloları analiz et.
+3. Dosya adına güvenme — içerik her zaman dosya adından daha güvenilirdir.
+4. Eğer içerik bir ehliyet ise → ehliyet/sürücü belgesi ile ilgili alt kategoriyi seç.
+5. Eğer içerik bir sigorta poliçesi ise → sigorta ile ilgili alt kategoriyi seç.
+6. Eğer içerik SGK/sosyal güvenlik belgesi ise → SGK ile ilgili alt kategoriyi seç.
+7. Eğer içerik bir kimlik kartı/nüfus cüzdanı ise → kimlik ile ilgili alt kategoriyi seç.
+8. Eğer içerik bir sağlık raporu/muayene belgesi ise → sağlık ile ilgili alt kategoriyi seç.
+9. Eğer hiçbir kategoriye uymuyorsa, en yakın olanı seç ve confidence düşük ver.
+
+SADECE aşağıdaki JSON formatında yanıt ver, başka metin YAZMA:
 {
-  "mainTypeId": <number>,
-  "mainTypeName": "<string>",
-  "subTypeId": <number>,
-  "subTypeName": "<string>",
+  "mainTypeId": <yukarıdaki listeden bir numara>,
+  "mainTypeName": "<yukarıdaki listeden tam isim>",
+  "subTypeId": <yukarıdaki listeden bir numara>,
+  "subTypeName": "<yukarıdaki listeden tam isim>",
   "suggestedTitle": "<Türkçe açıklayıcı başlık>",
-  "confidence": <0-1 arası>,
-  "reasoning": "<kısa Türkçe açıklama>"
-}
-
-Kurallar:
-- Dosya içeriğine göre sınıflandır, sadece dosya adına güvenme
-- suggestedTitle Türkçe ve açıklayıcı olsun
-- mainTypeId ve subTypeId yukarıdaki kategori listesinden seçilmeli
-- İçerikten kategori belirlenemiyorsa confidence 0.3 altında ver`;
+  "confidence": <0.0 ile 1.0 arası>,
+  "reasoning": "<kısa Türkçe açıklama — içerikte ne gördüğünü belirt>"
+}`;
 }
 
 /**
