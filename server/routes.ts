@@ -2,12 +2,12 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
 import { authenticateToken, type AuthRequest } from "./auth";
-import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset, cities, type City, companies, users, personnel, paymentMethods, personnelCompanyMatches } from "@shared/schema";
+import { insertAssetSchema, updateAssetSchema, type Asset, type InsertAsset, type UpdateAsset, cities, type City, companies, users, personnel, paymentMethods } from "@shared/schema";
 import { generateTokenPair, validateRefreshToken, revokeRefreshToken, revokeAllUserRefreshTokens } from "./auth";
 import { z } from "zod";
 import { db } from "./db";
 import { assets, countries } from "@shared/schema";
-import { eq, desc, asc, sql, like, ilike, and, or, isNull } from "drizzle-orm";
+import { eq, desc, asc, sql, like, ilike, and } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { registerApiManagementRoutes } from "./api-management-routes";
@@ -121,29 +121,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Çalışma süresi dolmuş personel kontrolü (admin kullanıcısı hariç)
-      if (authenticatedUser.personnelId && authenticatedUser.id !== 1) {
-        const [employment] = await db
-          .select({ id: personnelCompanyMatches.id })
-          .from(personnelCompanyMatches)
-          .where(
-            and(
-              eq(personnelCompanyMatches.personnelId, authenticatedUser.personnelId),
-              eq(personnelCompanyMatches.isActive, true),
-              or(
-                isNull(personnelCompanyMatches.endDate),
-                sql`${personnelCompanyMatches.endDate} >= CURRENT_DATE`
-              )
-            )
-          )
+      // Pasif personel giriş kontrolü
+      if (authenticatedUser.personnelId) {
+        const [personnelRecord] = await db
+          .select({ isActive: personnel.isActive })
+          .from(personnel)
+          .where(eq(personnel.id, authenticatedUser.personnelId))
           .limit(1);
 
-        if (!employment) {
-          await trackLoginAttempt(email, false, req.ip || 'unknown', req.get('User-Agent'), 'employment_expired');
+        if (personnelRecord && !personnelRecord.isActive) {
+          await trackLoginAttempt(email, false, req.ip || 'unknown', req.get('User-Agent'), 'personnel_inactive');
           return res.status(403).json({
             success: false,
-            error: "EMPLOYMENT_EXPIRED",
-            message: "Çalışma süreniz sona ermiştir. Lütfen yöneticinizle iletişime geçin."
+            error: "PERSONNEL_INACTIVE",
+            message: "Hesabınız pasif durumda. Lütfen yöneticinizle iletişime geçin."
           });
         }
       }
@@ -318,35 +309,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Refresh token'ı doğrula
       const tokenData = await validateRefreshToken(refreshToken);
 
-      // Çalışma süresi dolmuş personel kontrolü
+      // Pasif personel kontrolü
       const [refreshUser] = await db
         .select({ personnelId: users.personnelId })
         .from(users)
         .where(eq(users.id, tokenData.userId))
         .limit(1);
 
-      if (refreshUser?.personnelId && tokenData.userId !== 1) {
-        const [activeEmployment] = await db
-          .select({ id: personnelCompanyMatches.id })
-          .from(personnelCompanyMatches)
-          .where(
-            and(
-              eq(personnelCompanyMatches.personnelId, refreshUser.personnelId),
-              eq(personnelCompanyMatches.isActive, true),
-              or(
-                isNull(personnelCompanyMatches.endDate),
-                sql`${personnelCompanyMatches.endDate} >= CURRENT_DATE`
-              )
-            )
-          )
+      if (refreshUser?.personnelId) {
+        const [personnelRecord] = await db
+          .select({ isActive: personnel.isActive })
+          .from(personnel)
+          .where(eq(personnel.id, refreshUser.personnelId))
           .limit(1);
 
-        if (!activeEmployment) {
+        if (personnelRecord && !personnelRecord.isActive) {
           await revokeRefreshToken(tokenData.id);
           return res.status(403).json({
             success: false,
-            error: "EMPLOYMENT_EXPIRED",
-            message: "Çalışma süreniz sona ermiştir. Lütfen yöneticinizle iletişime geçin."
+            error: "PERSONNEL_INACTIVE",
+            message: "Hesabınız pasif durumda. Lütfen yöneticinizle iletişime geçin."
           });
         }
       }
