@@ -60,145 +60,94 @@ export function buildCategoryTree(
     }));
 }
 
-/**
- * Tier 1: Dosya adlarına göre toplu sınıflandırma (tek API çağrısı)
- */
-export async function classifyByFileNames(
-  files: FileInfo[],
-  categories: CategoryTree[],
-  entityType: string
-): Promise<ClassificationResult[]> {
-  const ai = getClient();
-
-  const fileList = files.map((f, i) => `${i + 1}. "${f.fileName}" (${f.mimeType}, ${formatFileSize(f.fileSize)})`).join('\n');
-
-  const response = await ai.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 4096,
-    messages: [
-      {
-        role: 'user',
-        content: `Sen bir filo yönetim sistemi için döküman sınıflandırma asistanısın.
-Aşağıdaki dosya adlarını analiz ederek her birini en uygun döküman kategorisine sınıflandır.
+/** Ortak sınıflandırma prompt metni */
+function getClassificationPrompt(categories: CategoryTree[], entityType: string): string {
+  return `Sen bir filo yönetim sistemi için döküman sınıflandırma asistanısın.
+Dosyanın İÇERİĞİNİ analiz ederek en uygun döküman kategorisine sınıflandır.
 
 Entity tipi: ${entityType}
 
 Mevcut kategoriler:
 ${JSON.stringify(categories, null, 2)}
 
-Dosyalar:
-${fileList}
-
-Her dosya için aşağıdaki JSON formatında yanıt ver. Yanıtın SADECE JSON array olsun, başka metin olmasın:
-[
-  {
-    "index": 1,
-    "mainTypeId": <number>,
-    "mainTypeName": "<string>",
-    "subTypeId": <number>,
-    "subTypeName": "<string>",
-    "suggestedTitle": "<Türkçe açıklayıcı başlık>",
-    "confidence": <0-1 arası>,
-    "reasoning": "<kısa Türkçe açıklama>"
-  }
-]
-
-Kurallar:
-- Dosya adından kategori belirlenemiyorsa confidence 0.3 altında ver
-- suggestedTitle Türkçe ve açıklayıcı olsun
-- mainTypeId ve subTypeId yukarıdaki kategori listesinden seçilmeli
-- Eğer hiçbir alt kategori uymuyorsa, en yakın ana kategorinin ilk alt kategorisini seç ve düşük confidence ver`
-      }
-    ]
-  });
-
-  const content = response.content[0];
-  if (content.type !== 'text') {
-    throw new Error('AI yanıtı beklenmedik formatta');
-  }
-
-  const parsed = parseJsonResponse(content.text);
-
-  return files.map((file, index) => {
-    const match = parsed.find((p: { index: number }) => p.index === index + 1);
-    if (match) {
-      return {
-        fileName: file.fileName,
-        mainTypeId: match.mainTypeId,
-        mainTypeName: match.mainTypeName,
-        subTypeId: match.subTypeId,
-        subTypeName: match.subTypeName,
-        suggestedTitle: match.suggestedTitle,
-        confidence: Math.min(1, Math.max(0, match.confidence)),
-        reasoning: match.reasoning,
-      };
-    }
-    // Fallback: AI bu dosyayı yanıtlamadıysa
-    return createUnknownResult(file.fileName, categories);
-  });
-}
-
-/**
- * Tier 2: Resim/PDF dosyaları için Vision API ile sınıflandırma
- */
-export async function classifyByVision(
-  file: FileInfo,
-  categories: CategoryTree[],
-  entityType: string
-): Promise<ClassificationResult> {
-  const ai = getClient();
-
-  if (!file.buffer) {
-    throw new Error('Vision sınıflandırma için dosya buffer gerekli');
-  }
-
-  const base64Data = file.buffer.toString('base64');
-  const mediaType = getMediaType(file.mimeType);
-
-  const categorySummary = categories
-    .map(c => `${c.mainTypeName}: ${c.subTypes.map(s => s.subTypeName).join(', ')}`)
-    .join('\n');
-
-  const response = await ai.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 512,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: mediaType, data: base64Data }
-          },
-          {
-            type: 'text',
-            text: `Bu dökümanı sınıflandır. Dosya adı: "${file.fileName}". Entity tipi: ${entityType}.
-
-Kategoriler:
-${categorySummary}
-
-Mevcut kategori detayları:
-${JSON.stringify(categories, null, 2)}
-
-SADECE JSON formatında yanıt ver:
+SADECE JSON formatında yanıt ver, başka metin olmasın:
 {
   "mainTypeId": <number>,
   "mainTypeName": "<string>",
   "subTypeId": <number>,
   "subTypeName": "<string>",
-  "suggestedTitle": "<Türkçe başlık>",
-  "confidence": <0-1>,
+  "suggestedTitle": "<Türkçe açıklayıcı başlık>",
+  "confidence": <0-1 arası>,
   "reasoning": "<kısa Türkçe açıklama>"
-}`
-          }
-        ]
-      }
-    ]
+}
+
+Kurallar:
+- Dosya içeriğine göre sınıflandır, sadece dosya adına güvenme
+- suggestedTitle Türkçe ve açıklayıcı olsun
+- mainTypeId ve subTypeId yukarıdaki kategori listesinden seçilmeli
+- İçerikten kategori belirlenemiyorsa confidence 0.3 altında ver`;
+}
+
+/**
+ * Tek bir dosyayı içeriğine göre sınıflandır (resim, PDF veya metin)
+ */
+async function classifyFileByContent(
+  file: FileInfo,
+  categories: CategoryTree[],
+  entityType: string
+): Promise<ClassificationResult> {
+  const ai = getClient();
+  const prompt = getClassificationPrompt(categories, entityType);
+
+  // İçerik bloklarını oluştur
+  const contentBlocks: Anthropic.MessageCreateParams['messages'][0]['content'] = [];
+
+  if (file.buffer) {
+    if (isImageFile(file.mimeType)) {
+      // Resim dosyaları: Vision API
+      contentBlocks.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: getImageMediaType(file.mimeType),
+          data: file.buffer.toString('base64'),
+        },
+      });
+    } else if (file.mimeType === 'application/pdf') {
+      // PDF dosyaları: Document API
+      contentBlocks.push({
+        type: 'document',
+        source: {
+          type: 'base64',
+          media_type: 'application/pdf',
+          data: file.buffer.toString('base64'),
+        },
+      } as any);
+    } else if (file.mimeType === 'text/plain') {
+      // Text dosyaları: içeriği direkt metin olarak gönder
+      const textContent = file.buffer.toString('utf-8').slice(0, 5000); // Max 5000 karakter
+      contentBlocks.push({
+        type: 'text',
+        text: `--- Dosya İçeriği (${file.fileName}) ---\n${textContent}\n--- Dosya Sonu ---`,
+      });
+    }
+  }
+
+  // Her durumda dosya adını ve prompt'u ekle
+  contentBlocks.push({
+    type: 'text',
+    text: `Dosya adı: "${file.fileName}" (${file.mimeType}, ${formatFileSize(file.fileSize)})\n\n${prompt}`,
+  });
+
+  const response = await ai.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 512,
+    messages: [{ role: 'user', content: contentBlocks }],
   });
 
   const content = response.content[0];
   if (content.type !== 'text') {
-    throw new Error('AI Vision yanıtı beklenmedik formatta');
+    throw new Error('AI yanıtı beklenmedik formatta');
   }
 
   const parsed = parseJsonResponse(content.text);
@@ -217,40 +166,35 @@ SADECE JSON formatında yanıt ver:
 }
 
 /**
- * Tam sınıflandırma akışı: Tier 1 + düşük confidence olanlar için Tier 2
+ * Tüm dosyaları içeriklerine göre sınıflandır
+ * Her dosya ayrı API çağrısı ile analiz edilir (içerik gönderimi gerektiği için)
+ * Paralel çalışır (max 5 eşzamanlı)
  */
 export async function classifyDocuments(
   files: FileInfo[],
   categories: CategoryTree[],
   entityType: string
 ): Promise<ClassificationResult[]> {
-  // Tier 1: Dosya adlarına göre toplu sınıflandırma
-  const results = await classifyByFileNames(files, categories, entityType);
+  const results: ClassificationResult[] = new Array(files.length);
+  const BATCH_SIZE = 5;
 
-  // Tier 2: Düşük confidence + görsel analiz yapılabilir dosyalar
-  const visionCandidates = results
-    .map((r, i) => ({ result: r, index: i, file: files[i] }))
-    .filter(({ result, file }) =>
-      result.confidence < 0.6 &&
-      file.buffer &&
-      isVisionCompatible(file.mimeType)
+  // Dosyaları 5'erli gruplar halinde paralel işle
+  for (let i = 0; i < files.length; i += BATCH_SIZE) {
+    const batch = files.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.allSettled(
+      batch.map(file => classifyFileByContent(file, categories, entityType))
     );
 
-  // Vision çağrılarını paralel yap (max 5 adet)
-  const visionBatch = visionCandidates.slice(0, 5);
-  const visionResults = await Promise.allSettled(
-    visionBatch.map(({ file }) => classifyByVision(file, categories, entityType))
-  );
-
-  // Vision sonuçlarını güncelle (sadece daha yüksek confidence ise)
-  visionResults.forEach((visionResult, i) => {
-    if (visionResult.status === 'fulfilled') {
-      const originalIndex = visionBatch[i].index;
-      if (visionResult.value.confidence > results[originalIndex].confidence) {
-        results[originalIndex] = visionResult.value;
+    batchResults.forEach((result, batchIndex) => {
+      const fileIndex = i + batchIndex;
+      if (result.status === 'fulfilled') {
+        results[fileIndex] = result.value;
+      } else {
+        console.error(`Dosya sınıflandırma hatası (${files[fileIndex].fileName}):`, result.reason);
+        results[fileIndex] = createUnknownResult(files[fileIndex].fileName, categories);
       }
-    }
-  });
+    });
+  }
 
   return results;
 }
@@ -258,20 +202,19 @@ export async function classifyDocuments(
 /** JSON yanıtını parse et (markdown code block olabilir) */
 function parseJsonResponse(text: string): any {
   let cleaned = text.trim();
-  // Markdown code block varsa çıkar
   if (cleaned.startsWith('```')) {
     cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '');
   }
   return JSON.parse(cleaned);
 }
 
-/** Vision API için uygun MIME type kontrolü */
-function isVisionCompatible(mimeType: string): boolean {
+/** Resim dosyası mı? */
+function isImageFile(mimeType: string): boolean {
   return ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'].includes(mimeType);
 }
 
-/** MIME type'ı Anthropic'in beklediği formata dönüştür */
-function getMediaType(mimeType: string): 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' {
+/** MIME type'ı Anthropic image formatına dönüştür */
+function getImageMediaType(mimeType: string): 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' {
   const mapping: Record<string, 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'> = {
     'image/jpeg': 'image/jpeg',
     'image/jpg': 'image/jpeg',
@@ -301,6 +244,6 @@ function createUnknownResult(fileName: string, categories: CategoryTree[]): Clas
     subTypeName: firstSubType?.subTypeName ?? 'Bilinmeyen',
     suggestedTitle: fileName.replace(/\.[^.]+$/, ''),
     confidence: 0.1,
-    reasoning: 'Dosya adından kategori belirlenemedi',
+    reasoning: 'Dosya içeriği analiz edilemedi',
   };
 }
