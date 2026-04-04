@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import type { Messages } from '@anthropic-ai/sdk/resources/messages';
 import type { DocMainType, DocSubType } from '@shared/schema';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -100,32 +101,36 @@ async function classifyFileByContent(
   const prompt = getClassificationPrompt(categories, entityType);
 
   // İçerik bloklarını oluştur
-  const contentBlocks: Anthropic.MessageCreateParams['messages'][0]['content'] = [];
+  const contentBlocks: Messages.ContentBlockParam[] = [];
 
-  if (file.buffer) {
+  if (file.buffer && file.buffer.length > 0) {
+    const base64Data = file.buffer.toString('base64');
+
     if (isImageFile(file.mimeType)) {
-      // Resim dosyaları: Vision API
-      contentBlocks.push({
+      // Resim dosyaları: Vision API ile içerik analizi
+      const imageBlock: Messages.ImageBlockParam = {
         type: 'image',
         source: {
           type: 'base64',
           media_type: getImageMediaType(file.mimeType),
-          data: file.buffer.toString('base64'),
+          data: base64Data,
         },
-      });
+      };
+      contentBlocks.push(imageBlock);
     } else if (file.mimeType === 'application/pdf') {
-      // PDF dosyaları: Document API
-      contentBlocks.push({
+      // PDF dosyaları: Document API ile içerik analizi
+      const pdfBlock: Messages.DocumentBlockParam = {
         type: 'document',
         source: {
           type: 'base64',
           media_type: 'application/pdf',
-          data: file.buffer.toString('base64'),
+          data: base64Data,
         },
-      } as any);
+      };
+      contentBlocks.push(pdfBlock);
     } else if (file.mimeType === 'text/plain') {
       // Text dosyaları: içeriği direkt metin olarak gönder
-      const textContent = file.buffer.toString('utf-8').slice(0, 5000); // Max 5000 karakter
+      const textContent = file.buffer.toString('utf-8').slice(0, 5000);
       contentBlocks.push({
         type: 'text',
         text: `--- Dosya İçeriği (${file.fileName}) ---\n${textContent}\n--- Dosya Sonu ---`,
