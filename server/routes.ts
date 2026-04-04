@@ -37,6 +37,7 @@ import { registerPasswordResetRoutes } from "./password-reset-routes.js";
 import { generateApiKey, hashApiKey } from "./api-security.js";
 import { apiKeys, apiClients } from "@shared/schema";
 import { createBotRouter, setupTelegramWebhook } from "./bot-webhook-routes.js";
+import zipUploadRoutes from "./zip-upload-routes.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Security headers - tüm isteklere uygula
@@ -47,6 +48,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Document Management Routes - Before auth middleware
   app.use('/api/documents', documentRoutes);
+
+  // ZIP Upload Routes (AI sınıflandırma ile toplu döküman yükleme)
+  app.use('/api/documents/zip', zipUploadRoutes);
 
   // Telegram Bot Webhook Routes - Auth middleware OLMADAN (kendi doğrulamasını yapar)
   app.use('/api/bot', createBotRouter());
