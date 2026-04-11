@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk '/^const VehicleGridWidget/,/^}$|^const [A-Z]/ {print NR\": \"$0}' /Users/acar/FilokiFrontend/FilokiFrontend/client/src/components/dashboard.tsx)",
+      "Bash(awk '/^const VehicleGridWidget = \\\\\\(\\\\\\) => {/,/^};/ {print NR\": \"$0}' /Users/acar/FilokiFrontend/FilokiFrontend/client/src/components/dashboard.tsx)"
+    ]
+  }
+}
